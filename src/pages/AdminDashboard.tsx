@@ -129,11 +129,11 @@ export default function AdminDashboard() {
 
       const allDbOrders = (dbOrders || []).map(o => ({
         id: o.id,
-        customerName: o.customer_name,
-        orderType: o.order_type,
-        paymentMethod: o.payment_method,
-        status: o.status,
-        totalAmount: o.total_amount,
+        customerName: o.customer_name || 'Cliente Sem Nome',
+        orderType: o.order_type || 'balcao',
+        paymentMethod: o.payment_method || 'Outros',
+        status: o.status || 'Pendente',
+        totalAmount: Number(o.total_amount) || 0,
         items: o.items,
         createdAt: o.created_at
       }));
@@ -142,24 +142,36 @@ export default function AdminDashboard() {
       const now = new Date();
       let allOrdersAgg = allDbOrders;
       
+      const safeGetTime = (dStr: any) => {
+        if (!dStr) return null;
+        try {
+          const d = new Date(dStr);
+          return isNaN(d.getTime()) ? null : d;
+        } catch(e) {
+          return null;
+        }
+      };
+
       if (filter === 'hoje') {
         const todayStr = now.toISOString().split('T')[0];
         allOrdersAgg = allDbOrders.filter(o => {
-          if (!o.createdAt) return false;
-          return new Date(o.createdAt).toISOString().split('T')[0] === todayStr;
+          const d = safeGetTime(o.createdAt);
+          if (!d) return false;
+          return d.toISOString().split('T')[0] === todayStr;
         });
       } else if (filter === '7dias') {
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         allOrdersAgg = allDbOrders.filter(o => {
-          if (!o.createdAt) return false;
-          return new Date(o.createdAt) >= sevenDaysAgo;
+          const d = safeGetTime(o.createdAt);
+          if (!d) return false;
+          return d >= sevenDaysAgo;
         });
       } else if (filter === 'mes') {
         const currentMonth = now.getMonth();
         const currentYear = now.getFullYear();
         allOrdersAgg = allDbOrders.filter(o => {
-          if (!o.createdAt) return false;
-          const d = new Date(o.createdAt);
+          const d = safeGetTime(o.createdAt);
+          if (!d) return false;
           return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
         });
       }
@@ -179,17 +191,18 @@ export default function AdminDashboard() {
       dayNames.forEach(d => daysCounts[d] = { orders: 0, revenue: 0 });
       
       allOrdersAgg.forEach(order => {
-        faturamentoBruto += order.totalAmount;
+        const amt = Number(order.totalAmount) || 0;
+        faturamentoBruto += amt;
         const pmRaw = order.paymentMethod || 'Outros';
         if (!paymentMethodCounts[pmRaw]) paymentMethodCounts[pmRaw] = 0;
-        paymentMethodCounts[pmRaw] += order.totalAmount;
+        paymentMethodCounts[pmRaw] += amt;
 
-        if (order.createdAt) {
-          const d = new Date(order.createdAt);
+        const d = safeGetTime(order.createdAt);
+        if (d) {
           const dayName = dayNames[d.getDay()];
           if (daysCounts[dayName]) {
             daysCounts[dayName].orders += 1;
-            daysCounts[dayName].revenue += order.totalAmount;
+            daysCounts[dayName].revenue += amt;
           }
         }
 
