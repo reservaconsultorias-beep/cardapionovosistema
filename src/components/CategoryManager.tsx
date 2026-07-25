@@ -42,9 +42,12 @@ export default function CategoryManager() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-gray-200/80 shadow-md">
-        <h3 className="font-bold text-gray-800">Categorias ({categories.length})</h3>
-        <button onClick={() => { setEditingCat({ id: '', name: '', order_index: categories.length + 1 }); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg text-sm hover:bg-gray-900 transition-colors">
+      <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+        <div>
+          <h3 className="font-extrabold text-xl text-gray-900">Categorias</h3>
+          <p className="text-xs text-gray-500 mt-0.5">Gerencie as seções do seu cardápio ({categories.length} cadastradas)</p>
+        </div>
+        <button onClick={() => { setEditingCat({ id: '', name: '', order_index: categories.length + 1 }); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2.5 bg-[#ea1d2c] hover:bg-[#c91825] text-white rounded-xl text-sm font-bold transition-all duration-200 active:scale-95 shadow-sm cursor-pointer">
           <Plus size={16}/> Nova Categoria
         </button>
       </div>

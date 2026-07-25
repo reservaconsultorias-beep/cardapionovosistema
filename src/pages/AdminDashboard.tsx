@@ -13,7 +13,13 @@ import {
   Lock,
   Printer,
   Menu,
-  LogOut
+  LogOut,
+  LayoutDashboard,
+  FolderTree,
+  Package,
+  UtensilsCrossed,
+  Settings,
+  BarChart3
 } from "lucide-react";
 import {
   AreaChart,
@@ -38,7 +44,7 @@ import CategoryManager from '../components/CategoryManager';
 import SettingsManager from '../components/SettingsManager';
 import CustomersManager from '../components/CustomersManager';
 import CaixaManager from '../components/CaixaManager';
-import { Settings } from 'lucide-react';
+
 
 
 const CHART_COLORS = ["#334155", "#475569", "#64748b", "#78716c", "#94a3b8", "#a1a1aa"];
@@ -98,6 +104,15 @@ export default function AdminDashboard() {
   const [printOrder, setPrintOrder] = useState<any>(null);
   const [autoPrint, setAutoPrint] = useState(() => localStorage.getItem("autoPrint") === "true");
   const autoPrintRef = useRef(autoPrint);
+  const [soundEnabled, setSoundEnabled] = useState(() => localStorage.getItem("soundEnabled") !== "false");
+  const soundEnabledRef = useRef(soundEnabled);
+
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+    localStorage.setItem("soundEnabled", soundEnabled ? "true" : "false");
+  }, [soundEnabled]);
+
+  const toggleSound = () => setSoundEnabled(prev => !prev);
   const [lastSeenOrderId, setLastSeenOrderId] = useState<number | null>(null);
   const lastSeenOrderIdRef = useRef(lastSeenOrderId);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -253,7 +268,9 @@ export default function AdminDashboard() {
         const latestOrder = data.recentOrders[0];
         
         if (lastSeenOrderIdRef.current !== null && latestOrder.id > lastSeenOrderIdRef.current) {
-          playNotificationSound();
+          if (soundEnabledRef.current) {
+            playNotificationSound();
+          }
           if (autoPrintRef.current) {
             handlePrintOrder(latestOrder);
           }
@@ -801,45 +818,106 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans no-print">
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 flex-col hidden md:flex sticky top-0 h-screen overflow-y-auto">
-        <div className="p-6 border-b border-gray-100">
-          <h2 className="text-xl font-black text-[#ea1d2c] tracking-tight">41 Menu's</h2>
-          <p className="text-xs text-gray-500 mt-1 uppercase tracking-wider font-bold">Painel de Gestão</p>
+        {/* Sidebar Header with Official Brand Identity */}
+        <div className="p-5 border-b border-gray-100 bg-[#000000] text-white">
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-xl bg-[#FFDE59] text-[#000000] font-black flex items-center justify-center text-sm shadow-md">41</span>
+            <div>
+              <h2 className="text-lg font-black tracking-tight text-white leading-none">Menu's</h2>
+              <span className="text-[10px] text-[#FD9F23] font-extrabold uppercase tracking-wider block mt-0.5">Pizzas e Esfihas</span>
+            </div>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-2 uppercase tracking-widest font-bold border-t border-gray-800 pt-2">Painel de Gestão</p>
         </div>
 
         <div className="p-4 border-b border-gray-100">
           <button
             onClick={toggleStoreClosed}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all ${manualClosed ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-green-100 text-green-700 hover:bg-green-200'}`}
+            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 shadow-sm ${manualClosed ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-200'}`}
           >
             {manualClosed ? '🔴 Loja Fechada (clique p/ abrir)' : '🟢 Loja Aberta (clique p/ fechar)'}
           </button>
         </div>
         
-        <div className="p-4 flex-1 space-y-1">
+        <div className="p-3 flex-1 space-y-1.5">
           {isOwner && (
-            <button onClick={() => setActiveTab("visao-geral")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'visao-geral' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>Visão Geral</button>
+            <button 
+              onClick={() => setActiveTab("visao-geral")} 
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'visao-geral' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+            >
+              <LayoutDashboard size={18} className={activeTab === 'visao-geral' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+              Visão Geral
+            </button>
           )}
-          <button onClick={() => setActiveTab("pedidos")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'pedidos' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>Pedidos</button>
-          <button onClick={() => setActiveTab("caixa")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'caixa' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>Caixa</button>
+          <button 
+            onClick={() => setActiveTab("pedidos")} 
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'pedidos' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+          >
+            <ShoppingBag size={18} className={activeTab === 'pedidos' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+            Pedidos
+          </button>
+          <button 
+            onClick={() => setActiveTab("caixa")} 
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'caixa' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+          >
+            <CreditCard size={18} className={activeTab === 'caixa' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+            Caixa
+          </button>
           {isOwner && (
-            <button onClick={() => setActiveTab("relatorios")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'relatorios' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>Relatórios</button>
+            <button 
+              onClick={() => setActiveTab("relatorios")} 
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'relatorios' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+            >
+              <BarChart3 size={18} className={activeTab === 'relatorios' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+              Relatórios
+            </button>
           )}
           {isOwner && (
-            <button onClick={() => setActiveTab("clientes")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'clientes' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>Clientes</button>
+            <button 
+              onClick={() => setActiveTab("clientes")} 
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'clientes' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+            >
+              <Users size={18} className={activeTab === 'clientes' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+              Clientes
+            </button>
           )}
           
           {isOwner && (
-            <div className="pt-4 mt-4 border-t border-gray-100">
-              <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Cardápio</p>
-              <button onClick={() => setActiveTab("cardapio-digital")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'cardapio-digital' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>Cardápio Digital</button>
-              <button onClick={() => setActiveTab("gestao-cardapio")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'gestao-cardapio' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>Produtos</button>
-              <button onClick={() => setActiveTab("categorias")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'categorias' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>Categorias</button>
+            <div className="pt-3 mt-3 border-t border-gray-100 space-y-1">
+              <p className="px-3 text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">Cardápio</p>
+              <button 
+                onClick={() => setActiveTab("cardapio-digital")} 
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'cardapio-digital' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              >
+                <UtensilsCrossed size={18} className={activeTab === 'cardapio-digital' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                Cardápio Digital
+              </button>
+              <button 
+                onClick={() => setActiveTab("gestao-cardapio")} 
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'gestao-cardapio' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              >
+                <Package size={18} className={activeTab === 'gestao-cardapio' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                Produtos
+              </button>
+              <button 
+                onClick={() => setActiveTab("categorias")} 
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'categorias' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              >
+                <FolderTree size={18} className={activeTab === 'categorias' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                Categorias
+              </button>
             </div>
           )}
           {isOwner && (
-            <div className="pt-4 mt-4 border-t border-gray-100">
-              <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Sistema</p>
-              <button onClick={() => setActiveTab("configuracoes")} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'configuracoes' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'}`}>Configurações</button>
+            <div className="pt-3 mt-3 border-t border-gray-100 space-y-1">
+              <p className="px-3 text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">Sistema</p>
+              <button 
+                onClick={() => setActiveTab("configuracoes")} 
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'configuracoes' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              >
+                <Settings size={18} className={activeTab === 'configuracoes' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                Configurações
+              </button>
             </div>
           )}
         </div>
@@ -863,18 +941,6 @@ export default function AdminDashboard() {
             <button onClick={handleLogout} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-semibold rounded-lg transition-colors">
               Sair
             </button>
-
-            <div className="flex items-center gap-1 bg-white p-2 rounded-xl shadow-sm border border-gray-100">
-              <button onClick={() => setDateFilter("hoje")} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${dateFilter === "hoje" ? "bg-gray-100 text-gray-700" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
-                Hoje
-              </button>
-              <button onClick={() => setDateFilter("7dias")} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${dateFilter === "7dias" ? "bg-gray-100 text-gray-700" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
-                7 Dias
-              </button>
-              <button onClick={() => setDateFilter("mes")} className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${dateFilter === "mes" ? "bg-gray-100 text-gray-700" : "bg-white text-gray-500 hover:bg-gray-50"}`}>
-                Mês
-              </button>
-            </div>
           </div>
         </div>
 
@@ -916,6 +982,9 @@ export default function AdminDashboard() {
               onToggleAutoPrint={toggleAutoPrint}
               onExportCSV={handleExportCSV}
               onChangePassword={() => setIsPasswordModalOpen(true)}
+              soundEnabled={soundEnabled}
+              onToggleSound={toggleSound}
+              onTestSound={playNotificationSound}
             />
           </div>
         )}
@@ -1277,6 +1346,25 @@ export default function AdminDashboard() {
         {/* Relatórios Tab */}
         {activeTab === "relatorios" && (
           <div className="mt-6 space-y-8">
+            {/* Filtro de Tempo Exclusivo da Aba Relatórios */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Período de Análise</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Selecione o filtro de tempo dos relatórios.</p>
+              </div>
+              <div className="flex items-center gap-1 bg-gray-50 p-1.5 rounded-xl border border-gray-200 self-start sm:self-auto">
+                <button onClick={() => setDateFilter("hoje")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${dateFilter === "hoje" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"}`}>
+                  Hoje
+                </button>
+                <button onClick={() => setDateFilter("7dias")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${dateFilter === "7dias" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"}`}>
+                  7 Dias
+                </button>
+                <button onClick={() => setDateFilter("mes")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${dateFilter === "mes" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"}`}>
+                  Mês
+                </button>
+              </div>
+            </div>
+
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-4">Relatórios gerais</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1692,20 +1780,20 @@ export default function AdminDashboard() {
 
 function KpiCard({ title, value, icon, trend, trendUp, description }: { title: string, value: string, icon: React.ReactNode, trend: string, trendUp: boolean, description: string }) {
   return (
-    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 group">
       <div className="flex justify-between items-start mb-4">
-        <div className="p-3 bg-gray-50 rounded-xl">
+        <div className="p-3 bg-gray-50 group-hover:bg-[#000000] group-hover:text-[#FFDE59] rounded-xl transition-colors duration-200">
           {icon}
         </div>
-        <div className={`flex items-center gap-1 text-sm font-bold px-2 py-1 rounded-md ${trendUp ? 'text-emerald-700 bg-emerald-50' : 'text-red-700 bg-red-50'}`}>
-          {trendUp ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+        <div className={`flex items-center gap-1 text-xs font-extrabold px-2.5 py-1 rounded-lg ${trendUp ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-red-700 bg-red-50 border border-red-100'}`}>
+          {trendUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
           {trend}
         </div>
       </div>
       <div>
-        <h3 className="text-gray-500 text-sm font-medium">{title}</h3>
-        <p className="text-3xl font-black text-gray-900 mt-1 tracking-tight">{value}</p>
-        <p className="text-xs text-gray-400 mt-2">{description}</p>
+        <h3 className="text-gray-400 text-xs font-black uppercase tracking-wider">{title}</h3>
+        <p className="text-3xl font-black text-gray-900 mt-1 tracking-tight group-hover:text-[#ea1d2c] transition-colors">{value}</p>
+        <p className="text-xs text-gray-400 mt-2 font-semibold">{description}</p>
       </div>
     </div>
   );

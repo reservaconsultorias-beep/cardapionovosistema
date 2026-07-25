@@ -8,6 +8,9 @@ interface SettingsManagerProps {
   onToggleAutoPrint?: () => void;
   onExportCSV?: () => void;
   onChangePassword?: () => void;
+  soundEnabled?: boolean;
+  onToggleSound?: () => void;
+  onTestSound?: () => void;
 }
 
 export default function SettingsManager({ 
@@ -15,7 +18,10 @@ export default function SettingsManager({
   autoPrint, 
   onToggleAutoPrint, 
   onExportCSV, 
-  onChangePassword 
+  onChangePassword,
+  soundEnabled = true,
+  onToggleSound,
+  onTestSound
 }: SettingsManagerProps) {
   const [feedback, setFeedback] = useState("");
   const [promoConfig, setPromoConfig] = useState({
@@ -455,6 +461,42 @@ export default function SettingsManager({
         >
           Exportar CSV
         </button>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-900">Alerta Sonoro de Pedidos</h2>
+          <p className="text-sm text-gray-500">Tocar um sinal sonoro automático sempre que um novo pedido chegar via cardápio digital.</p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onToggleSound}
+              className={`relative inline-flex h-7 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${soundEnabled ? 'bg-emerald-600' : 'bg-gray-300'}`}
+              role="switch"
+              aria-checked={soundEnabled}
+            >
+              <span
+                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${soundEnabled ? 'translate-x-7' : 'translate-x-0'}`}
+              />
+            </button>
+            <span className="text-sm font-bold text-gray-900">
+              {soundEnabled ? '🔔 Som Ativado (Liga)' : '🔕 Som Desativado (Desliga)'}
+            </span>
+          </div>
+
+          {onTestSound && (
+            <button
+              type="button"
+              onClick={onTestSound}
+              className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold rounded-xl transition-colors inline-flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+            >
+              🔊 Testar Som
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
