@@ -158,10 +158,14 @@ export const supabase = realSupabase ? realSupabase : {
       };
     }
   },
-  channel: (name: string) => ({
-    on: () => supabase.channel(name),
-    subscribe: () => {}
-  }),
+  channel: (_name: string) => {
+    const mockChannel: any = {
+      on: () => mockChannel,
+      subscribe: () => mockChannel,
+      unsubscribe: () => {}
+    };
+    return mockChannel;
+  },
   removeChannel: () => {}
 } as any;
 
