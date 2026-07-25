@@ -3,8 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 // Supabase LocalStorage Mock to allow the app to run completely frontend-only
 // without requiring environment variables or a real Supabase backend.
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tipnhvpivhaerumetona.supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_71P_V0V6Q7x-FEw4tCFDCg_qCOwUMat';
 
 let realSupabase: any = null;
 if (supabaseUrl && supabaseAnonKey) {

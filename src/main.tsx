@@ -12,6 +12,8 @@ createRoot(document.getElementById('root')!).render(
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/ADMIN" element={<AdminDashboard />} />
+        <Route path="/Admin" element={<AdminDashboard />} />
         <Route path="/track/:code" element={<OrderTracking />} />
       </Routes>
     </BrowserRouter>
