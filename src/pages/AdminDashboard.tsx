@@ -820,12 +820,8 @@ export default function AdminDashboard() {
       <aside className="w-64 bg-white border-r border-gray-200 flex-col hidden md:flex sticky top-0 h-screen overflow-y-auto">
         {/* Sidebar Header with Official Brand Identity */}
         <div className="p-5 border-b border-gray-100 bg-[#000000] text-white">
-          <div className="flex items-center gap-3">
-            <img 
-              src="/logo-admin.png" 
-              alt="41 Menu's Logo" 
-              className="w-10 h-10 object-contain shrink-0" 
-            />
+          <div className="flex items-center gap-2.5">
+            <span className="w-8 h-8 rounded-xl bg-[#FFDE59] text-[#000000] font-black flex items-center justify-center text-sm shadow-md">41</span>
             <div>
               <h2 className="text-lg font-black tracking-tight text-white leading-none">Menu's</h2>
               <span className="text-[10px] text-[#FD9F23] font-extrabold uppercase tracking-wider block mt-0.5">Pizzas e Esfihas</span>
