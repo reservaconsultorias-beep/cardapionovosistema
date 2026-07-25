@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background-color: #f5f5f5;
+  color: #1a1a1a;
+  font-family: var(--font-sans);
+}
+
+/* Custom scrollbar for horizontal categories */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  background: transparent;
+}
+.custom-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+/* Impressão de Talão (Thermal Printer 80mm) */
+@media print {
+  @page {
+    margin: 0;
+    /* Tamanho para impressora de 80mm */
+    size: 80mm auto; 
+  }
+
+  body {
+    background-color: white;
+    margin: 0;
+    padding: 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+    width: 72mm; /* Deixa margem de segurança para não cortar na Epson de 80mm */
+    margin: 0 auto;
+    padding: 2mm 0;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 14pt; /* Aumentado para melhorar a leitura */
+    line-height: 1.2;
+    color: #000;
+  }
+}
+
+@media screen {
+  .print-only {
+    display: none !important;
+  }
+}

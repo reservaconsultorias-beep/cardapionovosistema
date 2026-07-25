@@ -1,0 +1,15 @@
+-rw-r--r-- 1 root root  917820 Jul 20 12:55 11-chambacon.png
+-rw-r--r-- 1 root root  782997 Jul 20 14:00 16-dacasa.png
+-rw-r--r-- 1 root root  811369 Jul 20 12:29 1-alhoeoleo.png
+-rw-r--r-- 1 root root  951413 Jul 20 12:55 22-milhocombacon.png
+-rw-r--r-- 1 root root  593873 Jul 20 12:31 2-atum.png
+-rw-r--r-- 1 root root  520768 Jul 20 14:00 39-41menu.png
+-rw-r--r-- 1 root root  909511 Jul 20 12:55 41-estrogonofedefrangoinverso.png
+-rw-r--r-- 1 root root  866060 Jul 20 12:55 57-sensacaocomchocolatepreto.png
+-rw-r--r-- 1 root root  893771 Jul 20 12:55 60-trianguloamoroso.png
+-rw-r--r-- 1 root root  306376 Jul 20 12:49 72-milhocombacon.png
+-rw-r--r-- 1 root root  904511 Jul 20 12:55 87-chocolatepreto.png
+-rw-r--r-- 1 root root  253377 Jul 20 13:53 capa.png
+-rw-r--r-- 1 root root  189199 Jul 20 13:53 logo.png
+-rw-r--r-- 1 root root 4763504 Jul 20 13:05 oferta-segunda-esfirra.png
+-rw-r--r-- 1 root root 2169520 Jul 20 13:05 oferta-segunda-pizza.png

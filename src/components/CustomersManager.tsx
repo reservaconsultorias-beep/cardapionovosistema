@@ -1,0 +1,147 @@
+import React, { useEffect, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { Search, X } from 'lucide-react';
+
+export default function CustomersManager() {
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [customerOrders, setCustomerOrders] = useState<any[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
+
+  const loadCustomers = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .order('last_order_at', { ascending: false });
+    if (!error && data) setCustomers(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadCustomers();
+  }, []);
+
+  const openHistory = async (customer: any) => {
+    setSelectedCustomer(customer);
+    setLoadingOrders(true);
+    const { data } = await supabase
+      .from('orders')
+      .select('id, status, total_amount, order_type, created_at, items')
+      .eq('customer_phone', customer.phone)
+      .order('created_at', { ascending: false });
+    setCustomerOrders(data || []);
+    setLoadingOrders(false);
+  };
+
+  const filtered = customers.filter(c =>
+    (c.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (c.phone || '').includes(search)
+  );
+
+  if (loading) return <div className="p-8 text-center">Carregando dados do banco...</div>;
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Clientes</h2>
+          <p className="text-sm text-gray-500">Histórico e cadastro de todos os clientes que já compraram.</p>
+        </div>
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por nome ou telefone..."
+            className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-[#ea1d2c] w-full sm:w-64"
+          />
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left">
+          <thead>
+            <tr className="border-b border-gray-100 text-sm text-gray-500 bg-gray-50">
+              <th className="py-4 px-4 font-semibold rounded-tl-lg">Cliente</th>
+              <th className="py-4 px-4 font-semibold">Telefone</th>
+              <th className="py-4 px-4 font-semibold text-center">Pedidos</th>
+              <th className="py-4 px-4 font-semibold">Total Gasto</th>
+              <th className="py-4 px-4 font-semibold rounded-tr-lg">Última Compra</th>
+            </tr>
+          </thead>
+          <tbody className="text-sm">
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="py-8 text-center text-gray-500">
+                  Nenhum cliente encontrado.
+                </td>
+              </tr>
+            ) : (
+              filtered.map((c) => (
+                <tr
+                  key={c.id}
+                  onClick={() => openHistory(c)}
+                  className="border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                >
+                  <td className="py-4 px-4 font-medium text-gray-900">{c.name || 'Sem nome'}</td>
+                  <td className="py-4 px-4 text-gray-600">{c.phone}</td>
+                  <td className="py-4 px-4 text-center">
+                    <span className="text-gray-600 bg-gray-100 px-2 py-1 rounded text-xs font-medium">
+                      {c.total_orders}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 font-bold text-gray-900">€{Number(c.total_spent).toFixed(2)}</td>
+                  <td className="py-4 px-4 text-gray-600">
+                    {c.last_order_at ? new Date(c.last_order_at).toLocaleDateString('pt-PT') : '-'}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {selectedCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
+              <div>
+                <h3 className="font-bold text-lg text-gray-900">{selectedCustomer.name || 'Sem nome'}</h3>
+                <p className="text-sm text-gray-500">{selectedCustomer.phone}</p>
+              </div>
+              <button onClick={() => setSelectedCustomer(null)} className="p-2 hover:bg-gray-200 rounded-full text-gray-500 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto">
+              <h4 className="font-bold mb-3 text-sm uppercase tracking-wide text-gray-800">Histórico de Pedidos</h4>
+              {loadingOrders ? (
+                <div className="text-center text-gray-500 py-6">Carregando...</div>
+              ) : customerOrders.length === 0 ? (
+                <div className="text-center text-gray-500 py-6">Nenhum pedido encontrado.</div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {customerOrders.map((o) => (
+                    <div key={o.id} className="p-3 rounded-lg border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-sm text-gray-900">Pedido #{o.id}</span>
+                        <span className="text-[#8b0000] font-bold text-sm">€{Number(o.total_amount).toFixed(2)}</span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {new Date(o.created_at).toLocaleString('pt-PT')} · {o.order_type} · {o.status}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

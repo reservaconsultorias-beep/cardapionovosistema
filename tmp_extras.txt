@@ -1,0 +1,18 @@
+                 {pizzaExtras.map((extra) => {
+                   const isSelected = selectedExtras.some(e => e.id === extra.id);
+                   return (
+                     <label key={extra.id} className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-colors ${isSelected ? 'border-[#8b0000] bg-[#8b0000]/5' : 'border-gray-200 hover:border-gray-300'}`}>
+                       <div className="flex items-center gap-3 flex-1 min-w-0 pr-2">
+                         <input 
+                           type="checkbox" 
+                           checked={isSelected}
+                           onChange={() => handleToggleExtra(extra)}
+                           className="w-5 h-5 accent-[#8b0000] rounded flex-shrink-0"
+                         />
+                         <span className="font-medium text-sm leading-tight break-words">{extra.name}</span>
+                       </div>
+                       <span className="text-[#8b0000] font-bold text-sm whitespace-nowrap ml-2">+ € {extra.price.toFixed(2)}</span>
+                     </label>
+                   );
+                 })}
+               </div>
