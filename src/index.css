@@ -11,15 +11,15 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Custom scrollbar for horizontal categories */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 0px;
-  height: 0px;
-  background: transparent;
-}
-.custom-scrollbar {
+.custom-scrollbar, .hide-scrollbar {
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE/Edge */
+}
+.custom-scrollbar::-webkit-scrollbar, .hide-scrollbar::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  display: none;
+  background: transparent;
 }
 
 /* Impressão de Talão (Thermal Printer 80mm) */

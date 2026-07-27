@@ -830,17 +830,24 @@ export default function AdminDashboard() {
 
       <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans no-print">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex-col hidden md:flex sticky top-0 h-screen overflow-y-auto">
-        {/* Sidebar Header with Official Brand Identity */}
-        <div className="p-5 border-b border-gray-100 bg-[#000000] text-white">
-          <div className="flex items-center gap-2.5">
-            <span className="w-8 h-8 rounded-xl bg-[#FFDE59] text-[#000000] font-black flex items-center justify-center text-sm shadow-md">41</span>
-            <div>
-              <h2 className="text-lg font-black tracking-tight text-white leading-none">Menu's</h2>
-              <span className="text-[10px] text-[#FD9F23] font-extrabold uppercase tracking-wider block mt-0.5">Pizzas e Esfihas</span>
+      <aside className="w-64 bg-white border-r border-gray-100 flex-col hidden md:flex sticky top-0 h-screen overflow-y-auto hide-scrollbar">
+        {/* Clean Modern Sidebar Header */}
+        <div className="p-5 border-b border-gray-100 bg-white">
+          <div className="flex items-center gap-3">
+            <span className="w-9 h-9 rounded-xl bg-[#000000] text-[#FFDE59] font-black flex items-center justify-center text-sm shadow-sm border border-gray-900 shrink-0">
+              41
+            </span>
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <h2 className="text-base font-black text-gray-900 tracking-tight leading-none">41 Menu's</h2>
+              </div>
+              <span className="text-[10px] font-extrabold text-[#FD9F23] uppercase tracking-wider block mt-1">Pizzas e Esfihas</span>
             </div>
           </div>
-          <p className="text-[10px] text-gray-400 mt-2 uppercase tracking-widest font-bold border-t border-gray-800 pt-2">Painel de Gestão</p>
+          <div className="mt-3.5 pt-2.5 border-t border-gray-100 flex items-center justify-between">
+            <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Painel de Gestão</span>
+            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Online</span>
+          </div>
         </div>
 
         <div className="p-4 border-b border-gray-100">
