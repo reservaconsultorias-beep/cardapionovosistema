@@ -79,7 +79,7 @@ const safeParseItems = (items: any): any[] => {
   return [];
 };
 
-const CHART_COLORS = ["#334155", "#475569", "#64748b", "#78716c", "#94a3b8", "#a1a1aa"];
+const CHART_COLORS = ["#ea1d2c", "#FD9F23", "#FFDE59", "#10b981", "#1e293b", "#6366f1"];
 
 
 const playNotificationSound = () => {
@@ -1135,33 +1135,35 @@ export default function AdminDashboard() {
                       >
                         <defs>
                           <linearGradient id="colorFaturamento" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#475569" stopOpacity={0.3} />
-                            <stop offset="95%" stopColor="#475569" stopOpacity={0} />
+                            <stop offset="5%" stopColor="#ea1d2c" stopOpacity={0.4} />
+                            <stop offset="95%" stopColor="#FD9F23" stopOpacity={0.0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis 
                           dataKey="name" 
                           axisLine={false} 
                           tickLine={false} 
-                          tick={{ fill: '#6b7280', fontSize: 12 }} 
+                          tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} 
                           dy={10}
                         />
                         <YAxis 
                           axisLine={false} 
                           tickLine={false} 
-                          tick={{ fill: '#6b7280', fontSize: 12 }}
+                          tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
                           tickFormatter={(value) => `€${value}`}
                         />
                         <Tooltip
-                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                          formatter={(value: number) => [`€ ${value}`, 'Faturamento']}
+                          contentStyle={{ backgroundColor: '#000000', color: '#ffffff', borderRadius: '16px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
+                          itemStyle={{ color: '#FFDE59', fontWeight: 800 }}
+                          labelStyle={{ color: '#94a3b8', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase' }}
+                          formatter={(value: number) => [`€ ${Number(value).toFixed(2)}`, 'Faturamento']}
                         />
                         <Area
                           type="monotone"
                           dataKey="revenue"
-                          stroke="#475569"
-                          strokeWidth={3}
+                          stroke="#ea1d2c"
+                          strokeWidth={3.5}
                           fillOpacity={1}
                           fill="url(#colorFaturamento)"
                         />
@@ -1243,11 +1245,11 @@ export default function AdminDashboard() {
             {/* Additional Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
               {/* Vendas por Categoria (Pie Chart) */}
-              <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-md hover:shadow-lg transition-shadow">
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md hover:shadow-lg transition-all duration-200">
                 <div className="flex justify-between items-center mb-6">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">Vendas por Categoria</h2>
-                    <p className="text-sm text-gray-500">Distribuição de receita</p>
+                    <h2 className="text-lg font-extrabold text-gray-900">Vendas por Categoria</h2>
+                    <p className="text-sm text-gray-500 font-medium">Distribuição de receita</p>
                   </div>
                 </div>
                 <div className="h-[300px] w-full">
@@ -1259,15 +1261,19 @@ export default function AdminDashboard() {
                         nameKey="name"
                         cx="50%"
                         cy="50%"
-                        outerRadius={100}
-                        innerRadius={60}
-                        paddingAngle={2}
+                        outerRadius={95}
+                        innerRadius={65}
+                        paddingAngle={3}
                       >
                         {((dashboardData?.chartData?.salesByCategory || []) || []).map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} stroke="#ffffff" strokeWidth={2} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number) => `€ ${value.toFixed(2)}`} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#000000', color: '#ffffff', borderRadius: '16px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
+                        itemStyle={{ color: '#FFDE59', fontWeight: 800 }}
+                        formatter={(value: number) => [`€ ${Number(value).toFixed(2)}`, 'Vendas']}
+                      />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>
@@ -1275,21 +1281,26 @@ export default function AdminDashboard() {
               </div>
 
               {/* Produtos Mais Vendidos (Bar Chart) */}
-              <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-md hover:shadow-lg transition-shadow">
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md hover:shadow-lg transition-all duration-200">
                 <div className="flex justify-between items-center mb-6">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">Top 5 Produtos</h2>
-                    <p className="text-sm text-gray-500">Por volume de vendas</p>
+                    <h2 className="text-lg font-extrabold text-gray-900">Top 5 Produtos</h2>
+                    <p className="text-sm text-gray-500 font-medium">Por volume de vendas</p>
                   </div>
                 </div>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={dashboardData?.popularItems || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f3f4f6" />
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
                       <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
-                      <Tooltip formatter={(value: number) => `${value} unid.`} cursor={{fill: 'transparent'}} />
-                      <Bar dataKey="qty" radius={[0, 4, 4, 0]} barSize={32}>
+                      <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fontWeight: 700, fill: '#334155' }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#000000', color: '#ffffff', borderRadius: '16px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
+                        itemStyle={{ color: '#FFDE59', fontWeight: 800 }}
+                        formatter={(value: number) => [`${value} unid.`, 'Quantidade']}
+                        cursor={{fill: 'rgba(0,0,0,0.03)'}}
+                      />
+                      <Bar dataKey="qty" radius={[0, 8, 8, 0]} barSize={28}>
                         {(dashboardData?.popularItems || []).map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
@@ -1300,11 +1311,11 @@ export default function AdminDashboard() {
               </div>
 
               {/* Vendas por Pagamento (Pie Chart) */}
-              <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-md hover:shadow-lg transition-shadow">
+              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md hover:shadow-lg transition-all duration-200">
                 <div className="flex justify-between items-center mb-6">
                   <div>
-                    <h2 className="text-lg font-bold text-gray-900">Formas de Pagamento</h2>
-                    <p className="text-sm text-gray-500">Distribuição por método</p>
+                    <h2 className="text-lg font-extrabold text-gray-900">Formas de Pagamento</h2>
+                    <p className="text-sm text-gray-500 font-medium">Distribuição por método</p>
                   </div>
                 </div>
                 <div className="h-[300px] w-full">
@@ -1316,15 +1327,19 @@ export default function AdminDashboard() {
                         nameKey="name"
                         cx="50%"
                         cy="50%"
-                        outerRadius={100}
-                        innerRadius={60}
-                        paddingAngle={2}
+                        outerRadius={95}
+                        innerRadius={65}
+                        paddingAngle={3}
                       >
                         {paymentMethodsData.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} stroke="#ffffff" strokeWidth={2} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number) => `€ ${value.toFixed(2)}`} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#000000', color: '#ffffff', borderRadius: '16px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
+                        itemStyle={{ color: '#FFDE59', fontWeight: 800 }}
+                        formatter={(value: number) => [`€ ${Number(value).toFixed(2)}`, 'Total']}
+                      />
                       <Legend />
                     </PieChart>
                   </ResponsiveContainer>
