@@ -564,12 +564,12 @@ export default function AdminDashboard() {
     const headers = ['ID', 'Data', 'Cliente', 'Telefone', 'Tipo', 'Pagamento', 'Total', 'Status'];
     const rows = orders.map((o: any) => [
       o.id,
-      new Date(o.createdAt).toLocaleString('pt-PT').replace(/,/g, ''),
+      (safeGetDate(o.createdAt) || new Date()).toLocaleString('pt-PT').replace(/,/g, ''),
       `"${o.customerName || ''}"`,
       o.customerPhone || '',
       o.orderType,
       o.paymentMethod,
-      o.totalAmount.toFixed(2),
+      (Number(o.totalAmount) || 0).toFixed(2),
       o.status
     ]);
     
@@ -1183,12 +1183,15 @@ export default function AdminDashboard() {
                     {(!(dashboardData?.chartData?.salesByCategory || [])?.length) ? (
                       <div className="text-center text-gray-500 py-4">Sem dados.</div>
                     ) : (
-                      (dashboardData?.chartData?.salesByCategory || []).sort((a, b) => b.value - a.value).slice(0, 3).map((cat: any, idx: number) => (
-                        <div key={idx} className="flex justify-between items-center">
-                          <span className="text-sm font-medium text-gray-600 capitalize">{cat.name.replace('-', ' ')}</span>
-                          <span className="text-sm font-bold text-gray-900">€ {cat.value.toFixed(2)}</span>
-                        </div>
-                      ))
+                      [...(dashboardData?.chartData?.salesByCategory || [])]
+                        .sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0))
+                        .slice(0, 3)
+                        .map((cat: any, idx: number) => (
+                          <div key={idx} className="flex justify-between items-center">
+                            <span className="text-sm font-medium text-gray-600 capitalize">{String(cat.name || '').replace('-', ' ')}</span>
+                            <span className="text-sm font-bold text-gray-900">€ {(Number(cat.value) || 0).toFixed(2)}</span>
+                          </div>
+                        ))
                     )}
                   </div>
                 </div>
@@ -1225,7 +1228,7 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-sm font-bold text-slate-800">€ {product.revenue.toFixed(2)}</p>
+                            <p className="text-sm font-bold text-slate-800">€ {(Number(product.revenue) || 0).toFixed(2)}</p>
                           </div>
                         </div>
                       ))
@@ -1254,7 +1257,7 @@ export default function AdminDashboard() {
                       <Tooltip
                         contentStyle={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '14px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
                         itemStyle={{ color: '#ffffff', fontWeight: 800 }}
-                        formatter={(value: number) => [`€ ${Number(value).toFixed(2)}`, 'Vendas']}
+                        formatter={(value: any) => [`€ ${(Number(value) || 0).toFixed(2)}`, 'Vendas']}
                         cursor={{fill: 'rgba(15, 23, 42, 0.04)'}}
                       />
                       <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={26}>
@@ -1284,7 +1287,7 @@ export default function AdminDashboard() {
                       <Tooltip
                         contentStyle={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '14px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
                         itemStyle={{ color: '#ffffff', fontWeight: 800 }}
-                        formatter={(value: number) => [`${value} unid.`, 'Quantidade']}
+                        formatter={(value: any) => [`${Number(value) || 0} unid.`, 'Quantidade']}
                         cursor={{fill: 'rgba(15, 23, 42, 0.04)'}}
                       />
                       <Bar dataKey="qty" radius={[0, 8, 8, 0]} barSize={26}>
@@ -1314,7 +1317,7 @@ export default function AdminDashboard() {
                       <Tooltip
                         contentStyle={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '14px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
                         itemStyle={{ color: '#ffffff', fontWeight: 800 }}
-                        formatter={(value: number) => [`€ ${Number(value).toFixed(2)}`, 'Total']}
+                        formatter={(value: any) => [`€ ${(Number(value) || 0).toFixed(2)}`, 'Total']}
                         cursor={{fill: 'rgba(15, 23, 42, 0.04)'}}
                       />
                       <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={26}>
