@@ -38,22 +38,33 @@ export function useBusinessHours(): BusinessHoursStatus {
         return;
       }
 
-      const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Lisbon' }));
-      const dayOfWeek = now.getDay();
+      let now = new Date();
+      try {
+        const lisbonString = now.toLocaleString('en-US', { timeZone: 'Europe/Lisbon' });
+        const parsed = new Date(lisbonString);
+        if (!isNaN(parsed.getTime())) now = parsed;
+      } catch (e) {}
+
+      const dayOfWeek = isNaN(now.getDay()) ? 0 : now.getDay();
       const today = data.find((d: any) => d.day_of_week === dayOfWeek);
 
-      if (!today || today.is_closed || !today.opens_at || !today.closes_at) {
+      if (!today || today.is_closed || !today.opens_at || !today.closes_at || typeof today.opens_at !== 'string' || typeof today.closes_at !== 'string') {
         setStatus({
           isOpen: false,
           loading: false,
-          todayLabel: DAY_NAMES[dayOfWeek],
+          todayLabel: DAY_NAMES[dayOfWeek] || 'Fechado',
           reason: 'closed_today',
         });
         return;
       }
 
-      const [openH, openM] = today.opens_at.split(':').map(Number);
-      const [closeH, closeM] = today.closes_at.split(':').map(Number);
+      const openParts = today.opens_at.split(':').map(Number);
+      const closeParts = today.closes_at.split(':').map(Number);
+      const openH = openParts[0] || 0;
+      const openM = openParts[1] || 0;
+      const closeH = closeParts[0] || 0;
+      const closeM = closeParts[1] || 0;
+
       const nowMinutes = now.getHours() * 60 + now.getMinutes();
       const openMinutes = openH * 60 + openM;
       const closeMinutes = closeH * 60 + closeM;
