@@ -79,7 +79,7 @@ const safeParseItems = (items: any): any[] => {
   return [];
 };
 
-const CHART_COLORS = ["#ea1d2c", "#FD9F23", "#FFDE59", "#10b981", "#1e293b", "#6366f1"];
+const CHART_COLORS = ["#0f172a", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1"];
 
 
 const playNotificationSound = () => {
@@ -424,7 +424,7 @@ export default function AdminDashboard() {
     });
 
     return () => {
-      authListener.subscription.unsubscribe();
+      authListener?.subscription?.unsubscribe?.();
     };
   }, []);
 
@@ -1129,16 +1129,10 @@ export default function AdminDashboard() {
                   </div>
                   <div className="h-[300px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart
+                      <BarChart
                         data={salesData}
                         margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                       >
-                        <defs>
-                          <linearGradient id="colorFaturamento" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#ea1d2c" stopOpacity={0.4} />
-                            <stop offset="95%" stopColor="#FD9F23" stopOpacity={0.0} />
-                          </linearGradient>
-                        </defs>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                         <XAxis 
                           dataKey="name" 
@@ -1154,20 +1148,19 @@ export default function AdminDashboard() {
                           tickFormatter={(value) => `€${value}`}
                         />
                         <Tooltip
-                          contentStyle={{ backgroundColor: '#000000', color: '#ffffff', borderRadius: '16px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
-                          itemStyle={{ color: '#FFDE59', fontWeight: 800 }}
+                          contentStyle={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '14px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
+                          itemStyle={{ color: '#ffffff', fontWeight: 800 }}
                           labelStyle={{ color: '#94a3b8', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase' }}
                           formatter={(value: number) => [`€ ${Number(value).toFixed(2)}`, 'Faturamento']}
+                          cursor={{fill: 'rgba(15, 23, 42, 0.04)'}}
                         />
-                        <Area
-                          type="monotone"
+                        <Bar
                           dataKey="revenue"
-                          stroke="#ea1d2c"
-                          strokeWidth={3.5}
-                          fillOpacity={1}
-                          fill="url(#colorFaturamento)"
+                          fill="#0f172a"
+                          radius={[8, 8, 0, 0]}
+                          barSize={36}
                         />
-                      </AreaChart>
+                      </BarChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
@@ -1242,50 +1235,44 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Additional Charts Row */}
+            {/* Additional Modern Neutral Bar Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-              {/* Vendas por Categoria (Pie Chart) */}
+              {/* Vendas por Categoria (Horizontal Bar Chart) */}
               <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md hover:shadow-lg transition-all duration-200">
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <h2 className="text-lg font-extrabold text-gray-900">Vendas por Categoria</h2>
-                    <p className="text-sm text-gray-500 font-medium">Distribuição de receita</p>
+                    <p className="text-sm text-gray-500 font-medium">Distribuição por receita em barras</p>
                   </div>
                 </div>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={dashboardData?.chartData?.salesByCategory || []}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={95}
-                        innerRadius={65}
-                        paddingAngle={3}
-                      >
-                        {((dashboardData?.chartData?.salesByCategory || []) || []).map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} stroke="#ffffff" strokeWidth={2} />
-                        ))}
-                      </Pie>
+                    <BarChart data={dashboardData?.chartData?.salesByCategory || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fontWeight: 700, fill: '#334155' }} axisLine={false} tickLine={false} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#000000', color: '#ffffff', borderRadius: '16px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
-                        itemStyle={{ color: '#FFDE59', fontWeight: 800 }}
+                        contentStyle={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '14px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
+                        itemStyle={{ color: '#ffffff', fontWeight: 800 }}
                         formatter={(value: number) => [`€ ${Number(value).toFixed(2)}`, 'Vendas']}
+                        cursor={{fill: 'rgba(15, 23, 42, 0.04)'}}
                       />
-                      <Legend />
-                    </PieChart>
+                      <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={26}>
+                        {((dashboardData?.chartData?.salesByCategory || []) || []).map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
-              {/* Produtos Mais Vendidos (Bar Chart) */}
+              {/* Produtos Mais Vendidos (Horizontal Bar Chart) */}
               <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md hover:shadow-lg transition-all duration-200">
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <h2 className="text-lg font-extrabold text-gray-900">Top 5 Produtos</h2>
-                    <p className="text-sm text-gray-500 font-medium">Por volume de vendas</p>
+                    <p className="text-sm text-gray-500 font-medium">Por volume de vendas em barras</p>
                   </div>
                 </div>
                 <div className="h-[300px] w-full">
@@ -1295,12 +1282,12 @@ export default function AdminDashboard() {
                       <XAxis type="number" hide />
                       <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fontWeight: 700, fill: '#334155' }} axisLine={false} tickLine={false} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#000000', color: '#ffffff', borderRadius: '16px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
-                        itemStyle={{ color: '#FFDE59', fontWeight: 800 }}
+                        contentStyle={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '14px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
+                        itemStyle={{ color: '#ffffff', fontWeight: 800 }}
                         formatter={(value: number) => [`${value} unid.`, 'Quantidade']}
-                        cursor={{fill: 'rgba(0,0,0,0.03)'}}
+                        cursor={{fill: 'rgba(15, 23, 42, 0.04)'}}
                       />
-                      <Bar dataKey="qty" radius={[0, 8, 8, 0]} barSize={28}>
+                      <Bar dataKey="qty" radius={[0, 8, 8, 0]} barSize={26}>
                         {(dashboardData?.popularItems || []).map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
@@ -1310,38 +1297,32 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Vendas por Pagamento (Pie Chart) */}
+              {/* Formas de Pagamento (Horizontal Bar Chart) */}
               <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md hover:shadow-lg transition-all duration-200">
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <h2 className="text-lg font-extrabold text-gray-900">Formas de Pagamento</h2>
-                    <p className="text-sm text-gray-500 font-medium">Distribuição por método</p>
+                    <p className="text-sm text-gray-500 font-medium">Distribuição por método em barras</p>
                   </div>
                 </div>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={paymentMethodsData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={95}
-                        innerRadius={65}
-                        paddingAngle={3}
-                      >
-                        {paymentMethodsData.map((entry: any, index: number) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} stroke="#ffffff" strokeWidth={2} />
-                        ))}
-                      </Pie>
+                    <BarChart data={paymentMethodsData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                      <XAxis type="number" hide />
+                      <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fontWeight: 700, fill: '#334155' }} axisLine={false} tickLine={false} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#000000', color: '#ffffff', borderRadius: '16px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
-                        itemStyle={{ color: '#FFDE59', fontWeight: 800 }}
+                        contentStyle={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '14px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
+                        itemStyle={{ color: '#ffffff', fontWeight: 800 }}
                         formatter={(value: number) => [`€ ${Number(value).toFixed(2)}`, 'Total']}
+                        cursor={{fill: 'rgba(15, 23, 42, 0.04)'}}
                       />
-                      <Legend />
-                    </PieChart>
+                      <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={26}>
+                        {paymentMethodsData.map((entry: any, index: number) => (
+                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
