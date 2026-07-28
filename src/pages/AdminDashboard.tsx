@@ -55,6 +55,30 @@ import CaixaManager from '../components/CaixaManager';
 
 
 
+const safeGetDate = (dStr: any): Date | null => {
+  if (!dStr) return null;
+  try {
+    const d = new Date(dStr);
+    return isNaN(d.getTime()) ? null : d;
+  } catch (e) {
+    return null;
+  }
+};
+
+const safeParseItems = (items: any): any[] => {
+  if (!items) return [];
+  if (Array.isArray(items)) return items;
+  if (typeof items === 'string') {
+    try {
+      const parsed = JSON.parse(items);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  return [];
+};
+
 const CHART_COLORS = ["#334155", "#475569", "#64748b", "#78716c", "#94a3b8", "#a1a1aa"];
 
 
@@ -1439,16 +1463,22 @@ export default function AdminDashboard() {
                   <span className="text-gray-700 font-medium text-sm mb-1">Faturamento Geral</span>
                   <span className="text-2xl font-black text-gray-900">€ {allOrders.reduce((acc, o) => acc + o.totalAmount, 0).toFixed(2)}</span>
                 </div>
-                <div onClick={() => setReportModal({isOpen: true, type: 'vendas_mes', title: 'Vendas por Mês (Atual)'})} className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-gray-300 transition-colors cursor-pointer shadow-sm min-h-[120px]">
+                 <div onClick={() => setReportModal({isOpen: true, type: 'vendas_mes', title: 'Vendas por Mês (Atual)'})} className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-gray-300 transition-colors cursor-pointer shadow-sm min-h-[120px]">
                   <span className="text-gray-700 font-medium text-sm mb-1">Vendas por mês</span>
                   <span className="text-2xl font-black text-gray-900">
-                    € {allOrders.filter(o => new Date(o.createdAt).getMonth() === new Date().getMonth() && new Date(o.createdAt).getFullYear() === new Date().getFullYear()).reduce((acc, o) => acc + o.totalAmount, 0).toFixed(2)}
+                    € {allOrders.filter(o => {
+                      const d = safeGetDate(o.createdAt);
+                      return d ? (d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear()) : false;
+                    }).reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0).toFixed(2)}
                   </span>
                 </div>
                 <div onClick={() => setReportModal({isOpen: true, type: 'vendas_7dias', title: 'Vendas Últimos 7 Dias'})} className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-gray-300 transition-colors cursor-pointer shadow-sm min-h-[120px]">
                   <span className="text-gray-700 font-medium text-sm mb-1">Vendas últimos 7 dias</span>
                   <span className="text-2xl font-black text-gray-900">
-                    € {allOrders.filter(o => new Date(o.createdAt).getTime() >= (new Date().getTime() - 7 * 24 * 60 * 60 * 1000)).reduce((acc, o) => acc + o.totalAmount, 0).toFixed(2)}
+                    € {allOrders.filter(o => {
+                      const d = safeGetDate(o.createdAt);
+                      return d ? (d.getTime() >= (new Date().getTime() - 7 * 24 * 60 * 60 * 1000)) : false;
+                    }).reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0).toFixed(2)}
                   </span>
                 </div>
               </div>
@@ -1492,15 +1522,21 @@ export default function AdminDashboard() {
                 {(() => {
                   let filteredOrders = allOrders;
                   if (reportModal.type === 'vendas_mes') {
-                    filteredOrders = allOrders.filter(o => new Date(o.createdAt).getMonth() === new Date().getMonth() && new Date(o.createdAt).getFullYear() === new Date().getFullYear());
+                    filteredOrders = allOrders.filter(o => {
+                      const d = safeGetDate(o.createdAt);
+                      return d ? (d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear()) : false;
+                    });
                   } else if (reportModal.type === 'vendas_7dias') {
-                    filteredOrders = allOrders.filter(o => new Date(o.createdAt).getTime() >= (new Date().getTime() - 7 * 24 * 60 * 60 * 1000));
+                    filteredOrders = allOrders.filter(o => {
+                      const d = safeGetDate(o.createdAt);
+                      return d ? (d.getTime() >= (new Date().getTime() - 7 * 24 * 60 * 60 * 1000)) : false;
+                    });
                   }
                   
                   if (reportModal.type === 'produtos' || reportModal.type === 'complementos') {
                     const counts: Record<string, { qty: number, rev: number }> = {};
                     filteredOrders.forEach(o => {
-                      const items = Array.isArray(o.items) ? o.items : JSON.parse(o.items || "[]");
+                      const items = safeParseItems(o.items);
                       items.forEach((it: any) => {
                         if (reportModal.type === 'produtos') {
                            counts[it.name] = counts[it.name] || {qty: 0, rev: 0};
@@ -1777,25 +1813,25 @@ export default function AdminDashboard() {
             </tr>
           </thead>
           <tbody>
-            {(Array.isArray(printOrder.items) ? printOrder.items : (typeof printOrder.items === 'string' ? JSON.parse(printOrder.items) : [])).map((item: any, idx: number) => (
+            {safeParseItems(printOrder.items).map((item: any, idx: number) => (
               <React.Fragment key={idx}>
                 <tr>
                   <td style={{ verticalAlign: 'top', paddingTop: '5px', fontWeight: 'bold' }}>{item.quantity}x</td>
                   <td style={{ verticalAlign: 'top', paddingTop: '5px' }}>{item.name}</td>
-                  <td style={{ verticalAlign: 'top', paddingTop: '5px', textAlign: 'right' }}>{((item.basePrice !== undefined ? item.basePrice : item.priceCalculated) * item.quantity).toFixed(2)}</td>
+                  <td style={{ verticalAlign: 'top', paddingTop: '5px', textAlign: 'right' }}>{(((item.basePrice !== undefined ? item.basePrice : item.priceCalculated) || 0) * (item.quantity || 1)).toFixed(2)}</td>
                 </tr>
                 {item.extras && item.extras.length > 0 && item.extras.map((extra: any, extraIdx: number) => (
                   <tr key={`${idx}-extra-${extraIdx}`}>
                     <td></td>
                     <td style={{ verticalAlign: 'top', fontSize: '13px', paddingLeft: '5px' }}>+ {extra.name}</td>
-                    <td style={{ verticalAlign: 'top', fontSize: '13px', textAlign: 'right' }}>{(extra.price * item.quantity).toFixed(2)}</td>
+                    <td style={{ verticalAlign: 'top', fontSize: '13px', textAlign: 'right' }}>{((extra.price || 0) * (item.quantity || 1)).toFixed(2)}</td>
                   </tr>
                 ))}
                 {item.extras && item.extras.length > 0 && (
                   <tr key={`${idx}-subtotal`}>
                     <td></td>
                     <td style={{ verticalAlign: 'top', fontSize: '13px', paddingLeft: '5px', fontWeight: 'bold' }}>= Subtotal item</td>
-                    <td style={{ verticalAlign: 'top', fontSize: '13px', textAlign: 'right', fontWeight: 'bold' }}>{((item.priceCalculated || 0) * item.quantity).toFixed(2)}</td>
+                    <td style={{ verticalAlign: 'top', fontSize: '13px', textAlign: 'right', fontWeight: 'bold' }}>{((item.priceCalculated || 0) * (item.quantity || 1)).toFixed(2)}</td>
                   </tr>
                 )}
                 {item.notes && (
@@ -1812,12 +1848,12 @@ export default function AdminDashboard() {
         <div style={{ borderTop: '1px dashed #000', paddingTop: '5px', marginBottom: '10px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 'bold' }}>
             <span>Subtotal:</span>
-            <span>€ {(Array.isArray(printOrder.items) ? printOrder.items : JSON.parse(printOrder.items)).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * item.quantity, 0).toFixed(2)}</span>
+            <span>€ {safeParseItems(printOrder.items).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * (item.quantity || 1), 0).toFixed(2)}</span>
           </div>
           {printOrder.orderType === 'entrega' && (
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
               <span>Taxa de Entrega:</span>
-              <span>€ {(printOrder.totalAmount - (Array.isArray(printOrder.items) ? printOrder.items : JSON.parse(printOrder.items)).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * item.quantity, 0)).toFixed(2)}</span>
+              <span>€ {((printOrder.totalAmount || 0) - safeParseItems(printOrder.items).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * (item.quantity || 1), 0)).toFixed(2)}</span>
             </div>
           )}
           <p style={{ margin: '5px 0 0 0', fontWeight: 'bold', fontSize: '20px', display: 'flex', justifyContent: 'space-between' }}>
