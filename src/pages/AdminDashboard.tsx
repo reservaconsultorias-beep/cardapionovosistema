@@ -19,7 +19,15 @@ import {
   Package,
   UtensilsCrossed,
   Settings,
-  BarChart3
+  BarChart3,
+  Edit3,
+  Plus,
+  Trash2,
+  Tag,
+  AlertCircle,
+  FileText,
+  Check,
+  Search
 } from "lucide-react";
 import {
   AreaChart,
@@ -120,6 +128,33 @@ export default function AdminDashboard() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordChangeMessage, setPasswordChangeMessage] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<any | null>(null);
+
+  const handleSaveOrderEdit = async (updatedOrder: any) => {
+    try {
+      const { error } = await supabase.from('orders').update({
+        customer_name: updatedOrder.customer_name,
+        customer_phone: updatedOrder.customer_phone,
+        order_type: updatedOrder.order_type,
+        payment_method: updatedOrder.payment_method,
+        items: updatedOrder.items,
+        discount_amount: updatedOrder.discount_amount,
+        additional_amount: updatedOrder.additional_amount,
+        total_amount: updatedOrder.total_amount,
+        edit_reason: updatedOrder.edit_reason,
+        is_edited: true,
+        updated_at: new Date().toISOString()
+      }).eq('id', updatedOrder.id);
+
+      if (error) throw error;
+      setEditingOrder(null);
+      fetchDashboardData(true);
+      alert(`Pedido #${updatedOrder.id} atualizado com sucesso!`);
+    } catch (err: any) {
+      console.error('Erro ao atualizar pedido:', err);
+      alert('Erro ao atualizar pedido: ' + err.message);
+    }
+  };
 
   const fetchDashboardData = async (isBackground = false) => {
     try {
@@ -1310,7 +1345,12 @@ export default function AdminDashboard() {
                       dashboardData.recentOrders.map((order: any) => (
                         <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                           <td className="py-4 px-4">
-                            <div className="font-bold text-gray-900">#{order.id}</div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-gray-900">#{order.id}</span>
+                              {(order.isEdited || order.is_edited) && (
+                                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">EDITADO ✏️</span>
+                              )}
+                            </div>
                             <div className="text-xs text-gray-500 mt-1">{new Date(order.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</div>
                           </td>
                           <td className="py-4 px-4">
@@ -1345,8 +1385,15 @@ export default function AdminDashboard() {
                                 <option value="Finalizado">Finalizado</option>
                               </select>
                               <button
+                                onClick={() => setEditingOrder(order)}
+                                className="p-2 text-amber-700 hover:text-white bg-amber-50 hover:bg-amber-600 border border-amber-200 rounded-lg transition-colors shadow-sm cursor-pointer"
+                                title="Editar Pedido (Itens, Valores, Desconto, Endereço)"
+                              >
+                                <Edit3 size={16} />
+                              </button>
+                              <button
                                 onClick={() => handlePrintOrder(order)}
-                                className="p-2 text-gray-600 hover:text-white bg-gray-100 hover:bg-[#8b0000] rounded-lg transition-colors shadow-sm"
+                                className="p-2 text-gray-600 hover:text-white bg-gray-100 hover:bg-[#8b0000] rounded-lg transition-colors shadow-sm cursor-pointer"
                                 title="Imprimir Talão"
                               >
                                 <Printer size={16} />
@@ -1794,7 +1841,437 @@ export default function AdminDashboard() {
         </div>
       </div>
     )}
+    {editingOrder && (
+      <EditOrderModal
+        order={editingOrder}
+        menuItems={ALL_MENU_ITEMS}
+        onClose={() => setEditingOrder(null)}
+        onSave={handleSaveOrderEdit}
+      />
+    )}
     </>
+  );
+}
+
+function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, menuItems: any[], onClose: () => void, onSave: (updatedOrder: any) => Promise<void> }) {
+  const [customerName, setCustomerName] = useState(order.customerName || order.customer_name || '');
+  const [customerPhone, setCustomerPhone] = useState(order.customerPhone || order.customer_phone || '');
+  const [orderType, setOrderType] = useState(order.orderType || order.order_type || 'entrega');
+  const [paymentMethod, setPaymentMethod] = useState(order.paymentMethod || order.payment_method || 'Dinheiro');
+  const [items, setItems] = useState<any[]>(() => {
+    let raw = order.items;
+    if (typeof raw === 'string') {
+      try { raw = JSON.parse(raw); } catch(e) { raw = []; }
+    }
+    if (Array.isArray(raw)) return JSON.parse(JSON.stringify(raw));
+    return [];
+  });
+
+  const [discountAmount, setDiscountAmount] = useState<number>(order.discountAmount || order.discount_amount || 0);
+  const [additionalAmount, setAdditionalAmount] = useState<number>(order.additionalAmount || order.additional_amount || 0);
+  const [cashProvided, setCashProvided] = useState<number>(order.cashProvided || order.cash_provided || 0);
+  const [editReason, setEditReason] = useState(order.editReason || order.edit_reason || '');
+  
+  const [selectedProductSearch, setSelectedProductSearch] = useState('');
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedSize, setSelectedSize] = useState('priceSingle');
+  const [saving, setSaving] = useState(false);
+
+  const subtotal = React.useMemo(() => {
+    return items.reduce((acc, item) => {
+      const price = Number(item.priceCalculated || item.price || 0);
+      const qty = Number(item.quantity || 1);
+      return acc + (price * qty);
+    }, 0);
+  }, [items]);
+
+  const finalTotal = React.useMemo(() => {
+    const tot = subtotal + Number(additionalAmount || 0) - Number(discountAmount || 0);
+    return Math.max(0, tot);
+  }, [subtotal, additionalAmount, discountAmount]);
+
+  const calculatedChange = React.useMemo(() => {
+    if (paymentMethod !== 'Dinheiro' || !cashProvided || cashProvided <= 0) return 0;
+    return Math.max(0, cashProvided - finalTotal);
+  }, [paymentMethod, cashProvided, finalTotal]);
+
+  const handleAddItem = () => {
+    if (!selectedProductId) return;
+    const menuItem = menuItems.find(m => m.id === selectedProductId);
+    if (!menuItem) return;
+
+    let price = menuItem.priceSingle || menuItem.priceP || menuItem.priceM || menuItem.priceG || 0;
+    let sizeName = 'Único';
+    if (selectedSize === 'priceP' && menuItem.priceP) { price = menuItem.priceP; sizeName = 'Pequena (P)'; }
+    else if (selectedSize === 'priceM' && menuItem.priceM) { price = menuItem.priceM; sizeName = 'Média (M)'; }
+    else if (selectedSize === 'priceG' && menuItem.priceG) { price = menuItem.priceG; sizeName = 'Grande (G)'; }
+
+    const newItem = {
+      menuItem: menuItem,
+      name: menuItem.name,
+      quantity: 1,
+      size: sizeName,
+      priceCalculated: price,
+    };
+
+    setItems(prev => [...prev, newItem]);
+    setSelectedProductId('');
+    setSelectedProductSearch('');
+  };
+
+  const handleUpdateQty = (index: number, delta: number) => {
+    setItems(prev => {
+      const updated = [...prev];
+      const newQty = (updated[index].quantity || 1) + delta;
+      if (newQty <= 0) {
+        return updated.filter((_, i) => i !== index);
+      }
+      updated[index].quantity = newQty;
+      return updated;
+    });
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    const updatedPayload = {
+      ...order,
+      customer_name: customerName,
+      customer_phone: customerPhone,
+      order_type: orderType,
+      payment_method: paymentMethod,
+      items: items,
+      discount_amount: Number(discountAmount) || 0,
+      additional_amount: Number(additionalAmount) || 0,
+      total_amount: finalTotal,
+      cash_provided: Number(cashProvided) || 0,
+      edit_reason: editReason,
+      is_edited: true
+    };
+    await onSave(updatedPayload);
+    setSaving(false);
+  };
+
+  const filteredMenuItems = React.useMemo(() => {
+    if (!selectedProductSearch.trim()) return menuItems.slice(0, 20);
+    const term = selectedProductSearch.toLowerCase();
+    return menuItems.filter(m => m.name.toLowerCase().includes(term));
+  }, [menuItems, selectedProductSearch]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-100">
+        
+        {/* Header */}
+        <div className="p-5 bg-gray-900 text-white flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-[#FFDE59] text-gray-900 rounded-xl">
+              <Edit3 size={20} />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-lg leading-none text-white">Editar Pedido #{order.id}</h3>
+              <p className="text-xs text-gray-400 mt-1 font-medium">Altere produtos, quantidades, taxas e descontos</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-xl transition-colors cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Content Body */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+          
+          {/* Section 1: Customer Info */}
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200/80 space-y-3">
+            <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Dados do Cliente & Entrega</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Nome do Cliente</label>
+                <input
+                  type="text"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-gray-900"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Telefone</label>
+                <input
+                  type="text"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-gray-900"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Tipo de Pedido</label>
+                <select
+                  value={orderType}
+                  onChange={(e) => setOrderType(e.target.value)}
+                  className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-gray-900 cursor-pointer"
+                >
+                  <option value="entrega">Entrega (Delivery)</option>
+                  <option value="retirada">Retirada (Takeaway)</option>
+                  <option value="mesa">Consumo no Local (Mesa)</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Forma de Pagamento</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-gray-900 cursor-pointer"
+                >
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="MBWay">MBWay</option>
+                  <option value="Multibanco">Multibanco</option>
+                  <option value="Cartão">Cartão na Entrega</option>
+                  <option value="Pix">Pix</option>
+                </select>
+              </div>
+            </div>
+
+            {paymentMethod === 'Dinheiro' && (
+              <div className="pt-2 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Troco Para (€ / R$)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={cashProvided || ''}
+                    onChange={(e) => setCashProvided(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-gray-900"
+                    placeholder="Ex: 50.00"
+                  />
+                </div>
+                <div className="flex flex-col justify-center">
+                  <span className="text-xs font-bold text-gray-500">Troco Recalculado:</span>
+                  <span className="text-lg font-black text-emerald-600">€ {calculatedChange.toFixed(2)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Section 2: Items List & Add Items */}
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Itens do Pedido ({items.length})</h4>
+            </div>
+
+            {/* Current Items Table */}
+            <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+              {items.length === 0 ? (
+                <div className="p-6 text-center text-sm text-gray-400 font-medium">Nenhum item no pedido.</div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {items.map((item, idx) => {
+                    const price = Number(item.priceCalculated || item.price || 0);
+                    const qty = Number(item.quantity || 1);
+                    return (
+                      <div key={idx} className="p-3.5 flex items-center justify-between gap-3 hover:bg-gray-50/50 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-sm text-gray-900 truncate">{item.name}</div>
+                          <div className="text-xs text-gray-500 font-medium">
+                            {item.size ? `Tamanho: ${item.size} | ` : ''}€ {price.toFixed(2)} un.
+                          </div>
+                        </div>
+
+                        {/* Qty Controls */}
+                        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateQty(idx, -1)}
+                            className="w-7 h-7 rounded-md bg-white text-gray-800 font-black flex items-center justify-center shadow-sm hover:bg-gray-200 transition-colors"
+                          >
+                            -
+                          </button>
+                          <span className="w-6 text-center text-sm font-extrabold text-gray-900">{qty}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateQty(idx, 1)}
+                            className="w-7 h-7 rounded-md bg-white text-gray-800 font-black flex items-center justify-center shadow-sm hover:bg-gray-200 transition-colors"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        <div className="font-black text-sm text-gray-900 w-20 text-right">
+                          € {(price * qty).toFixed(2)}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(idx)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          title="Remover Item"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Add New Product Block */}
+            <div className="p-4 bg-amber-50/50 border border-amber-200/60 rounded-xl space-y-3">
+              <h5 className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                <Plus size={14} className="text-amber-700" /> Adicionar Produto do Cardápio ao Pedido
+              </h5>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="sm:col-span-2 relative">
+                  <input
+                    type="text"
+                    value={selectedProductSearch}
+                    onChange={(e) => setSelectedProductSearch(e.target.value)}
+                    placeholder="Pesquisar produto pelo nome..."
+                    className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500"
+                  />
+                  {selectedProductSearch && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto">
+                      {filteredMenuItems.map(m => (
+                        <div
+                          key={m.id}
+                          onClick={() => {
+                            setSelectedProductId(m.id);
+                            setSelectedProductSearch(m.name);
+                          }}
+                          className={`p-2 text-xs font-bold cursor-pointer hover:bg-amber-100 flex justify-between ${selectedProductId === m.id ? 'bg-amber-100 text-amber-900' : 'text-gray-800'}`}
+                        >
+                          <span>{m.name}</span>
+                          <span className="text-gray-500 font-semibold">€ {(m.priceSingle || m.priceP || m.priceM || 0).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <select
+                    value={selectedSize}
+                    onChange={(e) => setSelectedSize(e.target.value)}
+                    className="flex-1 px-2 py-2 bg-white rounded-lg border border-gray-200 text-xs font-bold outline-none cursor-pointer"
+                  >
+                    <option value="priceSingle">Único / Padrão</option>
+                    <option value="priceP">Pequena (P)</option>
+                    <option value="priceM">Média (M)</option>
+                    <option value="priceG">Grande (G)</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAddItem}
+                    disabled={!selectedProductId}
+                    className="px-4 py-2 bg-gray-900 hover:bg-black text-white font-bold rounded-lg text-xs transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+                  >
+                    + Incluir
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Financial Adjustments (Desconto & Adicional & Audit Reason) */}
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200/80 space-y-3">
+            <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Ajustes Financeiros & Auditoria</h4>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-emerald-700 mb-1">
+                  Desconto (- € / R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={discountAmount || ''}
+                  onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2 bg-white rounded-lg border border-emerald-300 text-sm font-extrabold text-emerald-800 outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-blue-700 mb-1">
+                  Taxa Adicional / Surcharge (+ € / R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={additionalAmount || ''}
+                  onChange={(e) => setAdditionalAmount(parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                  className="w-full px-3 py-2 bg-white rounded-lg border border-blue-300 text-sm font-extrabold text-blue-800 outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Motivo da Alteração (Histórico / Audit Log)</label>
+              <input
+                type="text"
+                value={editReason}
+                onChange={(e) => setEditReason(e.target.value)}
+                placeholder="Ex: Cliente adicionou produto pelo WhatsApp / Aplicado cupom cortesia"
+                className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-xs font-semibold outline-none focus:ring-2 focus:ring-gray-900"
+              />
+            </div>
+          </div>
+
+          {/* Section 4: Live Total Calculation Bar */}
+          <div className="p-4 bg-gray-900 text-white rounded-xl space-y-2">
+            <div className="flex justify-between text-xs text-gray-400 font-semibold">
+              <span>Subtotal dos Itens:</span>
+              <span>€ {subtotal.toFixed(2)}</span>
+            </div>
+            {additionalAmount > 0 && (
+              <div className="flex justify-between text-xs text-blue-400 font-semibold">
+                <span>(+) Taxa Adicional / Surcharge:</span>
+                <span>+ € {Number(additionalAmount).toFixed(2)}</span>
+              </div>
+            )}
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-xs text-emerald-400 font-semibold">
+                <span>(-) Desconto Aplicado:</span>
+                <span>- € {Number(discountAmount).toFixed(2)}</span>
+              </div>
+            )}
+            <div className="pt-2 border-t border-gray-800 flex justify-between items-center">
+              <span className="text-sm font-black text-white uppercase tracking-wider">TOTAL RECALCULADO:</span>
+              <span className="text-2xl font-black text-[#FFDE59]">€ {finalTotal.toFixed(2)}</span>
+            </div>
+          </div>
+
+          {/* Footer Actions */}
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-6 py-2.5 rounded-xl font-bold text-sm bg-[#ea1d2c] hover:bg-[#c91825] text-white shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+            >
+              {saving ? 'Salvando...' : '💾 Salvar Alterações'}
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </div>
   );
 }
 
