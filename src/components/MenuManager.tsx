@@ -180,19 +180,19 @@ export default function MenuManager() {
   const filteredItems = activeCategory === 'all' ? items : items.filter(i => i.category === activeCategory);
 
   return (
-    <div className="bg-white rounded-2xl shadow-md border border-gray-200/80 p-6">
+    <div className="bg-white rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Gerenciar Cardápio</h2>
-          <p className="text-sm text-gray-500">Controle total sobre seus produtos e categorias.</p>
+          <h2 className="text-xl font-bold text-[#1C1917]">Gerenciar Cardápio</h2>
+          <p className="text-sm text-[#78716C]">Controle total sobre seus produtos e categorias.</p>
         </div>
         <div className="flex gap-2">
           {items.length === 0 && (
-            <button onClick={handleMigrate} className="px-4 py-2 bg-amber-500 text-white rounded-lg font-medium text-sm hover:bg-amber-600 transition-colors">
+            <button onClick={handleMigrate} className="px-4 py-2.5 bg-amber-600 text-white rounded-lg font-semibold text-sm hover:bg-amber-700 transition-colors">
               Puxar Cardápio Inicial (Migrar)
             </button>
           )}
-          <button onClick={openNewModal} className="px-4 py-2 bg-[#ea1d2c] text-white rounded-lg font-medium text-sm hover:bg-[#c91825] transition-colors flex items-center gap-2">
+          <button onClick={openNewModal} className="px-4 py-2.5 bg-[#C81E3A] text-white rounded-lg font-semibold text-sm hover:bg-[#A8172F] transition-colors flex items-center gap-2">
             <Plus size={16} /> Novo Produto
           </button>
         </div>
@@ -208,7 +208,7 @@ export default function MenuManager() {
       <div className="flex overflow-x-auto gap-2 pb-2 mb-6 hide-scrollbar">
         <button 
           onClick={() => setActiveCategory('all')}
-          className={`px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === 'all' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-b-2 border-[#FFDE59]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+          className={`px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === 'all' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-b-2 border-[#D4AF6A]' : 'bg-[#FAFAF9] text-[#78716C] border border-[#E7E5E1] hover:bg-gray-100'}`}
         >
           Todos os Produtos
         </button>
@@ -216,7 +216,7 @@ export default function MenuManager() {
           <button 
             key={cat.id}
             onClick={() => setActiveCategory(cat.id)}
-            className={`px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === cat.id ? 'bg-[#000000] text-[#FFDE59] shadow-md border-b-2 border-[#FFDE59]' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+            className={`px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === cat.id ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-b-2 border-[#D4AF6A]' : 'bg-[#FAFAF9] text-[#78716C] border border-[#E7E5E1] hover:bg-gray-100'}`}
           >
             {cat.name}
           </button>
@@ -226,10 +226,10 @@ export default function MenuManager() {
       {/* Items List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredItems.map(item => (
-          <div key={item.id} className="border border-gray-200 bg-white rounded-xl p-4 flex flex-col justify-between shadow-md hover:shadow-lg hover:border-gray-300 transition-all overflow-hidden">
+          <div key={item.id} className="border border-[#E7E5E1] bg-white rounded-xl p-4 flex flex-col justify-between shadow-[0_1px_2px_rgba(28,25,23,0.04)] hover:shadow-md transition-all overflow-hidden">
             <div>
               {/* Featured Proportional Product Image */}
-              <div className="w-full h-36 rounded-lg overflow-hidden bg-gray-50 border border-gray-200/80 mb-3 flex items-center justify-center p-1 relative group">
+              <div className="w-full h-36 rounded-lg overflow-hidden bg-[#FAFAF9] border border-[#E7E5E1] mb-3 flex items-center justify-center p-1 relative group">
                 {item.image_url ? (
                   <img 
                     src={item.image_url.startsWith('http') ? item.image_url : (item.image_url.startsWith('/') ? item.image_url : '/' + item.image_url)} 
@@ -237,35 +237,35 @@ export default function MenuManager() {
                     className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" 
                   />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-50">
-                    <ImageIcon size={32} className="text-gray-300" />
-                    <span className="text-xs mt-1 font-medium text-gray-400">Sem foto</span>
+                  <div className="w-full h-full flex flex-col items-center justify-center text-[#A8A29E] bg-[#FAFAF9]">
+                    <ImageIcon size={32} className="text-[#A8A29E]" />
+                    <span className="text-xs mt-1 font-medium text-[#A8A29E]">Sem foto</span>
                   </div>
                 )}
               </div>
 
               <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-gray-900 text-lg leading-tight line-clamp-2">{item.name}</h3>
+                <h3 className="font-bold text-[#1C1917] text-base leading-tight line-clamp-2">{item.name}</h3>
                 <div className="flex gap-1 ml-2 shrink-0">
-                  <button onClick={() => { setEditingItem(item); setIsModalOpen(true); }} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Editar">
+                  <button onClick={() => { setEditingItem(item); setIsModalOpen(true); }} className="p-1.5 text-[#78716C] hover:text-[#1D4ED8] hover:bg-[#EFF6FF] rounded-lg transition-colors" title="Editar">
                     <Edit2 size={16} />
                   </button>
-                  <button onClick={() => handleDelete(item.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Excluir">
+                  <button onClick={() => handleDelete(item.id)} className="p-1.5 text-[#78716C] hover:text-[#B91C1C] hover:bg-[#FEF2F2] rounded-lg transition-colors" title="Excluir">
                     <Trash2 size={16} />
                   </button>
                 </div>
               </div>
-              <span className="inline-block px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-md mb-2 font-medium">{categories.find(c => c.id === item.category)?.name || item.category}</span>
-              <p className="text-sm text-gray-500 line-clamp-2 mb-3">{item.ingredients}</p>
+              <span className="inline-block px-2 py-0.5 bg-[#FAFAF9] text-[#78716C] border border-[#E7E5E1] text-xs rounded-md mb-2 font-medium">{categories.find(c => c.id === item.category)?.name || item.category}</span>
+              <p className="text-xs text-[#78716C] line-clamp-2 mb-3">{item.ingredients}</p>
             </div>
             
-            <div className="flex items-center justify-between mt-2 pt-3 border-t border-gray-100">
-              <div className="font-bold text-gray-900">
+            <div className="flex items-center justify-between mt-2 pt-3 border-t border-[#F0EFED]">
+              <div className="font-bold font-mono tabular-nums text-[#1C1917]">
                 {item.price_single ? `€${Number(item.price_single).toFixed(2)}` : (item.price_p ? `A partir de €${Number(item.price_p).toFixed(2)}` : 'Preço variável')}
               </div>
               <button 
                 onClick={() => { setEditingItem(item); setIsModalOpen(true); }} 
-                className="px-3 py-1.5 text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                className="px-3 py-1.5 text-xs font-bold text-[#1D4ED8] bg-[#EFF6FF] hover:bg-blue-100 rounded-lg transition-colors"
               >
                 Editar
               </button>

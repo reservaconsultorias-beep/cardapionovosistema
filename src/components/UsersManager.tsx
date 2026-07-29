@@ -179,12 +179,12 @@ export default function UsersManager() {
         </div>
       </div>
 
-      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-        <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2 mb-1">
-          <UserPlus className="text-[#ea1d2c]" size={20} />
+      <div className="bg-white p-6 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)]">
+        <h3 className="text-lg font-bold text-[#1C1917] flex items-center gap-2 mb-1">
+          <UserPlus className="text-[#C81E3A]" size={20} />
           Criar Novo Acesso
         </h3>
-        <p className="text-sm text-gray-500 mb-5">Crie um usuário e senha para um novo funcionário — sem precisar de e-mail de verdade.</p>
+        <p className="text-sm text-[#78716C] mb-5">Crie um usuário e senha para um novo funcionário — sem precisar de e-mail de verdade.</p>
         <form onSubmit={handleCreateUser} className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -239,7 +239,7 @@ export default function UsersManager() {
           )}
 
           <button type="submit" disabled={creatingUser}
-            className="px-6 py-3 bg-[#ea1d2c] text-white rounded-xl font-bold text-sm hover:bg-[#c91825] transition-colors flex items-center gap-2 disabled:opacity-50">
+            className="px-6 py-2.5 bg-[#C81E3A] text-white rounded-lg font-semibold text-sm hover:bg-[#A8172F] transition-colors flex items-center gap-2 disabled:opacity-50 shadow-sm">
             <UserPlus size={18} /> Criar Acesso
           </button>
         </form>
@@ -252,31 +252,31 @@ export default function UsersManager() {
       )}
 
       {/* Profiles List */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500 font-medium">Carregando usuários...</div>
+          <div className="p-8 text-center text-[#78716C] font-medium">Carregando usuários...</div>
         ) : profiles.length === 0 ? (
-          <div className="p-8 text-center text-gray-500 font-medium">Nenhum usuário cadastrado.</div>
+          <div className="p-8 text-center text-[#78716C] font-medium">Nenhum usuário cadastrado.</div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-[#E7E5E1]">
             {profiles.map(profile => {
               const isOwner = profile.role === 'owner';
               const perms = profile.permissions || {};
 
               return (
                 <div key={profile.id} className="p-6 space-y-4">
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200/70">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-[#FAFAF9] p-4 rounded-lg border border-[#E7E5E1]">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-black text-gray-900 text-base">{profile.full_name || 'Sem nome'}</span>
-                        <span className="text-xs text-gray-400 font-mono ml-2">{profile.id.slice(0, 8)}...</span>
+                        <span className="font-bold text-[#1C1917] text-base">{profile.full_name || 'Sem nome'}</span>
+                        <span className="text-xs text-[#A8A29E] font-mono ml-2">{profile.id.slice(0, 8)}...</span>
                         {isOwner && (
-                          <span className="px-2.5 py-0.5 bg-[#FFDE59] text-gray-900 font-black text-xs rounded-full border border-amber-300">
+                          <span className="px-2.5 py-0.5 bg-[#1C1917] text-[#D4AF6A] font-bold text-xs rounded-full border border-gray-900">
                             👑 OWNER (DONO)
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 font-semibold mt-1">ID: {profile.id}</p>
+                      <p className="text-xs text-[#78716C] font-mono mt-1">ID: {profile.id}</p>
                     </div>
 
                     <div className="flex items-center gap-3">

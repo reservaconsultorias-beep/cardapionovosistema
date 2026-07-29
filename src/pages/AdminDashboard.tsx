@@ -2395,20 +2395,17 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
 
 function KpiCard({ title, value, icon, trend, trendUp, description }: { title: string, value: string, icon: React.ReactNode, trend: string, trendUp: boolean, description: string }) {
   return (
-    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 group">
-      <div className="flex justify-between items-start mb-4">
-        <div className="p-3 bg-gray-50 group-hover:bg-[#000000] group-hover:text-[#FFDE59] rounded-xl transition-colors duration-200">
-          {icon}
-        </div>
-        <div className={`flex items-center gap-1 text-xs font-extrabold px-2.5 py-1 rounded-lg ${trendUp ? 'text-emerald-700 bg-emerald-50 border border-emerald-100' : 'text-red-700 bg-red-50 border border-red-100'}`}>
+    <div className="bg-white p-6 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-md transition-all duration-200">
+      <div className="flex justify-between items-start mb-3">
+        <span className="text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">{title}</span>
+        <div className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${trendUp ? 'text-[#15803D] bg-[#F0FDF4]' : 'text-[#B91C1C] bg-[#FEF2F2]'}`}>
           {trendUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
           {trend}
         </div>
       </div>
       <div>
-        <h3 className="text-gray-400 text-xs font-black uppercase tracking-wider">{title}</h3>
-        <p className="text-3xl font-black text-gray-900 mt-1 tracking-tight group-hover:text-[#ea1d2c] transition-colors">{value}</p>
-        <p className="text-xs text-gray-400 mt-2 font-semibold">{description}</p>
+        <p className="text-3xl font-bold font-mono tabular-nums text-[#1C1917] tracking-tight">{value}</p>
+        <p className="text-xs text-[#78716C] mt-2 font-medium">{description}</p>
       </div>
     </div>
   );

@@ -251,10 +251,10 @@ export default function SettingsManager({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] p-6">
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Avisos e Promoções (Pop-up Inicial)</h2>
-          <p className="text-sm text-gray-500">Configure o banner que aparece quando o cliente acessa o cardápio.</p>
+          <h2 className="text-xl font-bold text-[#1C1917]">Banner Promocional / Pop-up do Site</h2>
+          <p className="text-sm text-[#78716C]">Configure a mensagem e foto que aparecem no pop-up do cardápio digital.</p>
         </div>
 
         {feedback && <div className="mb-6 p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">{feedback}</div>}
@@ -341,48 +341,48 @@ export default function SettingsManager({
           </div>
 
           <div className="pt-2">
-            <button type="submit" className="px-6 py-3 bg-[#ea1d2c] text-white rounded-xl font-medium hover:bg-[#c91825] transition-colors flex items-center gap-2">
+            <button type="submit" className="px-6 py-2.5 bg-[#C81E3A] text-white rounded-lg font-semibold hover:bg-[#A8172F] transition-colors flex items-center gap-2 shadow-sm">
               <Save size={18} /> Salvar Configurações
             </button>
           </div>
         </form>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] p-6">
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Horário de Funcionamento</h2>
-          <p className="text-sm text-gray-500">Defina o horário de cada dia da semana. O site bloqueia pedidos automaticamente fora desses horários.</p>
+          <h2 className="text-xl font-bold text-[#1C1917]">Horário de Funcionamento</h2>
+          <p className="text-sm text-[#78716C]">Defina o horário de cada dia da semana. O site bloqueia pedidos automaticamente fora desses horários.</p>
         </div>
 
-        {hoursFeedback && <div className="mb-6 p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">{hoursFeedback}</div>}
+        {hoursFeedback && <div className="mb-6 p-3 bg-[#EFF6FF] text-[#1D4ED8] rounded-lg text-sm border border-[#BFDBFE]">{hoursFeedback}</div>}
 
         <div className="space-y-3">
           {hours.map((h) => (
-            <div key={h.day_of_week} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50">
-              <div className="w-32 font-semibold text-sm text-gray-800">{DAY_NAMES[h.day_of_week]}</div>
-              <label className="flex items-center gap-2 text-sm text-gray-600">
+            <div key={h.day_of_week} className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-lg border border-[#E7E5E1] bg-[#FAFAF9]">
+              <div className="w-32 font-semibold text-sm text-[#1C1917]">{DAY_NAMES[h.day_of_week]}</div>
+              <label className="flex items-center gap-2 text-sm text-[#78716C]">
                 <input
                   type="checkbox"
                   checked={h.is_closed}
                   onChange={(e) => updateDay(h.day_of_week, 'is_closed', e.target.checked)}
-                  className="w-4 h-4 accent-[#ea1d2c] rounded"
+                  className="w-4 h-4 accent-[#C81E3A] rounded cursor-pointer"
                 />
                 Fechado o dia todo
               </label>
               {!h.is_closed && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 font-mono text-sm">
                   <input
                     type="time"
                     value={h.opens_at ? h.opens_at.slice(0,5) : ''}
                     onChange={(e) => updateDay(h.day_of_week, 'opens_at', e.target.value)}
-                    className="p-2 bg-white border border-gray-200 rounded-lg text-sm"
+                    className="p-2 bg-white border border-[#E7E5E1] rounded-lg text-sm text-[#1C1917]"
                   />
-                  <span className="text-gray-400 text-sm">até</span>
+                  <span className="text-[#A8A29E] text-sm">até</span>
                   <input
                     type="time"
                     value={h.closes_at ? h.closes_at.slice(0,5) : ''}
                     onChange={(e) => updateDay(h.day_of_week, 'closes_at', e.target.value)}
-                    className="p-2 bg-white border border-gray-200 rounded-lg text-sm"
+                    className="p-2 bg-white border border-[#E7E5E1] rounded-lg text-sm text-[#1C1917]"
                   />
                 </div>
               )}
@@ -391,7 +391,7 @@ export default function SettingsManager({
         </div>
 
         <div className="pt-6">
-          <button onClick={handleSaveHours} className="px-6 py-3 bg-[#ea1d2c] text-white rounded-xl font-medium hover:bg-[#c91825] transition-colors flex items-center gap-2">
+          <button onClick={handleSaveHours} className="px-6 py-2.5 bg-[#C81E3A] text-white rounded-lg font-semibold hover:bg-[#A8172F] transition-colors flex items-center gap-2 shadow-sm">
             <Save size={18} /> Salvar Horários
           </button>
         </div>
@@ -399,43 +399,43 @@ export default function SettingsManager({
 
 
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+      <div className="bg-white rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] p-6">
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Impressão & Impressora</h2>
-          <p className="text-sm text-gray-500">Ajuste o comportamento da impressora térmica e o tempo de atraso dos comprovantes.</p>
+          <h2 className="text-xl font-bold text-[#1C1917]">Impressão & Impressora</h2>
+          <p className="text-sm text-[#78716C]">Ajuste o comportamento da impressora térmica e o tempo de atraso dos comprovantes.</p>
         </div>
 
         {onToggleAutoPrint && (
-          <div className="flex items-center gap-3 mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+          <div className="flex items-center gap-3 mb-6 p-4 bg-[#FAFAF9] rounded-lg border border-[#E7E5E1]">
             <input
               type="checkbox"
               id="settings-autoprint"
               checked={!!autoPrint}
               onChange={onToggleAutoPrint}
-              className="w-5 h-5 accent-[#8b0000] rounded cursor-pointer"
+              className="w-5 h-5 accent-[#C81E3A] rounded cursor-pointer"
             />
-            <label htmlFor="settings-autoprint" className="text-sm font-bold text-gray-800 cursor-pointer">
+            <label htmlFor="settings-autoprint" className="text-sm font-bold text-[#1C1917] cursor-pointer">
               Auto-Imprimir novos pedidos automaticamente
             </label>
           </div>
         )}
 
-        {printFeedback && <div className="mb-4 p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">{printFeedback}</div>}
+        {printFeedback && <div className="mb-4 p-3 bg-[#EFF6FF] text-[#1D4ED8] rounded-lg text-sm border border-[#BFDBFE]">{printFeedback}</div>}
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">Atraso antes de imprimir (ms)</label>
+            <label className="text-sm font-medium text-[#78716C]">Atraso antes de imprimir (ms)</label>
             <input
               type="number"
               value={printDelay}
               onChange={e => setPrintDelay(e.target.value)}
-              className="w-28 p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm"
+              className="w-28 p-2.5 bg-[#FAFAF9] border border-[#E7E5E1] rounded-lg text-sm font-mono text-[#1C1917]"
             />
           </div>
           <button onClick={handleSaveHours} className="hidden" />
-          <button onClick={handleSavePrintDelay} className="px-4 py-2.5 bg-[#ea1d2c] text-white rounded-lg text-sm font-medium hover:bg-[#c91825] transition-colors">
+          <button onClick={handleSavePrintDelay} className="px-4 py-2.5 bg-[#C81E3A] text-white rounded-lg text-sm font-semibold hover:bg-[#A8172F] transition-colors">
             Salvar
           </button>
-          <button onClick={handleTestPrint} className="px-4 py-2.5 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-700 transition-colors">
+          <button onClick={handleTestPrint} className="px-4 py-2.5 bg-[#1C1917] text-white rounded-lg text-sm font-semibold hover:bg-black transition-colors">
             🖨️ Testar Impressão
           </button>
         </div>

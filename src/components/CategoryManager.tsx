@@ -42,58 +42,60 @@ export default function CategoryManager() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+      <div className="flex justify-between items-center bg-white p-6 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)]">
         <div>
-          <h3 className="font-extrabold text-xl text-gray-900">Categorias</h3>
-          <p className="text-xs text-gray-500 mt-0.5">Gerencie as seções do seu cardápio ({categories.length} cadastradas)</p>
+          <h3 className="font-bold text-xl text-[#1C1917]">Categorias</h3>
+          <p className="text-xs text-[#78716C] mt-0.5">Gerencie as seções do seu cardápio ({categories.length} cadastradas)</p>
         </div>
-        <button onClick={() => { setEditingCat({ id: '', name: '', order_index: categories.length + 1 }); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2.5 bg-[#ea1d2c] hover:bg-[#c91825] text-white rounded-xl text-sm font-bold transition-all duration-200 active:scale-95 shadow-sm cursor-pointer">
+        <button onClick={() => { setEditingCat({ id: '', name: '', order_index: categories.length + 1 }); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2.5 bg-[#C81E3A] hover:bg-[#A8172F] text-white rounded-lg text-sm font-semibold transition-all duration-200 active:scale-95 shadow-sm cursor-pointer">
           <Plus size={16}/> Nova Categoria
         </button>
       </div>
       
-      {feedback && <div className="p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">{feedback}</div>}
+      {feedback && <div className="p-3 bg-[#EFF6FF] text-[#1D4ED8] rounded-lg text-sm border border-[#BFDBFE]">{feedback}</div>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {categories.map(cat => (
-          <div key={cat.id} className="bg-white border border-gray-200 p-4.5 rounded-xl flex items-center justify-between shadow-md hover:shadow-lg hover:border-gray-300 transition-all">
+          <div key={cat.id} className="bg-white border border-[#E7E5E1] p-4.5 rounded-xl flex items-center justify-between shadow-[0_1px_2px_rgba(28,25,23,0.04)] hover:shadow-md transition-all">
             <div>
-              <div className="font-bold">{cat.name}</div>
-              <div className="text-xs text-gray-500">Ordem: {cat.order_index} | ID: {cat.id}</div>
+              <div className="font-bold text-[#1C1917]">{cat.name}</div>
+              <div className="text-xs text-[#78716C] font-mono">Ordem: {cat.order_index} | ID: {cat.id}</div>
             </div>
             <div className="flex gap-2">
-              <button onClick={() => { setEditingCat(cat); setIsModalOpen(true); }} className="text-gray-400 hover:text-[#ea1d2c]"><Edit2 size={16}/></button>
-              <button onClick={() => handleDelete(cat.id)} className="text-gray-400 hover:text-red-600"><Trash2 size={16}/></button>
+              <button onClick={() => { setEditingCat(cat); setIsModalOpen(true); }} className="p-1.5 text-[#78716C] hover:text-[#1D4ED8] hover:bg-[#EFF6FF] rounded-lg transition-colors"><Edit2 size={16}/></button>
+              <button onClick={() => handleDelete(cat.id)} className="p-1.5 text-[#78716C] hover:text-[#B91C1C] hover:bg-[#FEF2F2] rounded-lg transition-colors"><Trash2 size={16}/></button>
             </div>
           </div>
         ))}
       </div>
 
       {isModalOpen && editingCat && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <form onSubmit={handleSave} className="bg-white p-6 rounded-2xl w-full max-w-md shadow-xl space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-lg">{editingCat.id && categories.find(c=>c.id === editingCat.id) ? 'Editar Categoria' : 'Nova Categoria'}</h3>
-              <button type="button" onClick={() => setIsModalOpen(false)}><X size={20} className="text-gray-400"/></button>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <form onSubmit={handleSave} className="bg-white p-6 rounded-xl w-full max-w-md shadow-2xl border border-[#E7E5E1] space-y-4">
+            <div className="flex justify-between items-center pb-2 border-b border-[#E7E5E1]">
+              <h3 className="font-bold text-lg text-[#1C1917]">{editingCat.id && categories.find(c=>c.id === editingCat.id) ? 'Editar Categoria' : 'Nova Categoria'}</h3>
+              <button type="button" onClick={() => setIsModalOpen(false)} className="text-[#A8A29E] hover:text-[#1C1917] p-1"><X size={20}/></button>
             </div>
             
-            <div className="space-y-2">
-              <label className="text-sm font-medium">ID da Categoria (sem espaços)</label>
-              <input required type="text" value={editingCat.id} onChange={e => setEditingCat({...editingCat, id: e.target.value.toLowerCase().replace(/\s+/g, '-')})} disabled={!!categories.find(c=>c.id === editingCat.id)} className="w-full p-2.5 bg-gray-50 border rounded-lg" placeholder="ex: doces"/>
-              <p className="text-xs text-gray-500">Este ID é usado pelo sistema. Não pode ser alterado depois.</p>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">ID da Categoria (sem espaços)</label>
+              <input required type="text" value={editingCat.id} onChange={e => setEditingCat({...editingCat, id: e.target.value.toLowerCase().replace(/\s+/g, '-')})} disabled={!!categories.find(c=>c.id === editingCat.id)} className="w-full p-2.5 bg-[#FAFAF9] border border-[#E7E5E1] rounded-lg font-mono text-sm focus:outline-none focus:border-[#C81E3A] focus:ring-1 focus:ring-[#C81E3A]/20" placeholder="ex: doces"/>
+              <p className="text-xs text-[#78716C]">Este ID é usado pelo sistema. Não pode ser alterado depois.</p>
             </div>
             
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Nome Exibido</label>
-              <input required type="text" value={editingCat.name} onChange={e => setEditingCat({...editingCat, name: e.target.value})} className="w-full p-2.5 bg-gray-50 border rounded-lg" placeholder="ex: Doces Finos"/>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">Nome Exibido</label>
+              <input required type="text" value={editingCat.name} onChange={e => setEditingCat({...editingCat, name: e.target.value})} className="w-full p-2.5 bg-white border border-[#E7E5E1] rounded-lg text-sm text-[#1C1917] focus:outline-none focus:border-[#C81E3A] focus:ring-1 focus:ring-[#C81E3A]/20" placeholder="ex: Doces Finos"/>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Ordem de Exibição</label>
-              <input required type="number" value={editingCat.order_index} onChange={e => setEditingCat({...editingCat, order_index: parseInt(e.target.value)})} className="w-full p-2.5 bg-gray-50 border rounded-lg" />
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">Ordem de Exibição</label>
+              <input required type="number" value={editingCat.order_index} onChange={e => setEditingCat({...editingCat, order_index: parseInt(e.target.value)})} className="w-full p-2.5 bg-white border border-[#E7E5E1] rounded-lg font-mono text-sm text-[#1C1917] focus:outline-none focus:border-[#C81E3A] focus:ring-1 focus:ring-[#C81E3A]/20" />
             </div>
 
-            <button type="submit" className="w-full bg-[#ea1d2c] text-white py-3 rounded-xl font-bold hover:bg-[#c91825]">Salvar Categoria</button>
+            <div className="pt-2">
+              <button type="submit" className="w-full bg-[#C81E3A] text-white py-2.5 rounded-lg font-semibold hover:bg-[#A8172F] transition-colors shadow-sm">Salvar Categoria</button>
+            </div>
           </form>
         </div>
       )}
