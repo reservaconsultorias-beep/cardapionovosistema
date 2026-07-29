@@ -48,6 +48,43 @@ export default function SettingsManager({
 
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  const [adminLogoUrl, setAdminLogoUrl] = useState('');
+  const [uploadingAdminLogo, setUploadingAdminLogo] = useState(false);
+
+  useEffect(() => {
+    async function loadAdminLogo() {
+      const { data } = await supabase.from('settings').select('value').eq('key', 'admin_logo_url').maybeSingle();
+      if (data?.value) setAdminLogoUrl(data.value);
+    }
+    loadAdminLogo();
+  }, []);
+
+  const handleAdminLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingAdminLogo(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `admin-logo-${Date.now()}.${fileExt}`;
+      const filePath = `admin/logo/${fileName}`;
+      const { error: uploadError } = await supabase.storage.from('Cardapio41menus').upload(filePath, file);
+      if (uploadError) throw uploadError;
+      const { data } = supabase.storage.from('Cardapio41menus').getPublicUrl(filePath);
+      const newUrl = data.publicUrl;
+      setAdminLogoUrl(newUrl);
+      await supabase.from('settings').upsert({ key: 'admin_logo_url', value: newUrl, updated_at: new Date().toISOString() });
+    } catch (error: any) {
+      console.error(error);
+    } finally {
+      setUploadingAdminLogo(false);
+    }
+  };
+
+  const handleRemoveAdminLogo = async () => {
+    setAdminLogoUrl('');
+    await supabase.from('settings').upsert({ key: 'admin_logo_url', value: '', updated_at: new Date().toISOString() });
+  };
+
   const DAY_NAMES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
   const [hours, setHours] = useState<any[]>([]);
   const [hoursFeedback, setHoursFeedback] = useState("");
@@ -510,6 +547,37 @@ export default function SettingsManager({
         >
           Alterar Senha
         </button>
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-gray-900">Logo do Painel</h2>
+          <p className="text-sm text-gray-500">Aparece no canto superior direito do painel administrativo (não afeta o site público dos clientes).</p>
+        </div>
+        <div className="space-y-3">
+          {adminLogoUrl && (
+            <div className="flex items-center gap-3">
+              <img src={adminLogoUrl} alt="preview da logo do painel" className="h-12 rounded-lg object-contain border border-gray-200 bg-gray-50 p-2" />
+              <button onClick={handleRemoveAdminLogo} className="text-sm font-semibold text-red-600 hover:underline">
+                Remover logo
+              </button>
+            </div>
+          )}
+          <input
+            type="file"
+            accept="image/jpeg, image/png, image/webp"
+            onChange={handleAdminLogoUpload}
+            disabled={uploadingAdminLogo}
+            className="block w-full text-sm text-gray-500
+              file:mr-4 file:py-2.5 file:px-4
+              file:rounded-lg file:border-0
+              file:text-sm file:font-semibold
+              file:bg-[#C81E3A]/10 file:text-[#C81E3A]
+              hover:file:bg-[#C81E3A]/20
+              cursor-pointer border border-gray-200 rounded-lg p-1 bg-white"
+          />
+          {uploadingAdminLogo && <p className="text-sm text-gray-500">Enviando...</p>}
+        </div>
       </div>
     </div>
   );
