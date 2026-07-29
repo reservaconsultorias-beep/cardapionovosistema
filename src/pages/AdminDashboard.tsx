@@ -28,7 +28,8 @@ import {
   FileText,
   Check,
   Search,
-  Shield
+  Shield,
+  Megaphone
 } from "lucide-react";
 import {
   AreaChart,
@@ -54,6 +55,7 @@ import SettingsManager from '../components/SettingsManager';
 import CustomersManager from '../components/CustomersManager';
 import CaixaManager from '../components/CaixaManager';
 import UsersManager from '../components/UsersManager';
+import BannerManager from '../components/BannerManager';
 
 
 
@@ -136,6 +138,7 @@ export default function AdminDashboard() {
     'relatorios': { title: 'Relatórios', subtitle: 'Vendas, ticket médio e produtos mais vendidos.' },
     'clientes': { title: 'Clientes', subtitle: 'Histórico e cadastro de clientes.' },
     'configuracoes': { title: 'Configurações', subtitle: 'Horário, impressão, logo e dados da empresa.' },
+    'banner-promocional': { title: 'Banner Promocional', subtitle: 'Configure o pop-up de aviso ou promoção exibido no cardápio.' },
     'usuarios': { title: 'Usuários & Permissões', subtitle: 'Gerencie os acessos da sua equipe.' },
   };
   const [username, setUsername] = useState("");
@@ -1045,6 +1048,13 @@ export default function AdminDashboard() {
                   Categorias
                 </button>
               )}
+              <button 
+                onClick={() => setActiveTab("banner-promocional")} 
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'banner-promocional' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              >
+                <Megaphone size={18} strokeWidth={1.75} className={activeTab === 'banner-promocional' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
+                Banner Promocional
+              </button>
             </div>
           )}
           {(hasPermission('gerenciar_configuracoes') || hasPermission('gerenciar_usuarios')) && (
@@ -1154,6 +1164,12 @@ export default function AdminDashboard() {
         {activeTab === "gestao-cardapio" && hasPermission('gerenciar_produtos') && (
           <div className="mt-6">
              <MenuManager />
+          </div>
+        )}
+
+        {activeTab === "banner-promocional" && (
+          <div className="mt-6">
+            <BannerManager />
           </div>
         )}
   
