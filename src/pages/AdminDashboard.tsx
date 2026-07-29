@@ -1096,20 +1096,20 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {activeTab === "clientes" && (
+        {activeTab === "clientes" && hasPermission('ver_clientes') && (
           <div className="mt-6">
             <CustomersManager />
           </div>
         )}
 
-        {activeTab === "caixa" && (
+        {activeTab === "caixa" && hasPermission('gerenciar_caixa') && (
           <div className="mt-6">
             <CaixaManager />
           </div>
         )}
 
         
-        {activeTab === "configuracoes" && (
+        {activeTab === "configuracoes" && hasPermission('gerenciar_configuracoes') && (
           <div className="mt-6">
             <SettingsManager 
               onTestPrint={handlePrintOrder}
@@ -1124,7 +1124,7 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {activeTab === "gestao-cardapio" && (
+        {activeTab === "gestao-cardapio" && hasPermission('gerenciar_produtos') && (
           <div className="mt-6">
              <MenuManager />
           </div>
