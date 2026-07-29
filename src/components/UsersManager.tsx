@@ -20,9 +20,11 @@ export default function UsersManager() {
   const [feedback, setFeedback] = useState("");
 
   // New user form
-  const [newEmail, setNewEmail] = useState("");
+  const [newUsername, setNewUsername] = useState("");
+  const [newFullName, setNewFullName] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState("staff");
+  const [newPermissions, setNewPermissions] = useState<Record<string, boolean>>({});
   const [creatingUser, setCreatingUser] = useState(false);
 
   const fetchProfiles = async () => {
@@ -41,6 +43,78 @@ export default function UsersManager() {
   useEffect(() => {
     fetchProfiles();
   }, []);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreatingUser(true);
+    setFeedback("Criando usuário...");
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-staff`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            action: 'create',
+            username: newUsername,
+            password: newPassword,
+            role: newRole,
+            full_name: newFullName,
+            permissions: newPermissions,
+          }),
+        }
+      );
+      const result = await response.json();
+      if (result.error) {
+        setFeedback("Erro: " + result.error);
+      } else {
+        setFeedback("Usuário criado com sucesso!");
+        setNewUsername("");
+        setNewFullName("");
+        setNewPassword("");
+        setNewRole("staff");
+        setNewPermissions({});
+        fetchProfiles();
+      }
+    } catch (err: any) {
+      setFeedback("Erro: " + err.message);
+    } finally {
+      setCreatingUser(false);
+      setTimeout(() => setFeedback(""), 4000);
+    }
+  };
+
+  const handleDeleteUser = async (profileId: string, name: string) => {
+    if (!window.confirm(`Remover o acesso de "${name || profileId}"? Essa ação apaga o login e não pode ser desfeita.`)) return;
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-staff`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ action: 'delete', userId: profileId }),
+        }
+      );
+      const result = await response.json();
+      if (result.error) {
+        alert("Erro: " + result.error);
+      } else {
+        fetchProfiles();
+      }
+    } catch (err: any) {
+      alert("Erro: " + err.message);
+    }
+  };
 
   const handleTogglePermission = async (profileId: string, permKey: string, currentValue: boolean) => {
     setSavingId(profileId);
@@ -105,6 +179,72 @@ export default function UsersManager() {
         </div>
       </div>
 
+      <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
+        <h3 className="text-lg font-extrabold text-gray-900 flex items-center gap-2 mb-1">
+          <UserPlus className="text-[#ea1d2c]" size={20} />
+          Criar Novo Acesso
+        </h3>
+        <p className="text-sm text-gray-500 mb-5">Crie um usuário e senha para um novo funcionário — sem precisar de e-mail de verdade.</p>
+        <form onSubmit={handleCreateUser} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-bold text-gray-600 uppercase">Nome</label>
+              <input type="text" value={newFullName} onChange={e => setNewFullName(e.target.value)} required
+                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-600 uppercase">Usuário (sem espaço)</label>
+              <input type="text" value={newUsername} onChange={e => setNewUsername(e.target.value)} required
+                placeholder="ex: joao"
+                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-600 uppercase">Senha</label>
+              <input type="text" value={newPassword} onChange={e => setNewPassword(e.target.value)} required minLength={6}
+                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-600 uppercase">Função</label>
+              <select value={newRole} onChange={e => setNewRole(e.target.value)}
+                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm mt-1">
+                <option value="owner">Dono (Owner - Acesso Total)</option>
+                <option value="staff">Funcionário (Staff)</option>
+                <option value="caixa">Operador de Caixa</option>
+                <option value="cozinha">Cozinha / Produção</option>
+                <option value="entregador">Entregador</option>
+              </select>
+            </div>
+          </div>
+
+          {newRole !== 'owner' && (
+            <div>
+              <label className="text-xs font-bold text-gray-600 uppercase mb-2 block">Permissões</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {PERMISSION_DEFINITIONS.map(perm => (
+                  <label key={perm.key} className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start gap-3 ${newPermissions[perm.key] ? 'bg-emerald-50/60 border-emerald-300' : 'bg-gray-50/50 border-gray-200'}`}>
+                    <input
+                      type="checkbox"
+                      checked={!!newPermissions[perm.key]}
+                      onChange={() => setNewPermissions(prev => ({ ...prev, [perm.key]: !prev[perm.key] }))}
+                      className="mt-0.5 w-4 h-4 accent-emerald-600 rounded cursor-pointer shrink-0"
+                    />
+                    <div>
+                      <div className="font-bold text-xs leading-tight">{perm.label}</div>
+                      <div className="text-[11px] text-gray-500 font-normal leading-tight mt-0.5">{perm.description}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <button type="submit" disabled={creatingUser}
+            className="px-6 py-3 bg-[#ea1d2c] text-white rounded-xl font-bold text-sm hover:bg-[#c91825] transition-colors flex items-center gap-2 disabled:opacity-50">
+            <UserPlus size={18} /> Criar Acesso
+          </button>
+        </form>
+      </div>
+
       {feedback && (
         <div className="p-4 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl font-bold text-sm">
           {feedback}
@@ -128,7 +268,8 @@ export default function UsersManager() {
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-3 bg-gray-50 p-4 rounded-xl border border-gray-200/70">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-black text-gray-900 text-base">{profile.email || profile.id}</span>
+                        <span className="font-black text-gray-900 text-base">{profile.full_name || 'Sem nome'}</span>
+                        <span className="text-xs text-gray-400 font-mono ml-2">{profile.id.slice(0, 8)}...</span>
                         {isOwner && (
                           <span className="px-2.5 py-0.5 bg-[#FFDE59] text-gray-900 font-black text-xs rounded-full border border-amber-300">
                             👑 OWNER (DONO)
@@ -152,6 +293,13 @@ export default function UsersManager() {
                         <option value="cozinha">Cozinha / Produção</option>
                         <option value="entregador">Entregador</option>
                       </select>
+                      <button
+                        onClick={() => handleDeleteUser(profile.id, profile.full_name)}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Remover acesso"
+                      >
+                        <Trash2 size={16} />
+                      </button>
                     </div>
                   </div>
 
