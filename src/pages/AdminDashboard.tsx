@@ -27,7 +27,8 @@ import {
   AlertCircle,
   FileText,
   Check,
-  Search
+  Search,
+  Shield
 } from "lucide-react";
 import {
   AreaChart,
@@ -52,6 +53,7 @@ import CategoryManager from '../components/CategoryManager';
 import SettingsManager from '../components/SettingsManager';
 import CustomersManager from '../components/CustomersManager';
 import CaixaManager from '../components/CaixaManager';
+import UsersManager from '../components/UsersManager';
 
 
 
@@ -127,7 +129,13 @@ export default function AdminDashboard() {
   const [loginError, setLoginError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userPermissions, setUserPermissions] = useState<Record<string, boolean>>({});
   const isOwner = userRole === 'owner';
+
+  const hasPermission = (permKey: string): boolean => {
+    if (userRole === 'owner') return true;
+    return !!userPermissions[permKey];
+  };
 
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [allOrders, setAllOrders] = useState<any[]>([]);
@@ -399,8 +407,13 @@ export default function AdminDashboard() {
   
   useEffect(() => {
     const fetchRole = async (userId: string) => {
-      const { data } = await supabase.from('profiles').select('role').eq('id', userId).maybeSingle();
+      const { data } = await supabase.from('profiles').select('role, permissions').eq('id', userId).maybeSingle();
       setUserRole(data?.role || null);
+      if (data?.permissions && typeof data.permissions === 'object') {
+        setUserPermissions(data.permissions);
+      } else {
+        setUserPermissions({});
+      }
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -419,6 +432,7 @@ export default function AdminDashboard() {
       } else {
         setIsAuthenticated(false);
         setUserRole(null);
+        setUserPermissions({});
         setIsLoading(false);
       }
     });
@@ -429,11 +443,28 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    const restrictedTabs = ['visao-geral', 'relatorios', 'gestao-cardapio', 'categorias', 'configuracoes', 'clientes'];
-    if (userRole && userRole !== 'owner' && restrictedTabs.includes(activeTab)) {
-      setActiveTab('pedidos');
+    if (!userRole || userRole === 'owner') return;
+
+    const tabPermissionMap: Record<string, string> = {
+      'visao-geral': 'ver_relatorios',
+      'pedidos': 'ver_pedidos',
+      'caixa': 'gerenciar_caixa',
+      'gestao-cardapio': 'gerenciar_produtos',
+      'categorias': 'gerenciar_categorias',
+      'relatorios': 'ver_relatorios',
+      'clientes': 'ver_clientes',
+      'configuracoes': 'gerenciar_configuracoes',
+      'usuarios': 'gerenciar_usuarios',
+    };
+
+    const requiredPerm = tabPermissionMap[activeTab];
+    if (requiredPerm && !userPermissions[requiredPerm]) {
+      if (userPermissions['ver_pedidos']) setActiveTab('pedidos');
+      else if (userPermissions['gerenciar_caixa']) setActiveTab('caixa');
+      else if (userPermissions['gerenciar_produtos']) setActiveTab('gestao-cardapio');
+      else setActiveTab('pedidos');
     }
-  }, [userRole, activeTab]);
+  }, [userRole, userPermissions, activeTab]);
 
   useEffect(() => {
     const loadStoreStatus = async () => {
@@ -919,7 +950,7 @@ export default function AdminDashboard() {
         </div>
         
         <div className="p-3 flex-1 space-y-1.5">
-          {isOwner && (
+          {hasPermission('ver_relatorios') && (
             <button 
               onClick={() => setActiveTab("visao-geral")} 
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'visao-geral' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
@@ -928,21 +959,25 @@ export default function AdminDashboard() {
               Visão Geral
             </button>
           )}
-          <button 
-            onClick={() => setActiveTab("pedidos")} 
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'pedidos' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
-          >
-            <ShoppingBag size={18} className={activeTab === 'pedidos' ? 'text-[#FFDE59]' : 'text-gray-400'} />
-            Pedidos
-          </button>
-          <button 
-            onClick={() => setActiveTab("caixa")} 
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'caixa' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
-          >
-            <CreditCard size={18} className={activeTab === 'caixa' ? 'text-[#FFDE59]' : 'text-gray-400'} />
-            Caixa
-          </button>
-          {isOwner && (
+          {hasPermission('ver_pedidos') && (
+            <button 
+              onClick={() => setActiveTab("pedidos")} 
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'pedidos' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+            >
+              <ShoppingBag size={18} className={activeTab === 'pedidos' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+              Pedidos
+            </button>
+          )}
+          {hasPermission('gerenciar_caixa') && (
+            <button 
+              onClick={() => setActiveTab("caixa")} 
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'caixa' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+            >
+              <CreditCard size={18} className={activeTab === 'caixa' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+              Caixa
+            </button>
+          )}
+          {hasPermission('ver_relatorios') && (
             <button 
               onClick={() => setActiveTab("relatorios")} 
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'relatorios' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
@@ -951,7 +986,7 @@ export default function AdminDashboard() {
               Relatórios
             </button>
           )}
-          {isOwner && (
+          {hasPermission('ver_clientes') && (
             <button 
               onClick={() => setActiveTab("clientes")} 
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'clientes' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
@@ -961,7 +996,7 @@ export default function AdminDashboard() {
             </button>
           )}
           
-          {isOwner && (
+          {(hasPermission('gerenciar_produtos') || hasPermission('gerenciar_categorias')) && (
             <div className="pt-3 mt-3 border-t border-gray-100 space-y-1">
               <p className="px-3 text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">Cardápio</p>
               <button 
@@ -971,32 +1006,47 @@ export default function AdminDashboard() {
                 <UtensilsCrossed size={18} className={activeTab === 'cardapio-digital' ? 'text-[#FFDE59]' : 'text-gray-400'} />
                 Cardápio Digital
               </button>
-              <button 
-                onClick={() => setActiveTab("gestao-cardapio")} 
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'gestao-cardapio' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
-              >
-                <Package size={18} className={activeTab === 'gestao-cardapio' ? 'text-[#FFDE59]' : 'text-gray-400'} />
-                Produtos
-              </button>
-              <button 
-                onClick={() => setActiveTab("categorias")} 
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'categorias' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
-              >
-                <FolderTree size={18} className={activeTab === 'categorias' ? 'text-[#FFDE59]' : 'text-gray-400'} />
-                Categorias
-              </button>
+              {hasPermission('gerenciar_produtos') && (
+                <button 
+                  onClick={() => setActiveTab("gestao-cardapio")} 
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'gestao-cardapio' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                >
+                  <Package size={18} className={activeTab === 'gestao-cardapio' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                  Produtos
+                </button>
+              )}
+              {hasPermission('gerenciar_categorias') && (
+                <button 
+                  onClick={() => setActiveTab("categorias")} 
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'categorias' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                >
+                  <FolderTree size={18} className={activeTab === 'categorias' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                  Categorias
+                </button>
+              )}
             </div>
           )}
-          {isOwner && (
+          {(hasPermission('gerenciar_configuracoes') || hasPermission('gerenciar_usuarios')) && (
             <div className="pt-3 mt-3 border-t border-gray-100 space-y-1">
               <p className="px-3 text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">Sistema</p>
-              <button 
-                onClick={() => setActiveTab("configuracoes")} 
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'configuracoes' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
-              >
-                <Settings size={18} className={activeTab === 'configuracoes' ? 'text-[#FFDE59]' : 'text-gray-400'} />
-                Configurações
-              </button>
+              {hasPermission('gerenciar_configuracoes') && (
+                <button 
+                  onClick={() => setActiveTab("configuracoes")} 
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'configuracoes' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                >
+                  <Settings size={18} className={activeTab === 'configuracoes' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                  Configurações
+                </button>
+              )}
+              {hasPermission('gerenciar_usuarios') && (
+                <button 
+                  onClick={() => setActiveTab("usuarios")} 
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'usuarios' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                >
+                  <Shield size={18} className={activeTab === 'usuarios' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                  Usuários & Permissões
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -1034,7 +1084,13 @@ export default function AdminDashboard() {
         )}
         
         
-        {activeTab === "categorias" && (
+        {activeTab === "usuarios" && hasPermission('gerenciar_usuarios') && (
+          <div className="mt-6">
+            <UsersManager />
+          </div>
+        )}
+
+        {activeTab === "categorias" && hasPermission('gerenciar_categorias') && (
           <div className="mt-6">
             <CategoryManager />
           </div>
