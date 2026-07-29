@@ -124,6 +124,20 @@ export default function AdminDashboard() {
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [manualClosed, setManualClosed] = useState(false);
+  const [adminLogoUrl, setAdminLogoUrl] = useState('');
+
+  const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
+    'visao-geral': { title: 'Visão Geral', subtitle: 'Acompanhe o desempenho do seu negócio em tempo real.' },
+    'pedidos': { title: 'Pedidos', subtitle: 'Gerencie e acompanhe os pedidos em tempo real.' },
+    'caixa': { title: 'Caixa', subtitle: 'Abertura, fechamento e conferência do turno.' },
+    'cardapio-digital': { title: 'Cardápio Digital', subtitle: 'Espelho do que os clientes veem na loja.' },
+    'gestao-cardapio': { title: 'Produtos', subtitle: 'Gerencie o cardápio, preços e fotos.' },
+    'categorias': { title: 'Categorias', subtitle: 'Organize as categorias do cardápio.' },
+    'relatorios': { title: 'Relatórios', subtitle: 'Vendas, ticket médio e produtos mais vendidos.' },
+    'clientes': { title: 'Clientes', subtitle: 'Histórico e cadastro de clientes.' },
+    'configuracoes': { title: 'Configurações', subtitle: 'Horário, impressão, logo e dados da empresa.' },
+    'usuarios': { title: 'Usuários & Permissões', subtitle: 'Gerencie os acessos da sua equipe.' },
+  };
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
@@ -472,6 +486,14 @@ export default function AdminDashboard() {
       setManualClosed(data?.value === true);
     };
     loadStoreStatus();
+  }, []);
+
+  useEffect(() => {
+    const loadAdminLogo = async () => {
+      const { data } = await supabase.from('settings').select('value').eq('key', 'admin_logo_url').maybeSingle();
+      if (data?.value) setAdminLogoUrl(data.value);
+    };
+    loadAdminLogo();
   }, []);
 
   const toggleStoreClosed = async () => {
@@ -1059,15 +1081,21 @@ export default function AdminDashboard() {
           {/* Header Section */}
         <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
           <div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight">
-              Dashboard de Gestão
+            <h1 className="text-2xl font-bold tracking-tight text-[#1C1917]">
+              {PAGE_TITLES[activeTab]?.title || 'Painel'}
             </h1>
-            <p className="text-gray-500 mt-1">
-              Bem-vindo de volta! Aqui está o resumo do seu negócio.
+            <p className="text-sm text-[#78716C] mt-1">
+              {PAGE_TITLES[activeTab]?.subtitle || ''}
             </p>
           </div>
-          <div className="flex items-center gap-3">
-            <button onClick={handleLogout} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-sm font-semibold rounded-lg transition-colors">
+          <div className="flex items-center gap-4">
+            {adminLogoUrl && (
+              <>
+                <img src={adminLogoUrl} alt="Logo do restaurante" className="h-9 object-contain" />
+                <div className="w-px h-8 bg-[#E7E5E1]" />
+              </>
+            )}
+            <button onClick={handleLogout} className="px-4 py-2.5 bg-transparent border border-[#E7E5E1] hover:bg-[#FAFAF9] text-[#1C1917] rounded-lg font-semibold text-sm transition-colors">
               Sair
             </button>
           </div>
