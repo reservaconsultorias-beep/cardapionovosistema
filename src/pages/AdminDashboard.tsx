@@ -946,14 +946,14 @@ export default function AdminDashboard() {
         {/* Clean Modern Sidebar Header */}
         <div className="p-5 border-b border-gray-100 bg-white">
           <div className="flex items-center gap-3">
-            <span className="w-9 h-9 rounded-xl bg-[#000000] text-[#FFDE59] font-black flex items-center justify-center text-sm shadow-sm border border-gray-900 shrink-0">
+            <span className="w-9 h-9 rounded-xl bg-[#1C1917] text-[#D4AF6A] font-black flex items-center justify-center text-sm shadow-sm border border-gray-900 shrink-0">
               41
             </span>
             <div className="flex flex-col">
               <div className="flex items-center gap-1.5">
                 <h2 className="text-base font-black text-gray-900 tracking-tight leading-none">41 Menu's</h2>
               </div>
-              <span className="text-[10px] font-extrabold text-[#FD9F23] uppercase tracking-wider block mt-1">Pizzas e Esfihas</span>
+              <span className="text-[10px] font-extrabold text-[#D4AF6A] uppercase tracking-wider block mt-1">Pizzas e Esfihas</span>
             </div>
           </div>
           <div className="mt-3.5 pt-2.5 border-t border-gray-100 flex items-center justify-between">
@@ -961,7 +961,6 @@ export default function AdminDashboard() {
             <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Online</span>
           </div>
         </div>
-
         <div className="p-4 border-b border-gray-100">
           <button
             onClick={toggleStoreClosed}
@@ -975,45 +974,45 @@ export default function AdminDashboard() {
           {hasPermission('ver_relatorios') && (
             <button 
               onClick={() => setActiveTab("visao-geral")} 
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'visao-geral' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'visao-geral' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
             >
-              <LayoutDashboard size={18} className={activeTab === 'visao-geral' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+              <LayoutDashboard size={18} strokeWidth={1.75} className={activeTab === 'visao-geral' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
               Visão Geral
             </button>
           )}
           {hasPermission('ver_pedidos') && (
             <button 
               onClick={() => setActiveTab("pedidos")} 
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'pedidos' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'pedidos' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
             >
-              <ShoppingBag size={18} className={activeTab === 'pedidos' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+              <ShoppingBag size={18} strokeWidth={1.75} className={activeTab === 'pedidos' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
               Pedidos
             </button>
           )}
           {hasPermission('gerenciar_caixa') && (
             <button 
               onClick={() => setActiveTab("caixa")} 
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'caixa' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'caixa' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
             >
-              <CreditCard size={18} className={activeTab === 'caixa' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+              <CreditCard size={18} strokeWidth={1.75} className={activeTab === 'caixa' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
               Caixa
             </button>
           )}
           {hasPermission('ver_relatorios') && (
             <button 
               onClick={() => setActiveTab("relatorios")} 
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'relatorios' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'relatorios' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
             >
-              <BarChart3 size={18} className={activeTab === 'relatorios' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+              <BarChart3 size={18} strokeWidth={1.75} className={activeTab === 'relatorios' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
               Relatórios
             </button>
           )}
           {hasPermission('ver_clientes') && (
             <button 
               onClick={() => setActiveTab("clientes")} 
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'clientes' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'clientes' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
             >
-              <Users size={18} className={activeTab === 'clientes' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+              <Users size={18} strokeWidth={1.75} className={activeTab === 'clientes' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
               Clientes
             </button>
           )}
@@ -1023,26 +1022,26 @@ export default function AdminDashboard() {
               <p className="px-3 text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">Cardápio</p>
               <button 
                 onClick={() => setActiveTab("cardapio-digital")} 
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'cardapio-digital' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'cardapio-digital' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
               >
-                <UtensilsCrossed size={18} className={activeTab === 'cardapio-digital' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                <UtensilsCrossed size={18} strokeWidth={1.75} className={activeTab === 'cardapio-digital' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
                 Cardápio Digital
               </button>
               {hasPermission('gerenciar_produtos') && (
                 <button 
                   onClick={() => setActiveTab("gestao-cardapio")} 
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'gestao-cardapio' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'gestao-cardapio' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
                 >
-                  <Package size={18} className={activeTab === 'gestao-cardapio' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                  <Package size={18} strokeWidth={1.75} className={activeTab === 'gestao-cardapio' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
                   Produtos
                 </button>
               )}
               {hasPermission('gerenciar_categorias') && (
                 <button 
                   onClick={() => setActiveTab("categorias")} 
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'categorias' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'categorias' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
                 >
-                  <FolderTree size={18} className={activeTab === 'categorias' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                  <FolderTree size={18} strokeWidth={1.75} className={activeTab === 'categorias' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
                   Categorias
                 </button>
               )}
@@ -1054,18 +1053,18 @@ export default function AdminDashboard() {
               {hasPermission('gerenciar_configuracoes') && (
                 <button 
                   onClick={() => setActiveTab("configuracoes")} 
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'configuracoes' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'configuracoes' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
                 >
-                  <Settings size={18} className={activeTab === 'configuracoes' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                  <Settings size={18} strokeWidth={1.75} className={activeTab === 'configuracoes' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
                   Configurações
                 </button>
               )}
               {hasPermission('gerenciar_usuarios') && (
                 <button 
                   onClick={() => setActiveTab("usuarios")} 
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'usuarios' ? 'bg-[#000000] text-[#FFDE59] shadow-md border-l-4 border-[#FFDE59]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'usuarios' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
                 >
-                  <Shield size={18} className={activeTab === 'usuarios' ? 'text-[#FFDE59]' : 'text-gray-400'} />
+                  <Shield size={18} strokeWidth={1.75} className={activeTab === 'usuarios' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
                   Usuários & Permissões
                 </button>
               )}
