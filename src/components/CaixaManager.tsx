@@ -82,11 +82,131 @@ export default function CaixaManager() {
       difference: difference
     }).eq('id', session.id);
     if (!error) {
-      setClosedResult({ expected, counted, difference });
+      // Buscar dados detalhados para o relatório impresso/visual
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('*')
+        .gte('created_at', session.opened_at);
+
+      const itemsSummary: Record<string, { qty: number; total: number }> = {};
+      const paySummary: Record<string, number> = {};
+      let totalVendas = 0;
+      let entregaCount = 0;
+      let retiradaCount = 0;
+
+      (orders || []).forEach((o: any) => {
+        totalVendas += Number(o.total_amount || 0);
+        const pm = o.payment_method || 'Outro';
+        paySummary[pm] = (paySummary[pm] || 0) + Number(o.total_amount || 0);
+
+        if (o.order_type === 'retirada' || o.order_type === 'Takeaway') {
+          retiradaCount++;
+        } else {
+          entregaCount++;
+        }
+
+        let rawItems = o.items;
+        if (typeof rawItems === 'string') {
+          try { rawItems = JSON.parse(rawItems); } catch(e) { rawItems = []; }
+        }
+        if (Array.isArray(rawItems)) {
+          rawItems.forEach((it: any) => {
+            const name = it.name || 'Item';
+            const qty = Number(it.quantity || 1);
+            const price = Number(it.priceCalculated || it.price || 0) * qty;
+            if (!itemsSummary[name]) itemsSummary[name] = { qty: 0, total: 0 };
+            itemsSummary[name].qty += qty;
+            itemsSummary[name].total += price;
+          });
+        }
+      });
+
+      const reportData = {
+        openedAt: session.opened_at,
+        closedAt: new Date().toISOString(),
+        openingAmount: session.opening_amount,
+        expected,
+        counted,
+        difference,
+        ordersCount: (orders || []).length,
+        totalVendas,
+        paySummary,
+        itemsSummary,
+        entregaCount,
+        retiradaCount
+      };
+
+      setClosedResult(reportData);
       setSession(null);
       setClosingAmount('');
       loadHistory();
     }
+  };
+
+  const handlePrintReport = (report: any) => {
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) return;
+
+    const itemsRows = Object.entries(report.itemsSummary || {})
+      .map(([name, val]: any) => `<tr><td style="padding:2px 0;">${val.qty}x ${name}</td><td style="text-align:right;padding:2px 0;">€ ${val.total.toFixed(2)}</td></tr>`)
+      .join('');
+
+    const payRows = Object.entries(report.paySummary || {})
+      .map(([pm, val]: any) => `<div style="display:flex;justify-between:space-between;margin-bottom:2px;"><span>${pm}:</span><span>€ ${val.toFixed(2)}</span></div>`)
+      .join('');
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Relatório de Fechamento de Caixa</title>
+          <style>
+            body { font-family: monospace; font-size: 13px; width: 280px; margin: 0 auto; padding: 10px; color: #000; }
+            h2 { text-align: center; margin: 0 0 5px 0; font-size: 16px; font-weight: bold; }
+            p { margin: 2px 0; }
+            .line { border-bottom: 1px dashed #000; margin: 8px 0; }
+            .row { display: flex; justify-content: space-between; }
+            .bold { font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <h2>41 MENU'S</h2>
+          <p style="text-align:center;font-weight:bold;">RELATÓRIO DE FECHAMENTO DE CAIXA</p>
+          <div class="line"></div>
+          <p><b>Abertura:</b> ${new Date(report.openedAt).toLocaleString('pt-PT')}</p>
+          <p><b>Fechamento:</b> ${new Date(report.closedAt).toLocaleString('pt-PT')}</p>
+          <div class="line"></div>
+          
+          <div class="row"><span>Fundo Inicial:</span><span class="bold">€ ${Number(report.openingAmount).toFixed(2)}</span></div>
+          <div class="row"><span>Total Pedidos:</span><span class="bold">${report.ordersCount} (${report.entregaCount} Entregas / ${report.retiradaCount} Retiradas)</span></div>
+          <div class="row"><span>Total Vendas:</span><span class="bold">€ ${Number(report.totalVendas).toFixed(2)}</span></div>
+          
+          <div class="line"></div>
+          <p class="bold">FORMAS DE PAGAMENTO:</p>
+          ${payRows}
+          
+          <div class="line"></div>
+          <div class="row"><span>Esperado em Dinheiro:</span><span class="bold">€ ${Number(report.expected).toFixed(2)}</span></div>
+          <div class="row"><span>Informado no Caixa:</span><span class="bold">€ ${Number(report.counted).toFixed(2)}</span></div>
+          <div class="row"><span>Diferença:</span><span class="bold">${Number(report.difference) >= 0 ? '+' : ''}€ ${Number(report.difference).toFixed(2)}</span></div>
+          
+          ${itemsRows ? `
+            <div class="line"></div>
+            <p class="bold">PRODUTOS VENDIDOS NO TURNO:</p>
+            <table>
+              ${itemsRows}
+            </table>
+          ` : ''}
+          
+          <div class="line"></div>
+          <p style="text-align:center;margin-top:15px;">--- FIM DO RELATÓRIO ---</p>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   if (loading) return <div className="p-8 text-center text-[#78716C] font-medium">Carregando dados do caixa...</div>;
@@ -132,9 +252,24 @@ export default function CaixaManager() {
             </div>
 
             {closedResult && (
-              <div className="bg-[#FAFAF9] border border-[#E7E5E1] rounded-xl p-6 space-y-3">
-                <h4 className="font-bold text-[#1C1917] text-xs uppercase tracking-wide">Resumo do Último Fechamento:</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+              <div className="bg-[#FAFAF9] border border-[#E7E5E1] rounded-xl p-6 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h4 className="font-extrabold text-[#1C1917] text-sm uppercase tracking-wide flex items-center gap-2">
+                    📊 Relatório Resumido do Fechamento de Caixa
+                  </h4>
+                  <button
+                    onClick={() => handlePrintReport(closedResult)}
+                    className="px-4 py-2 bg-[#1C1917] hover:bg-black text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-sm"
+                  >
+                    🖨️ Imprimir Talão do Fechamento
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
+                  <div className="bg-white p-3 rounded-lg border border-[#E7E5E1]">
+                    <span className="text-xs text-[#A8A29E] font-semibold uppercase tracking-wide block">Fundo Inicial</span>
+                    <span className="font-bold font-mono tabular-nums text-[#1C1917]">€{Number(closedResult.openingAmount || 0).toFixed(2)}</span>
+                  </div>
                   <div className="bg-white p-3 rounded-lg border border-[#E7E5E1]">
                     <span className="text-xs text-[#A8A29E] font-semibold uppercase tracking-wide block">Total Esperado</span>
                     <span className="font-bold font-mono tabular-nums text-[#1C1917]">€{Number(closedResult.expected).toFixed(2)}</span>
@@ -150,6 +285,20 @@ export default function CaixaManager() {
                     </span>
                   </div>
                 </div>
+
+                {closedResult.paySummary && (
+                  <div className="bg-white p-4 rounded-lg border border-[#E7E5E1] space-y-2">
+                    <span className="text-xs text-[#1C1917] font-bold uppercase tracking-wide block">Vendas por Forma de Pagamento</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      {Object.entries(closedResult.paySummary).map(([pm, val]: any) => (
+                        <div key={pm} className="bg-[#FAFAF9] p-2 rounded border border-[#E7E5E1]">
+                          <span className="text-gray-500 font-medium block">{pm}</span>
+                          <span className="font-bold text-gray-900 font-mono">€ {val.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -179,7 +328,7 @@ export default function CaixaManager() {
                 />
                 <button
                   onClick={handleClose}
-                  className="bg-[#1C1917] hover:bg-black text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm"
+                  className="bg-[#1C1917] hover:bg-black text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm cursor-pointer"
                 >
                   <Lock className="w-4 h-4" />
                   Fechar Caixa
@@ -222,13 +371,14 @@ export default function CaixaManager() {
                 <th className="py-3 px-4">Inicial</th>
                 <th className="py-3 px-4">Esperado</th>
                 <th className="py-3 px-4">Contado</th>
-                <th className="py-3 px-4 rounded-tr-lg">Diferença</th>
+                <th className="py-3 px-4">Diferença</th>
+                <th className="py-3 px-4 text-right rounded-tr-lg">Ação</th>
               </tr>
             </thead>
             <tbody className="text-sm">
               {history.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-[#78716C]">
+                  <td colSpan={7} className="py-6 text-center text-[#78716C]">
                     Nenhum fechamento registrado até o momento.
                   </td>
                 </tr>
@@ -246,6 +396,54 @@ export default function CaixaManager() {
                     <td className="py-3.5 px-4 font-mono tabular-nums text-[#1C1917]">€{Number(h.closing_counted_amount || 0).toFixed(2)}</td>
                     <td className={`py-3.5 px-4 font-mono tabular-nums font-bold ${Number(h.difference || 0) >= 0 ? 'text-[#15803D]' : 'text-[#B91C1C]'}`}>
                       {Number(h.difference || 0) >= 0 ? '+' : ''}€{Number(h.difference || 0).toFixed(2)}
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      <button
+                        onClick={async () => {
+                          const { data: orders } = await supabase.from('orders').select('*').gte('created_at', h.opened_at).lte('created_at', h.closed_at || new Date().toISOString());
+                          const itemsSummary: Record<string, { qty: number; total: number }> = {};
+                          const paySummary: Record<string, number> = {};
+                          let totalVendas = 0;
+                          let entregaCount = 0;
+                          let retiradaCount = 0;
+                          (orders || []).forEach((o: any) => {
+                            totalVendas += Number(o.total_amount || 0);
+                            const pm = o.payment_method || 'Outro';
+                            paySummary[pm] = (paySummary[pm] || 0) + Number(o.total_amount || 0);
+                            if (o.order_type === 'retirada' || o.order_type === 'Takeaway') retiradaCount++;
+                            else entregaCount++;
+                            let rawItems = o.items;
+                            if (typeof rawItems === 'string') { try { rawItems = JSON.parse(rawItems); } catch(e) { rawItems = []; } }
+                            if (Array.isArray(rawItems)) {
+                              rawItems.forEach((it: any) => {
+                                const name = it.name || 'Item';
+                                const qty = Number(it.quantity || 1);
+                                const price = Number(it.priceCalculated || it.price || 0) * qty;
+                                if (!itemsSummary[name]) itemsSummary[name] = { qty: 0, total: 0 };
+                                itemsSummary[name].qty += qty;
+                                itemsSummary[name].total += price;
+                              });
+                            }
+                          });
+                          handlePrintReport({
+                            openedAt: h.opened_at,
+                            closedAt: h.closed_at,
+                            openingAmount: h.opening_amount,
+                            expected: h.expected_amount,
+                            counted: h.closing_counted_amount,
+                            difference: h.difference,
+                            ordersCount: (orders || []).length,
+                            totalVendas,
+                            paySummary,
+                            itemsSummary,
+                            entregaCount,
+                            retiradaCount
+                          });
+                        }}
+                        className="text-xs font-bold text-[#1C1917] hover:underline"
+                      >
+                        🖨️ Relatório
+                      </button>
                     </td>
                   </tr>
                 ))

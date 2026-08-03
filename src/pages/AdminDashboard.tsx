@@ -205,6 +205,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteOrder = async (orderId: any) => {
+    if (!window.confirm(`Tem certeza de que deseja APAGAR/EXCLUIR permanentemente o Pedido #${orderId}?`)) {
+      return;
+    }
+    try {
+      const { error } = await supabase.from('orders').delete().eq('id', orderId);
+      if (error) throw error;
+      fetchDashboardData(true);
+      alert(`Pedido #${orderId} excluído com sucesso!`);
+    } catch (err: any) {
+      console.error('Erro ao excluir pedido:', err);
+      alert('Erro ao excluir pedido: ' + err.message);
+    }
+  };
+
   const fetchDashboardData = async (isBackground = false) => {
     try {
       const filter = dateFilterRef.current || 'hoje';
@@ -1200,7 +1215,6 @@ export default function AdminDashboard() {
               soundEnabled={soundEnabled}
               onToggleSound={toggleSound}
               onTestSound={playNotificationSound}
-              onPurgeAllTestData={() => purgeAllTestData(true)}
             />
           </div>
         )}
@@ -1564,6 +1578,13 @@ export default function AdminDashboard() {
                               >
                                 <Printer size={16} />
                               </button>
+                              <button
+                                onClick={() => handleDeleteOrder(order.id)}
+                                className="p-2 text-red-600 hover:text-white bg-red-50 hover:bg-red-600 border border-red-200 rounded-lg transition-colors shadow-sm cursor-pointer"
+                                title="Excluir Pedido"
+                              >
+                                <Trash2 size={16} />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -1764,6 +1785,7 @@ export default function AdminDashboard() {
                             <th className="py-3 px-4 font-bold text-gray-700">Data</th>
                             <th className="py-3 px-4 font-bold text-gray-700">Cliente</th>
                             <th className="py-3 px-4 font-bold text-gray-700 text-right">Valor</th>
+                            <th className="py-3 px-4 font-bold text-gray-700 text-right">Ações</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1773,10 +1795,31 @@ export default function AdminDashboard() {
                               <td className="py-3 px-4 text-gray-600">{new Date(o.createdAt).toLocaleString('pt-PT')}</td>
                               <td className="py-3 px-4 text-gray-600">{o.customerName}</td>
                               <td className="py-3 px-4 text-right font-bold text-emerald-700">€ {o.totalAmount.toFixed(2)}</td>
+                              <td className="py-3 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={() => {
+                                      setReportModal({isOpen: false, type: '', title: ''});
+                                      setEditingOrder(o);
+                                    }}
+                                    className="p-1.5 text-amber-700 hover:text-white bg-amber-50 hover:bg-amber-600 border border-amber-200 rounded-md transition-colors cursor-pointer"
+                                    title="Editar Pedido"
+                                  >
+                                    <Edit3 size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteOrder(o.id)}
+                                    className="p-1.5 text-red-600 hover:text-white bg-red-50 hover:bg-red-600 border border-red-200 rounded-md transition-colors cursor-pointer"
+                                    title="Excluir Pedido"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
                             </tr>
                           ))}
                           {filteredOrders.length === 0 && (
-                            <tr><td colSpan={4} className="py-6 text-center text-gray-500">Nenhum pedido encontrado</td></tr>
+                            <tr><td colSpan={5} className="py-6 text-center text-gray-500">Nenhum pedido encontrado</td></tr>
                           )}
                         </tbody>
                       </table>

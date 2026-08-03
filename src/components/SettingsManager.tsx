@@ -11,7 +11,6 @@ interface SettingsManagerProps {
   soundEnabled?: boolean;
   onToggleSound?: () => void;
   onTestSound?: () => void;
-  onPurgeAllTestData?: () => void;
 }
 
 export default function SettingsManager({ 
@@ -22,8 +21,7 @@ export default function SettingsManager({
   onChangePassword,
   soundEnabled = true,
   onToggleSound,
-  onTestSound,
-  onPurgeAllTestData
+  onTestSound
 }: SettingsManagerProps) {
   const [feedback, setFeedback] = useState("");
   const [promoConfig, setPromoConfig] = useState({
@@ -149,14 +147,16 @@ export default function SettingsManager({
 
   const [deliveryTime, setDeliveryTime] = useState('40 a 50 min');
   const [pickupTime, setPickupTime] = useState('25 a 35 min');
+  const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState('20');
   const [timesFeedback, setTimesFeedback] = useState('');
 
   useEffect(() => {
     async function loadTimes() {
-      const { data } = await supabase.from('settings').select('key, value').in('key', ['delivery_time_estimate', 'pickup_time_estimate']);
+      const { data } = await supabase.from('settings').select('key, value').in('key', ['delivery_time_estimate', 'pickup_time_estimate', 'free_delivery_threshold']);
       data?.forEach((row: any) => {
         if (row.key === 'delivery_time_estimate') setDeliveryTime(row.value);
         if (row.key === 'pickup_time_estimate') setPickupTime(row.value);
+        if (row.key === 'free_delivery_threshold') setFreeDeliveryThreshold(String(row.value));
       });
     }
     loadTimes();
@@ -166,8 +166,9 @@ export default function SettingsManager({
     await supabase.from('settings').upsert([
       { key: 'delivery_time_estimate', value: deliveryTime, updated_at: new Date().toISOString() },
       { key: 'pickup_time_estimate', value: pickupTime, updated_at: new Date().toISOString() },
+      { key: 'free_delivery_threshold', value: Number(freeDeliveryThreshold) || 0, updated_at: new Date().toISOString() },
     ]);
-    setTimesFeedback('Tempos salvos com sucesso!');
+    setTimesFeedback('Configurações de entrega salvas com sucesso!');
     setTimeout(() => setTimesFeedback(''), 3000);
   };
 
@@ -350,11 +351,22 @@ export default function SettingsManager({
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-gray-900">Tempos de Entrega e Retirada</h2>
-          <p className="text-sm text-gray-500">Texto mostrado no carrinho e na mensagem enviada ao WhatsApp.</p>
+          <h2 className="text-xl font-bold text-gray-900">Configurações de Entrega & Prazos</h2>
+          <p className="text-sm text-gray-500">Ajuste o valor mínimo para entrega grátis e os tempos estimados mostrados no cardápio digital.</p>
         </div>
         {timesFeedback && <div className="mb-4 p-3 bg-blue-50 text-blue-800 rounded-lg text-sm">{timesFeedback}</div>}
         <div className="space-y-3 max-w-md">
+          <div>
+            <label className="text-sm font-bold text-gray-700 block">Valor mínimo do pedido para Entrega Grátis (€)</label>
+            <p className="text-xs text-gray-500 mb-1">Pedidos com valor igual ou superior a este ganham taxa de entrega grátis no carrinho.</p>
+            <input 
+              type="number" 
+              step="0.50" 
+              value={freeDeliveryThreshold} 
+              onChange={e => setFreeDeliveryThreshold(e.target.value)} 
+              className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold font-mono" 
+            />
+          </div>
           <div>
             <label className="text-sm font-medium text-gray-700">Tempo estimado de entrega</label>
             <input type="text" value={deliveryTime} onChange={e => setDeliveryTime(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm mt-1" />
@@ -363,8 +375,8 @@ export default function SettingsManager({
             <label className="text-sm font-medium text-gray-700">Tempo estimado de retirada</label>
             <input type="text" value={pickupTime} onChange={e => setPickupTime(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm mt-1" />
           </div>
-          <button onClick={handleSaveTimes} className="px-6 py-3 bg-[#ea1d2c] text-white rounded-xl font-medium hover:bg-[#c91825] transition-colors flex items-center gap-2">
-            <Save size={18} /> Salvar Tempos
+          <button onClick={handleSaveTimes} className="px-6 py-3 bg-[#ea1d2c] text-white rounded-xl font-medium hover:bg-[#c91825] transition-colors flex items-center gap-2 cursor-pointer shadow-sm">
+            <Save size={18} /> Salvar Configurações
           </button>
         </div>
       </div>
@@ -487,29 +499,7 @@ export default function SettingsManager({
         </div>
       </div>
 
-      {onPurgeAllTestData && (
-        <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-6">
-          <div className="mb-4">
-            <h2 className="text-xl font-bold text-red-600 flex items-center gap-2">
-              🧹 Zerar Todos os Dados de Vendas e Caixa (Limpeza de Testes)
-            </h2>
-            <p className="text-sm text-gray-500">
-              Apaga permanentemente todos os pedidos, sessões de caixa e histórico de clientes de teste para entregar o sistema totalmente zerado ao seu cliente.
-            </p>
-          </div>
-          <button 
-            type="button"
-            onClick={() => {
-              if (window.confirm("Tem certeza que deseja ZERAR TODOS os pedidos, caixa e clientes de teste? Essa ação não pode ser desfeita.")) {
-                onPurgeAllTestData();
-              }
-            }} 
-            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-colors inline-flex items-center gap-2 cursor-pointer shadow-sm"
-          >
-            🧹 Zerar Todos os Dados de Teste
-          </button>
-        </div>
-      )}
+      {/* Fim das configurações */}
     </div>
   );
 }
