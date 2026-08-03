@@ -422,6 +422,44 @@ export default function AdminDashboard() {
 
   
   
+  const purgeAllTestData = async (showAlert = false) => {
+    try {
+      await supabase.from('orders').delete().neq('id', 0);
+      await supabase.from('orders').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('cash_sessions').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('customers').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+      ['mock_db_orders', 'mock_db_cash_sessions', 'mock_db_customers', 'mock_db_caixa', 'orders', 'cash_sessions', 'customers'].forEach(k => {
+        localStorage.removeItem(k);
+      });
+
+      setAllOrders([]);
+      setDashboardData({
+        faturamentoGeral: 0,
+        faturamentoMes: 0,
+        faturamentoSeteDias: 0,
+        pedidosConcluidos: 0,
+        ticketMedio: 0,
+        cancelamentosCount: 0,
+        cancelamentosValor: 0,
+        vendasHojeCount: 0,
+        vendasHojeTotal: 0,
+        produtosPopulares: [],
+        vendasComplementos: [],
+        vendasFormasPagamento: [],
+        pedidosHoje: []
+      });
+
+      await fetchDashboardData(true);
+      if (showAlert) {
+        alert('Todos os dados de vendas, caixa, relatórios e clientes de teste foram zerados com sucesso!');
+      }
+    } catch (err: any) {
+      console.error('Erro ao zerar dados:', err);
+      if (showAlert) alert('Erro ao zerar dados: ' + (err.message || String(err)));
+    }
+  };
+
   useEffect(() => {
     const fetchRole = async (userId: string) => {
       const { data } = await supabase.from('profiles').select('role, permissions').eq('id', userId).maybeSingle();
@@ -432,6 +470,11 @@ export default function AdminDashboard() {
         setUserPermissions({});
       }
     };
+
+    if (!localStorage.getItem('has_purged_test_data_v5')) {
+      purgeAllTestData(false);
+      localStorage.setItem('has_purged_test_data_v5', 'true');
+    }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -1157,6 +1200,7 @@ export default function AdminDashboard() {
               soundEnabled={soundEnabled}
               onToggleSound={toggleSound}
               onTestSound={playNotificationSound}
+              onPurgeAllTestData={() => purgeAllTestData(true)}
             />
           </div>
         )}

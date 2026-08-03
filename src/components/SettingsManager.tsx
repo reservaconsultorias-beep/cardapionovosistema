@@ -11,6 +11,7 @@ interface SettingsManagerProps {
   soundEnabled?: boolean;
   onToggleSound?: () => void;
   onTestSound?: () => void;
+  onPurgeAllTestData?: () => void;
 }
 
 export default function SettingsManager({ 
@@ -21,7 +22,8 @@ export default function SettingsManager({
   onChangePassword,
   soundEnabled = true,
   onToggleSound,
-  onTestSound
+  onTestSound,
+  onPurgeAllTestData
 }: SettingsManagerProps) {
   const [feedback, setFeedback] = useState("");
   const [promoConfig, setPromoConfig] = useState({
@@ -484,6 +486,30 @@ export default function SettingsManager({
           {uploadingAdminLogo && <p className="text-sm text-gray-500">Enviando...</p>}
         </div>
       </div>
+
+      {onPurgeAllTestData && (
+        <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-6">
+          <div className="mb-4">
+            <h2 className="text-xl font-bold text-red-600 flex items-center gap-2">
+              🧹 Zerar Todos os Dados de Vendas e Caixa (Limpeza de Testes)
+            </h2>
+            <p className="text-sm text-gray-500">
+              Apaga permanentemente todos os pedidos, sessões de caixa e histórico de clientes de teste para entregar o sistema totalmente zerado ao seu cliente.
+            </p>
+          </div>
+          <button 
+            type="button"
+            onClick={() => {
+              if (window.confirm("Tem certeza que deseja ZERAR TODOS os pedidos, caixa e clientes de teste? Essa ação não pode ser desfeita.")) {
+                onPurgeAllTestData();
+              }
+            }} 
+            className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl transition-colors inline-flex items-center gap-2 cursor-pointer shadow-sm"
+          >
+            🧹 Zerar Todos os Dados de Teste
+          </button>
+        </div>
+      )}
     </div>
   );
 }
