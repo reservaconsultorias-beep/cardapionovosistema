@@ -70,8 +70,11 @@ export default function UsersManager() {
         }
       );
       const result = await response.json();
-      if (result.error) {
-        setFeedback("Erro: " + result.error);
+      if (!response.ok || result.error) {
+        const errorMsg = typeof result.error === 'string'
+          ? result.error
+          : (result.error?.message || result.message || JSON.stringify(result.error || result));
+        setFeedback("Erro: " + errorMsg);
       } else {
         setFeedback("Usuário criado com sucesso!");
         setNewUsername("");
@@ -106,9 +109,13 @@ export default function UsersManager() {
         }
       );
       const result = await response.json();
-      if (result.error) {
-        alert("Erro: " + result.error);
+      if (!response.ok || result.error) {
+        const errorMsg = typeof result.error === 'string'
+          ? result.error
+          : (result.error?.message || result.message || JSON.stringify(result.error || result));
+        alert("Erro: " + errorMsg);
       } else {
+        await supabase.from('profiles').delete().eq('id', profileId);
         fetchProfiles();
       }
     } catch (err: any) {

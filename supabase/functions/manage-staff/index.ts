@@ -54,11 +54,15 @@ export default {
         return new Response(JSON.stringify({ error: 'ID não informado.' }), { status: 400 });
       }
       if (userId === ctx.userClaims!.id) {
-        return new Response(JSON.stringify({ error: 'Você não pode remover o seu próprio acesso.' }), { status: 400 });
+        return new Response(JSON.stringify({ error: 'Você não pode remover o seu próprio usuário enquanto estiver logado nele. Faça login com o novo usuário antes de excluir este.' }), { status: 400 });
       }
+      
+      // Delete from profiles first to avoid foreign key constraints
+      await ctx.supabaseAdmin.from('profiles').delete().eq('id', userId);
+
       const { error: deleteError } = await ctx.supabaseAdmin.auth.admin.deleteUser(userId);
       if (deleteError) {
-        return new Response(JSON.stringify({ error: deleteError.message }), { status: 400 });
+        return new Response(JSON.stringify({ error: deleteError.message || String(deleteError) }), { status: 400 });
       }
       return new Response(JSON.stringify({ success: true }));
     }
