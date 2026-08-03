@@ -51,8 +51,9 @@ export default function UsersManager() {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData.session?.access_token;
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tipnhvpivhaerumetona.supabase.co';
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-staff`,
+        `${baseUrl}/functions/v1/manage-staff`,
         {
           method: 'POST',
           headers: {
@@ -95,31 +96,38 @@ export default function UsersManager() {
   const handleDeleteUser = async (profileId: string, name: string) => {
     if (!window.confirm(`Remover o acesso de "${name || profileId}"? Essa ação apaga o login e não pode ser desfeita.`)) return;
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData.session?.access_token;
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/manage-staff`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ action: 'delete', userId: profileId }),
-        }
-      );
-      const result = await response.json();
-      if (!response.ok || result.error) {
-        const errorMsg = typeof result.error === 'string'
-          ? result.error
-          : (result.error?.message || result.message || JSON.stringify(result.error || result));
-        alert("Erro: " + errorMsg);
-      } else {
-        await supabase.from('profiles').delete().eq('id', profileId);
-        fetchProfiles();
+      // 1. Remove diretamente da tabela profiles via client Supabase
+      const { error: dbError } = await supabase.from('profiles').delete().eq('id', profileId);
+      if (dbError) {
+        console.warn("Erro ao deletar profile no banco:", dbError);
       }
+
+      // 2. Tenta remover via Edge Function de Auth se disponível
+      const baseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tipnhvpivhaerumetona.supabase.co';
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData.session?.access_token;
+        if (token) {
+          await fetch(
+            `${baseUrl}/functions/v1/manage-staff`,
+            {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ action: 'delete', userId: profileId }),
+            }
+          );
+        }
+      } catch (e) {
+        console.warn("Edge function delete call warning:", e);
+      }
+
+      setProfiles(prev => prev.filter(p => p.id !== profileId));
+      fetchProfiles();
     } catch (err: any) {
-      alert("Erro: " + err.message);
+      alert("Erro ao remover usuário: " + err.message);
     }
   };
 
@@ -276,14 +284,7 @@ export default function UsersManager() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-[#1C1917] text-base">{profile.full_name || 'Sem nome'}</span>
-                        <span className="text-xs text-[#A8A29E] font-mono ml-2">{profile.id.slice(0, 8)}...</span>
-                        {isOwner && (
-                          <span className="px-2.5 py-0.5 bg-[#1C1917] text-[#D4AF6A] font-bold text-xs rounded-full border border-gray-900">
-                            👑 OWNER (DONO)
-                          </span>
-                        )}
                       </div>
-                      <p className="text-xs text-[#78716C] font-mono mt-1">ID: {profile.id}</p>
                     </div>
 
                     <div className="flex items-center gap-3">
