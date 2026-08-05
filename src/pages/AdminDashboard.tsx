@@ -234,6 +234,8 @@ export default function AdminDashboard() {
         status: o.status || 'Pendente',
         totalAmount: Number(o.total_amount) || 0,
         items: o.items,
+        isEdited: o.is_edited,
+        updatedAt: o.updated_at,
         createdAt: o.created_at
       }));
       setAllOrders(allDbOrders);
