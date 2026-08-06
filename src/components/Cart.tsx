@@ -54,6 +54,7 @@ export default function Cart({
   const [telefone, setTelefone] = useState("");
   const [morada, setMorada] = useState("");
   const [zona, setZona] = useState("");
+  const [nif, setNif] = useState("");
   const [orderType, setOrderType] = useState("Delivery");
   const [pagamento, setPagamento] = useState("MB Way");
   const [trocoPara, setTrocoPara] = useState("");
@@ -190,6 +191,7 @@ export default function Cart({
         delivery_address: orderType === 'Delivery' ? morada : null,
         delivery_zone: orderType === 'Delivery' ? zona : null,
         change_for: pagamento === 'Numerário' ? trocoPara : null,
+        nif: nif.trim() ? nif : null,
         items: items.map(item => {
           let itemName = item.menuItem.name;
           if (item.isHalfAndHalf && item.halfAndHalfFlavor) {
@@ -258,7 +260,11 @@ export default function Cart({
 
     text += `[CLIENTE]\n`;
     text += `Nome: ${name}\n`;
-    text += `Telefone: ${telefone}\n\n`;
+    text += `Telefone: ${telefone}\n`;
+    if (nif.trim()) {
+      text += `NIF: ${nif}\n`;
+    }
+    text += `\n`;
 
     if (orderType === "Delivery") {
       text += `[ENDEREÇO DE ENTREGA]\n`;
@@ -543,100 +549,126 @@ export default function Cart({
               )}
             </div>
 
-            <div className="space-y-3 mb-5 mt-2">
-              <div className="flex gap-2">
+            <div className="mb-5 mt-2">
+              <h3 className="font-black text-gray-800 text-lg mb-3 border-b pb-2">📋 Dados do Pedido</h3>
+              <div className="flex gap-2 mb-4">
                 <button
                   onClick={() => setOrderType("Delivery")}
-                  className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors border ${orderType === "Delivery" ? "bg-[#8b0000] text-white border-[#8b0000]" : "bg-gray-50 text-gray-600 border-gray-200"}`}
+                  className={`flex-1 py-3 rounded-lg font-bold text-sm transition-colors border-2 flex items-center justify-center gap-2 ${orderType === "Delivery" ? "bg-[#8b0000] text-white border-[#8b0000]" : "bg-gray-50 text-gray-600 border-gray-200"}`}
                 >
+                  <DeliveryScooter />
                   Entrega
                 </button>
                 <button
                   onClick={() => setOrderType("Takeaway")}
-                  className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors border ${orderType === "Takeaway" ? "bg-[#8b0000] text-white border-[#8b0000]" : "bg-gray-50 text-gray-600 border-gray-200"}`}
+                  className={`flex-1 py-3 rounded-lg font-bold text-sm transition-colors border-2 flex items-center justify-center gap-2 ${orderType === "Takeaway" ? "bg-[#8b0000] text-white border-[#8b0000]" : "bg-gray-50 text-gray-600 border-gray-200"}`}
                 >
+                  <MapPin className="w-5 h-5" />
                   Retirada
                 </button>
               </div>
 
-              <div className="text-center text-sm font-medium text-[#8b0000] bg-[#8b0000]/10 py-2.5 rounded-lg border border-[#8b0000]/20">
+              <div className="text-center text-sm font-medium text-[#8b0000] bg-[#8b0000]/10 py-2.5 rounded-lg border border-[#8b0000]/20 mb-4">
                 {orderType === "Takeaway"
                   ? `⏱️ Tempo estimado de preparação: ${pickupTimeEstimate}`
                   : `🛵 Tempo estimado de entrega: ${deliveryTimeEstimate}`}
               </div>
-              <input
-                type="text"
-                placeholder="Nome para o pedido"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000]"
-              />
-              <input
-                type="tel"
-                placeholder="Telemóvel"
-                value={telefone}
-                onChange={(e) => setTelefone(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000]"
-              />
-              {orderType === "Delivery" && (
-                <>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><span className="text-lg">👤</span> Nome</label>
                   <input
                     type="text"
-                    placeholder="Morada completa"
-                    value={morada}
-                    onChange={(e) => setMorada(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000]"
-                  />
-                  <select
-                    value={zona}
-                    onChange={(e) => setZona(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] bg-white"
-                  >
-                    <option value="" disabled>
-                      Selecione a Zona / Freguesia
-                    </option>
-                    {Object.keys(zonesFees).map((z) => (
-                      <option key={z} value={z}>
-                        {z} (
-                        {zonesFees[z] === 0
-                          ? "GANHE"
-                          : `€${zonesFees[z].toFixed(2)}`}
-                        )
-                      </option>
-                    ))}
-                    <option value="disabled" disabled>
-                      Brejos de Azeitão (Não atendemos)
-                    </option>
-                    <option value="disabled-vendas" disabled>
-                      Vendas de Azeitão (Não atendemos)
-                    </option>
-                  </select>
-                </>
-              )}
-              <select
-                value={pagamento}
-                onChange={(e) => setPagamento(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000] bg-white"
-              >
-                <option value="MB Way">📱 MB Way</option>
-                <option value="Numerário">💵 Numerário</option>
-              </select>
-              {pagamento === "Numerário" && (
-                <div className="mt-3">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Troco para quanto? (opcional)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="Ex: 50"
-                    value={trocoPara}
-                    onChange={(e) => setTrocoPara(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-1 focus:ring-[#8b0000]"
+                    placeholder="Nome para o pedido"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000]"
                   />
                 </div>
-              )}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><span className="text-lg">📞</span> Telemóvel</label>
+                  <input
+                    type="tel"
+                    placeholder="Telemóvel"
+                    value={telefone}
+                    onChange={(e) => setTelefone(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><span className="text-lg">📄</span> NIF</label>
+                  <input
+                    type="text"
+                    placeholder="NIF (Opcional)"
+                    value={nif}
+                    onChange={(e) => setNif(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000]"
+                  />
+                </div>
+
+                {orderType === "Delivery" && (
+                  <div className="mt-4 p-4 rounded-xl border-2 border-[#8b0000] bg-[#8b0000]/5 space-y-3">
+                    <h4 className="font-bold text-[#8b0000] mb-2 flex items-center gap-2">
+                      <DeliveryScooter /> Endereço de Entrega
+                    </h4>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><span className="text-lg">📍</span> Morada Completa</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Rua Direita, 123"
+                        value={morada}
+                        onChange={(e) => setMorada(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><span className="text-lg">🗺️</span> Zona / Freguesia</label>
+                      <select
+                        value={zona}
+                        onChange={(e) => setZona(e.target.value)}
+                        className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000] bg-white"
+                      >
+                        <option value="" disabled>Selecione a Zona / Freguesia</option>
+                        {Object.keys(zonesFees).map((z) => (
+                          <option key={z} value={z}>
+                            {z} ({zonesFees[z] === 0 ? "GANHE" : `€${zonesFees[z].toFixed(2)}`})
+                          </option>
+                        ))}
+                        <option value="disabled" disabled>Brejos de Azeitão (Não atendemos)</option>
+                        <option value="disabled-vendas" disabled>Vendas de Azeitão (Não atendemos)</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-5">
+                <h3 className="font-black text-gray-800 text-lg mb-3 border-b pb-2 flex items-center gap-2">💳 Forma de Pagamento</h3>
+                <select
+                  value={pagamento}
+                  onChange={(e) => setPagamento(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg p-3 text-sm font-medium focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000] bg-white"
+                >
+                  <option value="MB Way">📱 MB Way</option>
+                  <option value="Numerário">💵 Numerário</option>
+                </select>
+                {pagamento === "Numerário" && (
+                  <div className="mt-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                    <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1">
+                      <span>💰</span> Troco para quanto? (opcional)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Ex: 50"
+                      value={trocoPara}
+                      onChange={(e) => setTrocoPara(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000]"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* UPSELL SECTION */}

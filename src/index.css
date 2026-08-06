@@ -38,24 +38,36 @@ body {
     print-color-adjust: exact;
   }
 
+  /* Esconde tudo na impressão: UI do admin, modal de preview, botões */
   .no-print {
     display: none !important;
   }
 
+  /* Mostra o recibo hidden (print-only) na impressão */
   .print-only {
     display: block !important;
-    width: 72mm; /* Deixa margem de segurança para não cortar na Epson de 80mm */
+    width: 72mm;
     margin: 0 auto;
     padding: 2mm 0;
     font-family: 'Courier New', Courier, monospace;
-    font-size: 14pt; /* Aumentado para melhorar a leitura */
+    font-size: 13pt;
+    line-height: 1.2;
+    color: #000;
+  }
+
+  /* Garante que o conteúdo do recibo (dentro do modal e do print-only) é impresso corretamente */
+  .print-receipt-content {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13pt;
     line-height: 1.2;
     color: #000;
   }
 }
 
 @media screen {
+  /* Esconde o recibo hidden na tela (só aparece na impressão) */
   .print-only {
     display: none !important;
   }
 }
+
