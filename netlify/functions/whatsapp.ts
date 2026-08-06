@@ -1,4 +1,3 @@
-import { Handler } from '@netlify/functions';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
@@ -6,33 +5,33 @@ const supabase = createClient(
   process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || ''
 );
 
-export const handler: Handler = async (event, context) => {
-  // CORS Básico
+export default async (req, context) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Authorization, Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS'
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json'
   };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+  if (req.method === 'OPTIONS') {
+    return new Response('', { status: 200, headers });
   }
 
-  if (event.httpMethod !== 'POST') {
-    return { statusCode: 405, headers, body: JSON.stringify({ success: false, message: 'Method Not Allowed' }) };
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ success: false, message: 'Method Not Allowed' }), { status: 405, headers });
   }
 
   // Validação de Segurança (Bearer Token)
-  const authHeader = event.headers.authorization || event.headers.Authorization;
-  const SECRET_TOKEN = process.env.WHATSAPP_API_TOKEN || 'SenhaSuperSecreta41Menus2026'; 
+  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+  const SECRET_TOKEN = process.env.WHATSAPP_API_TOKEN || 'SenhaSuperSecreta41Menus2026';
 
   if (!authHeader || authHeader !== `Bearer ${SECRET_TOKEN}`) {
-    return { statusCode: 401, headers, body: JSON.stringify({ success: false, message: 'Unauthorized. Invalid Token.' }) };
+    return new Response(JSON.stringify({ success: false, message: 'Unauthorized. Invalid Token.' }), { status: 401, headers });
   }
 
   try {
-    const payload = JSON.parse(event.body || '{}');
-    
+    const payload = await req.json();
+
     // Inserção Direta: Isolada do resto do sistema
     const { data, error } = await supabase.from('orders').insert([{
       customer_name: payload.customer_name,
@@ -41,15 +40,15 @@ export const handler: Handler = async (event, context) => {
       payment_method: payload.payment_method,
       status: 'Pendente',
       total_amount: payload.total_amount,
-      delivery_address: payload.delivery_address,
-      delivery_zone: payload.delivery_zone,
-      change_for: payload.change_for,
+      delivery_address: payload.delivery_address || null,
+      delivery_zone: payload.delivery_zone || null,
+      change_for: payload.change_for || null,
       notes: payload.notes || null,
       items: payload.items
     }]).select();
 
     if (error) throw error;
-    
+
     const newOrder = data?.[0];
 
     // Atualiza CRM
@@ -65,6 +64,7 @@ export const handler: Handler = async (event, context) => {
           name: payload.customer_name,
           total_orders: (existingCustomer.total_orders || 0) + 1,
           total_spent: (Number(existingCustomer.total_spent) || 0) + payload.total_amount,
+          last_order_at: new Date().toISOString(),
         }).eq('id', existingCustomer.id);
       } else {
         await supabase.from('customers').insert([{
@@ -72,18 +72,23 @@ export const handler: Handler = async (event, context) => {
           name: payload.customer_name,
           total_orders: 1,
           total_spent: payload.total_amount,
+          last_order_at: new Date().toISOString(),
         }]);
       }
     }
 
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ success: true, order_id: newOrder.id, tracking_code: newOrder.tracking_code })
-    };
+    return new Response(JSON.stringify({
+      success: true,
+      order_id: newOrder.id,
+      tracking_code: newOrder.tracking_code
+    }), { status: 200, headers });
 
-  } catch (error: any) {
+  } catch (error) {
     console.error('API Error:', error);
-    return { statusCode: 500, headers, body: JSON.stringify({ success: false, message: error.message }) };
+    return new Response(JSON.stringify({ success: false, message: error.message }), { status: 500, headers });
   }
+};
+
+export const config = {
+  path: '/.netlify/functions/whatsapp'
 };
