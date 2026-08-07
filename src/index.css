@@ -53,6 +53,7 @@ body {
     font-size: 13pt;
     line-height: 1.2;
     color: #000;
+    font-weight: 600; /* Letra normal mais grossa e visível */
   }
 
   /* Garante que o conteúdo do recibo (dentro do modal e do print-only) é impresso corretamente */
@@ -61,6 +62,13 @@ body {
     font-size: 13pt;
     line-height: 1.2;
     color: #000;
+    font-weight: 600; /* Letra normal mais grossa e visível */
+  }
+
+  /* Deixa o negrito o mais escuro e espesso possível para garantir contraste */
+  .print-only strong, .print-only b,
+  .print-receipt-content strong, .print-receipt-content b {
+    font-weight: 900 !important;
   }
 }
 
