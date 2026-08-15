@@ -494,10 +494,7 @@ export default function AdminDashboard() {
       }
     };
 
-    if (!localStorage.getItem('has_purged_test_data_v5')) {
-      purgeAllTestData(false);
-      localStorage.setItem('has_purged_test_data_v5', 'true');
-    }
+    // CÓDIGO DE PURGE AUTOMÁTICO REMOVIDO PARA EVITAR EXCLUSÃO DE DADOS DE PRODUÇÃO
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
