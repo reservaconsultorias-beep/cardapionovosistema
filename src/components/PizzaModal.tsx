@@ -142,7 +142,12 @@ export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initial
         </div>
         
         <div className="p-5 overflow-y-auto">
-           <p className="text-gray-500 text-sm mb-6 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">{item.ingredients}</p>
+           <p className="text-gray-500 text-sm mb-2 leading-relaxed bg-gray-50 p-3 rounded-lg border border-gray-100">{item.ingredients}</p>
+           <p className="text-[11px] text-gray-400 mb-1">Contém: Glúten, leite e derivados.</p>
+           {item.id.startsWith('p-') && (
+             <p className="text-[11px] text-gray-400 mb-6">Todas as pizzas são finalizadas com orégãos.</p>
+           )}
+           {!item.id.startsWith('p-') && <div className="mb-6" />}
            {(item.id === 'md-2-esfirra' || isMondayPromoPizza) && (
              <div className="mb-6">
                 <h4 className="font-bold mb-3 text-sm uppercase tracking-wide text-gray-800">Escolha a Versão da Coca-Cola:</h4>
@@ -373,7 +378,7 @@ export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initial
                      <span className="font-medium text-sm">Sem Borda</span>
                    </div>
                  </label>
-                 {menuBordas.map((borda) => {
+                 {menuBordas.filter(borda => !pausedItems?.includes(borda.id)).map((borda) => {
                    const isSelected = selectedBorda?.id === borda.id;
                    return (
                      <label key={borda.id} className={`flex items-center justify-between p-3 rounded-lg border-2 cursor-pointer transition-colors ${isSelected ? 'border-[#8b0000] bg-[#8b0000]/5' : 'border-gray-200 hover:border-gray-300'}`}>

@@ -840,6 +840,14 @@ export default function AdminDashboard() {
        group: [cat.id]
     }))
     : categoriesUI;
+
+    if (!currentCategoriesUI.find(cat => cat.id === 'bordas')) {
+      currentCategoriesUI.push({
+        id: "bordas",
+        label: "BORDAS 🧀",
+        group: ["bordas"]
+      } as any);
+    }
   const itemsByCategory: Record<string, any[]> = {};
   currentCategoriesUI.forEach(cat => {
     itemsByCategory[cat.id] = menuItems.filter(item => cat.group.includes(item.category));
