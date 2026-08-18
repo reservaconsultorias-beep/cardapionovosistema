@@ -205,7 +205,7 @@ export default function MenuManager() {
       )}
 
       {/* Category Filter */}
-      <div className="flex overflow-x-auto gap-2 pb-2 mb-6 hide-scrollbar">
+      <div className="flex overflow-x-auto gap-2 pb-4 mb-6">
         <button 
           onClick={() => setActiveCategory('all')}
           className={`px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === 'all' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-b-2 border-[#D4AF6A]' : 'bg-[#FAFAF9] text-[#78716C] border border-[#E7E5E1] hover:bg-gray-100'}`}

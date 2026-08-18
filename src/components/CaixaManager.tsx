@@ -10,6 +10,7 @@ export default function CaixaManager() {
   const [summary, setSummary] = useState({ numerario: 0, mbway: 0, total: 0, count: 0 });
   const [history, setHistory] = useState<any[]>([]);
   const [closedResult, setClosedResult] = useState<any>(null);
+  const [showCloseModal, setShowCloseModal] = useState(false);
 
   const loadSession = async () => {
     setLoading(true);
@@ -139,6 +140,7 @@ export default function CaixaManager() {
       setClosedResult(reportData);
       setSession(null);
       setClosingAmount('');
+      setShowCloseModal(false);
       loadHistory();
     }
   };
@@ -190,13 +192,7 @@ export default function CaixaManager() {
           <div class="row"><span>Informado no Caixa:</span><span class="bold">€ ${Number(report.counted).toFixed(2)}</span></div>
           <div class="row"><span>Diferença:</span><span class="bold">${Number(report.difference) >= 0 ? '+' : ''}€ ${Number(report.difference).toFixed(2)}</span></div>
           
-          ${itemsRows ? `
-            <div class="line"></div>
-            <p class="bold">PRODUTOS VENDIDOS NO TURNO:</p>
-            <table>
-              ${itemsRows}
-            </table>
-          ` : ''}
+
           
           <div class="line"></div>
           <p style="text-align:center;margin-top:15px;">--- FIM DO RELATÓRIO ---</p>
@@ -318,16 +314,8 @@ export default function CaixaManager() {
               </div>
 
               <div className="flex items-center gap-3 w-full md:w-auto">
-                <input
-                  type="number"
-                  step="0.01"
-                  value={closingAmount}
-                  onChange={(e) => setClosingAmount(e.target.value)}
-                  placeholder="Valor Contado (€)"
-                  className="px-4 py-2.5 bg-white border border-[#E7E5E1] rounded-lg text-sm font-mono tabular-nums focus:outline-none focus:border-[#C81E3A] focus:ring-1 focus:ring-[#C81E3A]/20 w-full md:w-40 font-bold"
-                />
                 <button
-                  onClick={handleClose}
+                  onClick={() => setShowCloseModal(true)}
                   className="bg-[#1C1917] hover:bg-black text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm cursor-pointer"
                 >
                   <Lock className="w-4 h-4" />
@@ -452,6 +440,82 @@ export default function CaixaManager() {
           </table>
         </div>
       </div>
+
+      {/* Modal de Fechamento de Caixa */}
+      {showCloseModal && session && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Lock className="w-5 h-5 text-[#B91C1C]" />
+                  Fechamento de Caixa
+                </h3>
+                <p className="text-sm text-gray-500 mt-1">Conferência final de valores do turno</p>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div className="bg-[#FAFAF9] border border-[#E7E5E1] rounded-xl p-4 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Fundo Inicial</span>
+                  <span className="font-mono font-medium">€ {Number(session.opening_amount).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Vendas em Numerário</span>
+                  <span className="font-mono font-medium">+ € {summary.numerario.toFixed(2)}</span>
+                </div>
+                <div className="pt-3 border-t border-gray-200 flex justify-between font-bold text-gray-900">
+                  <span>Valor Esperado (Fundo + Vendas)</span>
+                  <span className="font-mono">€ {(Number(session.opening_amount) + summary.numerario).toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
+                  Valor Contado na Gaveta (€)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={closingAmount}
+                  onChange={(e) => setClosingAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full text-center text-3xl font-mono py-4 border-2 border-gray-200 rounded-xl focus:border-[#C81E3A] focus:ring-0 outline-none transition-colors"
+                  autoFocus
+                />
+              </div>
+
+              {closingAmount !== '' && (
+                <div className="flex justify-between items-center pt-2">
+                  <span className="text-sm font-medium text-gray-600">Diferença calculada:</span>
+                  <span className={`font-mono text-lg font-bold ${(Number(closingAmount) - (Number(session.opening_amount) + summary.numerario)) >= 0 ? 'text-[#15803D]' : 'text-[#B91C1C]'}`}>
+                    {(Number(closingAmount) - (Number(session.opening_amount) + summary.numerario)) >= 0 ? '+' : ''}
+                    € {(Number(closingAmount) - (Number(session.opening_amount) + summary.numerario)).toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
+              <button
+                onClick={() => setShowCloseModal(false)}
+                className="flex-1 px-4 py-3 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleClose}
+                disabled={closingAmount === ''}
+                className="flex-1 px-4 py-3 bg-[#1C1917] text-white font-bold rounded-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                <Lock className="w-4 h-4" />
+                Confirmar Fechamento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

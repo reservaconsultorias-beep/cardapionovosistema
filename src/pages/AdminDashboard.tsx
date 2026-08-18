@@ -339,6 +339,21 @@ export default function AdminDashboard() {
         }
       });
 
+      const allDaysCounts: Record<string, {orders: number, revenue: number}> = {};
+      dayNames.forEach(d => allDaysCounts[d] = { orders: 0, revenue: 0 });
+
+      allDbOrders.forEach(order => {
+        const amt = Number(order.totalAmount) || 0;
+        const d = safeGetTime(order.createdAt);
+        if (d) {
+          const dayName = dayNames[d.getDay()];
+          if (allDaysCounts[dayName]) {
+            allDaysCounts[dayName].orders += 1;
+            allDaysCounts[dayName].revenue += amt;
+          }
+        }
+      });
+
       const popularItems = Object.entries(itemCounts)
         .map(([name, data]) => ({ name, ...data }))
         .sort((a, b) => b.qty - a.qty)
@@ -354,6 +369,12 @@ export default function AdminDashboard() {
         name: day,
         orders: daysCounts[day].orders,
         revenue: daysCounts[day].revenue
+      }));
+
+      const allDaysVolumeData = dayNames.map(day => ({
+        name: day,
+        orders: allDaysCounts[day].orders,
+        revenue: allDaysCounts[day].revenue
       }));
 
       
@@ -379,7 +400,8 @@ export default function AdminDashboard() {
         popularPizzas,
         chartData: {
           salesByCategory,
-          orderVolumeData
+          orderVolumeData,
+          allDaysVolumeData
         }
       };
 
@@ -846,7 +868,7 @@ export default function AdminDashboard() {
   });
 
   const { totalRevenue: faturamentoBruto = 0, totalOrders: totalPedidos = 0, ticketMedio = 0, uniqueCustomers = 0, paymentMethodsData = [], chartData = {} } = dashboardData || {};
-  const salesData = chartData.orderVolumeData || [];
+  const salesData = chartData.allDaysVolumeData || [];
 
   return (
     <>
@@ -1248,9 +1270,11 @@ export default function AdminDashboard() {
                 title="Faturamento Bruto"
                 value={`€ ${faturamentoBruto.toFixed(2)}`}
                 icon={<DollarSign size={24} className="text-emerald-600" />}
-                trend="+0%"
-                trendUp={true}
-                description="Hoje"
+                trend={(dashboardData?.revenueChangePercent ?? 0) >= 0 ? `+${(dashboardData?.revenueChangePercent ?? 0).toFixed(1)}%` : `${(dashboardData?.revenueChangePercent ?? 0).toFixed(1)}%`}
+                trendUp={(dashboardData?.revenueChangePercent ?? 0) >= 0}
+                description="vs período anterior"
+                sparklineData={chartData?.orderVolumeData?.map((d: any) => d.revenue) || []}
+                sparklineColor="#15803D"
               />
               <KpiCard
                 title="Ticket Médio"
@@ -1259,14 +1283,18 @@ export default function AdminDashboard() {
                 trend="+0%"
                 trendUp={true}
                 description="Hoje"
+                sparklineData={chartData?.orderVolumeData?.map((d: any) => d.orders) || []}
+                sparklineColor="#1D4ED8"
               />
               <KpiCard
                 title="Total de Pedidos"
                 value={totalPedidos.toString()}
                 icon={<ShoppingBag size={24} className="text-purple-600" />}
-                trend="+0%"
-                trendUp={true}
-                description="Hoje"
+                trend={(dashboardData?.ordersChangePercent ?? 0) >= 0 ? `+${(dashboardData?.ordersChangePercent ?? 0).toFixed(1)}%` : `${(dashboardData?.ordersChangePercent ?? 0).toFixed(1)}%`}
+                trendUp={(dashboardData?.ordersChangePercent ?? 0) >= 0}
+                description="vs período anterior"
+                sparklineData={chartData?.orderVolumeData?.map((d: any) => d.orders) || []}
+                sparklineColor="#7C3AED"
               />
               <KpiCard
                 title="Novos Clientes"
@@ -1275,6 +1303,8 @@ export default function AdminDashboard() {
                 trend="0%"
                 trendUp={true}
                 description="No período"
+                sparklineData={chartData?.orderVolumeData?.map((d: any) => d.orders) || []}
+                sparklineColor="#B45309"
               />
             </div>
 
@@ -1286,7 +1316,7 @@ export default function AdminDashboard() {
                   <div className="flex justify-between items-center mb-6">
                     <div>
                       <h2 className="text-lg font-bold text-gray-900">Evolução do Faturamento</h2>
-                      <p className="text-sm text-gray-500">Últimos 7 dias</p>
+                      <p className="text-sm text-gray-500">Todos os dias da semana</p>
                     </div>
                     <div className="p-2 bg-slate-100 rounded-lg">
                       <Activity size={20} className="text-slate-700" />
@@ -1630,46 +1660,71 @@ export default function AdminDashboard() {
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-4">Relatórios gerais</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div onClick={() => setReportModal({isOpen: true, type: 'faturamento', title: 'Faturamento Geral'})} className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-gray-300 transition-colors cursor-pointer shadow-sm min-h-[120px]">
-                  <span className="text-gray-700 font-medium text-sm mb-1">Faturamento Geral</span>
-                  <span className="text-2xl font-black text-gray-900">€ {allOrders.reduce((acc, o) => acc + o.totalAmount, 0).toFixed(2)}</span>
-                </div>
-                 <div onClick={() => setReportModal({isOpen: true, type: 'vendas_mes', title: 'Vendas por Mês (Atual)'})} className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-gray-300 transition-colors cursor-pointer shadow-sm min-h-[120px]">
-                  <span className="text-gray-700 font-medium text-sm mb-1">Vendas por mês</span>
-                  <span className="text-2xl font-black text-gray-900">
-                    € {allOrders.filter(o => {
-                      const d = safeGetDate(o.createdAt);
-                      return d ? (d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear()) : false;
-                    }).reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0).toFixed(2)}
-                  </span>
-                </div>
-                <div onClick={() => setReportModal({isOpen: true, type: 'vendas_7dias', title: 'Vendas Últimos 7 Dias'})} className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center text-center hover:border-gray-300 transition-colors cursor-pointer shadow-sm min-h-[120px]">
-                  <span className="text-gray-700 font-medium text-sm mb-1">Vendas últimos 7 dias</span>
-                  <span className="text-2xl font-black text-gray-900">
-                    € {allOrders.filter(o => {
-                      const d = safeGetDate(o.createdAt);
-                      return d ? (d.getTime() >= (new Date().getTime() - 7 * 24 * 60 * 60 * 1000)) : false;
-                    }).reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0).toFixed(2)}
-                  </span>
-                </div>
+                <ReportCard
+                  title="Faturamento Geral"
+                  value={`€ ${allOrders.reduce((acc, o) => acc + o.totalAmount, 0).toFixed(2)}`}
+                  icon={<DollarSign size={24} className="text-emerald-600" />}
+                  iconBg="bg-emerald-50"
+                  onClick={() => setReportModal({isOpen: true, type: 'faturamento', title: 'Faturamento Geral'})}
+                />
+                <ReportCard
+                  title="Vendas por mês"
+                  value={`€ ${allOrders.filter(o => {
+                    const d = safeGetDate(o.createdAt);
+                    return d ? (d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear()) : false;
+                  }).reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0).toFixed(2)}`}
+                  icon={<Calendar size={24} className="text-blue-600" />}
+                  iconBg="bg-blue-50"
+                  onClick={() => setReportModal({isOpen: true, type: 'vendas_mes', title: 'Vendas por Mês (Atual)'})}
+                />
+                <ReportCard
+                  title="Vendas últimos 7 dias"
+                  value={`€ ${allOrders.filter(o => {
+                    const d = safeGetDate(o.createdAt);
+                    return d ? (d.getTime() >= (new Date().getTime() - 7 * 24 * 60 * 60 * 1000)) : false;
+                  }).reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0).toFixed(2)}`}
+                  icon={<TrendingUp size={24} className="text-orange-600" />}
+                  iconBg="bg-orange-50"
+                  onClick={() => setReportModal({isOpen: true, type: 'vendas_7dias', title: 'Vendas Últimos 7 Dias'})}
+                />
               </div>
             </div>
             
             <div>
               <h2 className="text-xl font-bold text-gray-900 mb-4">Relatórios detalhados</h2>
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                <div onClick={() => setReportModal({isOpen: true, type: 'produtos', title: 'Vendas de Produtos'})} className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer flex justify-between items-center group">
-                  <span className="text-gray-700 font-medium">Vendas de produtos</span>
-                  <ArrowDownRight className="text-gray-400 group-hover:text-gray-700 w-4 h-4" />
-                </div>
-                <div onClick={() => setReportModal({isOpen: true, type: 'complementos', title: 'Vendas de Complementos (Bordas e Extras)'})} className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer flex justify-between items-center group">
-                  <span className="text-gray-700 font-medium">Vendas de complementos</span>
-                  <ArrowDownRight className="text-gray-400 group-hover:text-gray-700 w-4 h-4" />
-                </div>
-                <div onClick={() => setReportModal({isOpen: true, type: 'pagamentos', title: 'Formas de Pagamento'})} className="p-4 border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer flex justify-between items-center group">
-                  <span className="text-gray-700 font-medium">Formas de Pagamento</span>
-                  <ArrowDownRight className="text-gray-400 group-hover:text-gray-700 w-4 h-4" />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <ReportCard
+                  title="Vendas de produtos"
+                  value=""
+                  icon={<Package size={24} className="text-purple-600" />}
+                  iconBg="bg-purple-50"
+                  onClick={() => setReportModal({isOpen: true, type: 'produtos', title: 'Vendas de Produtos'})}
+                  subtitle="Detalhamento por item"
+                />
+                <ReportCard
+                  title="Vendas de complementos"
+                  value=""
+                  icon={<UtensilsCrossed size={24} className="text-pink-600" />}
+                  iconBg="bg-pink-50"
+                  onClick={() => setReportModal({isOpen: true, type: 'complementos', title: 'Vendas de Complementos (Bordas e Extras)'})}
+                  subtitle="Bordas e extras"
+                />
+                <ReportCard
+                  title="Formas de Pagamento"
+                  value=""
+                  icon={<CreditCard size={24} className="text-blue-600" />}
+                  iconBg="bg-blue-50"
+                  onClick={() => setReportModal({isOpen: true, type: 'pagamentos', title: 'Formas de Pagamento'})}
+                  subtitle="Distribuição"
+                />
+                <ReportCard
+                  title="Cancelamentos"
+                  value=""
+                  icon={<AlertCircle size={24} className="text-red-600" />}
+                  iconBg="bg-red-50"
+                  onClick={() => setReportModal({isOpen: true, type: 'cancelamentos', title: 'Pedidos Cancelados'})}
+                  subtitle="Análise de perdas"
+                />
               </div>
             </div>
           </div>
@@ -2638,20 +2693,132 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   );
 }
 
-function KpiCard({ title, value, icon, trend, trendUp, description }: { title: string, value: string, icon: React.ReactNode, trend: string, trendUp: boolean, description: string }) {
+interface SparklineData {
+  data: number[];
+  color: string;
+}
+
+function Sparkline({ data, color }: SparklineData) {
+  if (!data.length) return null;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const width = 100;
+  const height = 36;
+  const points = data.map((value, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - ((value - min) / range) * height;
+    return `${x},${y}`;
+  }).join(' ');
+  const path = `M${points}`;
   return (
-    <div className="bg-white p-6 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-md transition-all duration-200">
-      <div className="flex justify-between items-start mb-3">
-        <span className="text-xs font-semibold uppercase tracking-wide text-[#A8A29E]">{title}</span>
-        <div className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${trendUp ? 'text-[#15803D] bg-[#F0FDF4]' : 'text-[#B91C1C] bg-[#FEF2F2]'}`}>
-          {trendUp ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-          {trend}
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="w-[100px] h-[36px]">
+      <defs>
+        <linearGradient id="sparkline-gradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+          <stop offset="100%" stopColor={color} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+      <path
+        d={path}
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+        className="transition-all duration-300"
+      />
+      <path
+        d={path}
+        stroke="url(#sparkline-gradient)"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+        opacity={0.5}
+      />
+    </svg>
+  );
+}
+
+function KpiCard({ 
+  title, 
+  value, 
+  icon, 
+  trend, 
+  trendUp, 
+  description,
+  sparklineData,
+  sparklineColor = "#C81E3A"
+}: { 
+  title: string; 
+  value: string; 
+  icon: React.ReactNode; 
+  trend: string; 
+  trendUp: boolean; 
+  description: string;
+  sparklineData?: number[];
+  sparklineColor?: string;
+}) {
+  return (
+    <div className="group relative bg-white p-6 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08),0_2px_4px_rgba(28,25,23,0.06)] hover:border-[#D4AF6A]/30 transition-all duration-300 before:absolute before:inset-0 before:rounded-xl before:bg-gradient-to-r before:from-[#D4AF6A]/0 before:via-[#D4AF6A]/5 before:to-[#D4AF6A]/0 before:opacity-0 group-hover:before:opacity-100 before:transition-opacity">
+      <div className="flex justify-between items-start mb-3 relative z-10">
+        <span className="text-xs font-semibold uppercase tracking-wider text-[#A8A29E]">{title}</span>
+        <div className="flex items-center gap-1.5">
+          <div className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${trendUp ? 'text-[#15803D] bg-[#F0FDF4] border border-[#15803D]/20' : 'text-[#B91C1C] bg-[#FEF2F2] border border-[#B91C1C]/20'}`}>
+            {trendUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+            <span className="font-mono tabular-nums">{trend}</span>
+          </div>
+          <div className="p-1.5 bg-[#FAFAF9] rounded-lg border border-[#E7E5E1] text-[#D4AF6A]">
+            {icon}
+          </div>
         </div>
       </div>
-      <div>
+      <div className="relative z-10 space-y-2">
         <p className="text-3xl font-bold font-mono tabular-nums text-[#1C1917] tracking-tight">{value}</p>
-        <p className="text-xs text-[#78716C] mt-2 font-medium">{description}</p>
+        <p className="text-xs text-[#78716C] font-medium">{description}</p>
+        {sparklineData && sparklineData.length > 1 && (
+          <div className="pt-1 mt-1 border-t border-[#E7E5E1]/50">
+            <Sparkline data={sparklineData} color={sparklineColor} />
+          </div>
+        )}
       </div>
     </div>
+  );
+}
+
+function ReportCard({ 
+  title, 
+  value, 
+  icon, 
+  iconBg,
+  onClick,
+  subtitle
+}: { 
+  title: string; 
+  value: string; 
+  icon: React.ReactNode; 
+  iconBg: string;
+  onClick: () => void;
+  subtitle?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="group relative bg-white p-6 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08),0_2px_4px_rgba(28,25,23,0.06)] hover:border-[#D4AF6A]/30 transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center min-h-[120px] before:absolute before:inset-0 before:rounded-xl before:bg-gradient-to-r before:from-[#D4AF6A]/0 before:via-[#D4AF6A]/5 before:to-[#D4AF6A]/0 before:opacity-0 group-hover:before:opacity-100 before:transition-opacity"
+    >
+      <div className={`p-3 rounded-xl ${iconBg} border border-current/20 text-current mb-3 group-hover:scale-105 transition-transform duration-300 relative z-10`}>
+        {icon}
+      </div>
+      <div className="relative z-10 w-full">
+        <p className="text-sm font-medium text-[#78716C] mb-1">{title}</p>
+        {value ? (
+          <p className="text-2xl font-bold font-mono tabular-nums text-[#1C1917] tracking-tight">{value}</p>
+        ) : (
+          <p className="text-xs text-[#A8A29E] font-medium">{subtitle || ''}</p>
+        )}
+      </div>
+      <ArrowDownRight className="absolute bottom-4 right-4 text-[#A8A29E] group-hover:text-[#D4AF6A] transition-colors w-5 h-5" />
+    </button>
   );
 }
