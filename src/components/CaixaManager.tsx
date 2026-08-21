@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Lock, Unlock } from 'lucide-react';
+import { Lock, Unlock, Printer, BarChart3, ArrowDownCircle, ArrowUpCircle, AlertCircle } from 'lucide-react';
 
 export default function CaixaManager() {
   const [session, setSession] = useState<any>(null);
@@ -11,6 +11,19 @@ export default function CaixaManager() {
   const [history, setHistory] = useState<any[]>([]);
   const [closedResult, setClosedResult] = useState<any>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
+
+  // Estados de Movimentações
+  const [movements, setMovements] = useState<any[]>([]);
+  const [showMovementModal, setShowMovementModal] = useState(false);
+  const [movementType, setMovementType] = useState<'sangria' | 'suprimento'>('sangria');
+  const [movementAmount, setMovementAmount] = useState('');
+  const [movementReason, setMovementReason] = useState('');
+  const [isSubmittingMovement, setIsSubmittingMovement] = useState(false);
+  const [movementError, setMovementError] = useState('');
+
+  const totalSangrias = movements.filter(m => m.type === 'sangria').reduce((acc, m) => acc + Number(m.amount), 0);
+  const totalSuprimentos = movements.filter(m => m.type === 'suprimento').reduce((acc, m) => acc + Number(m.amount), 0);
+  const currentExpected = session ? Number(session.opening_amount) + summary.numerario + totalSuprimentos - totalSangrias : 0;
 
   const loadSession = async () => {
     setLoading(true);
@@ -40,6 +53,16 @@ export default function CaixaManager() {
     loadHistory();
   }, []);
 
+  const loadMovements = async () => {
+    if (!session) return;
+    const { data } = await supabase
+      .from('cash_movements')
+      .select('*')
+      .eq('session_id', session.id)
+      .order('created_at', { ascending: false });
+    setMovements(data || []);
+  };
+
   useEffect(() => {
     const loadSummary = async () => {
       if (!session) return;
@@ -52,6 +75,7 @@ export default function CaixaManager() {
       setSummary({ numerario, mbway, total: numerario + mbway, count: (data || []).length });
     };
     loadSummary();
+    loadMovements();
   }, [session]);
 
   const handleOpen = async () => {
@@ -69,9 +93,39 @@ export default function CaixaManager() {
     }
   };
 
+  const handleRegisterMovement = async () => {
+    setMovementError('');
+    const amount = parseFloat(movementAmount);
+    if (!amount || amount <= 0) {
+      setMovementError('O valor deve ser maior que zero.');
+      return;
+    }
+    
+    setIsSubmittingMovement(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const { error } = await supabase.from('cash_movements').insert([{
+      session_id: session.id,
+      type: movementType,
+      amount: amount,
+      reason: movementReason || null,
+      created_by: userData.user?.id
+    }]);
+
+    setIsSubmittingMovement(false);
+
+    if (error) {
+      setMovementError(error.message || 'Erro ao registrar movimentação.');
+    } else {
+      setShowMovementModal(false);
+      setMovementAmount('');
+      setMovementReason('');
+      loadMovements();
+    }
+  };
+
   const handleClose = async () => {
     const counted = parseFloat(closingAmount) || 0;
-    const expected = Number(session.opening_amount) + summary.numerario;
+    const expected = currentExpected;
     const difference = counted - expected;
     const { data: userData } = await supabase.auth.getUser();
     const { error } = await supabase.from('cash_sessions').update({
@@ -134,7 +188,9 @@ export default function CaixaManager() {
         paySummary,
         itemsSummary,
         entregaCount,
-        retiradaCount
+        retiradaCount,
+        totalSangrias,
+        totalSuprimentos
       };
 
       setClosedResult(reportData);
@@ -182,6 +238,8 @@ export default function CaixaManager() {
           <div class="row"><span>Fundo Inicial:</span><span class="bold">€ ${Number(report.openingAmount).toFixed(2)}</span></div>
           <div class="row"><span>Total Pedidos:</span><span class="bold">${report.ordersCount} (${report.entregaCount} Entregas / ${report.retiradaCount} Retiradas)</span></div>
           <div class="row"><span>Total Vendas:</span><span class="bold">€ ${Number(report.totalVendas).toFixed(2)}</span></div>
+          ${report.totalSuprimentos > 0 ? `<div class="row"><span>Suprimentos (+):</span><span class="bold" style="color:#15803D;">€ ${Number(report.totalSuprimentos).toFixed(2)}</span></div>` : ''}
+          ${report.totalSangrias > 0 ? `<div class="row"><span>Sangrias (-):</span><span class="bold" style="color:#B91C1C;">€ ${Number(report.totalSangrias).toFixed(2)}</span></div>` : ''}
           
           <div class="line"></div>
           <p class="bold">FORMAS DE PAGAMENTO:</p>
@@ -251,13 +309,15 @@ export default function CaixaManager() {
               <div className="bg-[#FAFAF9] border border-[#E7E5E1] rounded-xl p-6 space-y-4">
                 <div className="flex justify-between items-center">
                   <h4 className="font-extrabold text-[#1C1917] text-sm uppercase tracking-wide flex items-center gap-2">
-                    📊 Relatório Resumido do Fechamento de Caixa
+                    <BarChart3 className="w-4 h-4" />
+                    Relatório Resumido do Fechamento de Caixa
                   </h4>
                   <button
                     onClick={() => handlePrintReport(closedResult)}
                     className="px-4 py-2 bg-[#1C1917] hover:bg-black text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-sm"
                   >
-                    🖨️ Imprimir Talão do Fechamento
+                    <Printer className="w-3.5 h-3.5" />
+                    Imprimir Talão do Fechamento
                   </button>
                 </div>
 
@@ -313,7 +373,27 @@ export default function CaixaManager() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3 w-full md:w-auto">
+              <div className="flex flex-wrap items-center justify-end gap-3 w-full md:w-auto">
+                <button
+                  onClick={() => {
+                    setMovementType('sangria');
+                    setShowMovementModal(true);
+                  }}
+                  className="bg-white border border-[#E7E5E1] hover:bg-[#FAFAF9] text-[#B91C1C] font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm"
+                >
+                  <ArrowDownCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">Registrar</span> Sangria
+                </button>
+                <button
+                  onClick={() => {
+                    setMovementType('suprimento');
+                    setShowMovementModal(true);
+                  }}
+                  className="bg-white border border-[#E7E5E1] hover:bg-[#FAFAF9] text-[#15803D] font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm"
+                >
+                  <ArrowUpCircle className="w-4 h-4" />
+                  <span className="hidden sm:inline">Registrar</span> Suprimento
+                </button>
                 <button
                   onClick={() => setShowCloseModal(true)}
                   className="bg-[#1C1917] hover:bg-black text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm cursor-pointer"
@@ -340,10 +420,53 @@ export default function CaixaManager() {
               <div className="bg-[#FEF2F2] border border-[#FECDD3] p-4 rounded-xl">
                 <span className="text-xs text-[#B91C1C] font-bold uppercase tracking-wide">Esperado em Dinheiro</span>
                 <p className="text-xl font-bold font-mono tabular-nums text-[#B91C1C] mt-1">
-                  €{(Number(session.opening_amount) + summary.numerario).toFixed(2)}
+                  €{currentExpected.toFixed(2)}
                 </p>
               </div>
             </div>
+
+            {movements.length > 0 && (
+              <div className="border border-[#E7E5E1] rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-[#FAFAF9] px-5 py-3.5 border-b border-[#E7E5E1] flex items-center justify-between">
+                  <h4 className="font-bold text-sm text-[#1C1917] uppercase tracking-wide">Movimentações do Turno</h4>
+                  <span className="text-xs font-semibold text-[#78716C] bg-[#E7E5E1] px-2 py-1 rounded-md">{movements.length} Registros</span>
+                </div>
+                <div className="divide-y divide-[#E7E5E1] bg-white">
+                  {movements.map((mov) => (
+                    <div key={mov.id} className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAFAF9] transition-colors">
+                      <div className="flex items-center gap-3">
+                        {mov.type === 'sangria' ? (
+                          <div className="p-2 bg-[#FEF2F2] rounded-lg text-[#B91C1C]">
+                            <ArrowDownCircle className="w-5 h-5" />
+                          </div>
+                        ) : (
+                          <div className="p-2 bg-[#F0FDF4] rounded-lg text-[#15803D]">
+                            <ArrowUpCircle className="w-5 h-5" />
+                          </div>
+                        )}
+                        <div>
+                          <p className={`font-bold text-sm capitalize ${mov.type === 'sangria' ? 'text-[#B91C1C]' : 'text-[#15803D]'}`}>
+                            {mov.type}
+                          </p>
+                          <p className="text-xs text-[#78716C] mt-0.5">
+                            {new Date(mov.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+                            {mov.reason && (
+                              <>
+                                <span className="mx-1.5 opacity-50">•</span>
+                                <span className="text-[#1C1917]">{mov.reason}</span>
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`font-mono font-bold tabular-nums text-lg text-right ${mov.type === 'sangria' ? 'text-[#B91C1C]' : 'text-[#15803D]'}`}>
+                        {mov.type === 'sangria' ? '-' : '+'}€{Number(mov.amount).toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -428,9 +551,10 @@ export default function CaixaManager() {
                             retiradaCount
                           });
                         }}
-                        className="text-xs font-bold text-[#1C1917] hover:underline"
+                        className="text-xs font-bold text-[#1C1917] hover:underline inline-flex items-center gap-1.5"
                       >
-                        🖨️ Relatório
+                        <Printer className="w-3.5 h-3.5" />
+                        Relatório
                       </button>
                     </td>
                   </tr>
@@ -465,9 +589,21 @@ export default function CaixaManager() {
                   <span className="text-gray-500">Vendas em Numerário</span>
                   <span className="font-mono font-medium">+ € {summary.numerario.toFixed(2)}</span>
                 </div>
+                {totalSuprimentos > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Suprimentos (Entradas)</span>
+                    <span className="font-mono font-medium text-[#15803D]">+ € {totalSuprimentos.toFixed(2)}</span>
+                  </div>
+                )}
+                {totalSangrias > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">Sangrias (Retiradas)</span>
+                    <span className="font-mono font-medium text-[#B91C1C]">- € {totalSangrias.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="pt-3 border-t border-gray-200 flex justify-between font-bold text-gray-900">
-                  <span>Valor Esperado (Fundo + Vendas)</span>
-                  <span className="font-mono">€ {(Number(session.opening_amount) + summary.numerario).toFixed(2)}</span>
+                  <span>Valor Esperado (Dinheiro)</span>
+                  <span className="font-mono">€ {currentExpected.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -489,9 +625,9 @@ export default function CaixaManager() {
               {closingAmount !== '' && (
                 <div className="flex justify-between items-center pt-2">
                   <span className="text-sm font-medium text-gray-600">Diferença calculada:</span>
-                  <span className={`font-mono text-lg font-bold ${(Number(closingAmount) - (Number(session.opening_amount) + summary.numerario)) >= 0 ? 'text-[#15803D]' : 'text-[#B91C1C]'}`}>
-                    {(Number(closingAmount) - (Number(session.opening_amount) + summary.numerario)) >= 0 ? '+' : ''}
-                    € {(Number(closingAmount) - (Number(session.opening_amount) + summary.numerario)).toFixed(2)}
+                  <span className={`font-mono text-lg font-bold ${(Number(closingAmount) - currentExpected) >= 0 ? 'text-[#15803D]' : 'text-[#B91C1C]'}`}>
+                    {(Number(closingAmount) - currentExpected) >= 0 ? '+' : ''}
+                    € {(Number(closingAmount) - currentExpected).toFixed(2)}
                   </span>
                 </div>
               )}
@@ -511,6 +647,83 @@ export default function CaixaManager() {
               >
                 <Lock className="w-4 h-4" />
                 Confirmar Fechamento
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Movimentação */}
+      {showMovementModal && session && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-6 border-b border-[#E7E5E1] flex justify-between items-center" style={{ backgroundColor: movementType === 'sangria' ? '#FEF2F2' : '#F0FDF4' }}>
+              <div>
+                <h3 className={`text-xl font-bold flex items-center gap-2 ${movementType === 'sangria' ? 'text-[#991B1B]' : 'text-[#166534]'}`}>
+                  {movementType === 'sangria' ? <ArrowDownCircle className="w-6 h-6" /> : <ArrowUpCircle className="w-6 h-6" />}
+                  Registrar {movementType === 'sangria' ? 'Sangria' : 'Suprimento'}
+                </h3>
+                <p className={`text-sm mt-1 ${movementType === 'sangria' ? 'text-[#B91C1C]' : 'text-[#15803D]'}`}>
+                  {movementType === 'sangria' ? 'Retirada de dinheiro do caixa' : 'Reforço de dinheiro no caixa'}
+                </p>
+              </div>
+            </div>
+            
+            <div className="p-6 space-y-5">
+              {movementError && (
+                <div className="bg-[#FEF2F2] border border-[#FECDD3] p-3 rounded-lg flex gap-2 text-sm text-[#B91C1C]">
+                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                  <p>{movementError}</p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-[#1C1917] uppercase tracking-wide">
+                  Valor (€) <span className="text-[#B91C1C]">*</span>
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={movementAmount}
+                  onChange={(e) => setMovementAmount(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full text-lg font-mono py-3 px-4 bg-white border border-[#E7E5E1] rounded-xl focus:border-[#C81E3A] focus:ring-1 focus:ring-[#C81E3A]/20 outline-none transition-all shadow-sm"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-bold text-[#1C1917] uppercase tracking-wide">
+                  Motivo (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={movementReason}
+                  onChange={(e) => setMovementReason(e.target.value)}
+                  placeholder={movementType === 'sangria' ? 'Ex: Pagamento fornecedor' : 'Ex: Troco inicial'}
+                  className="w-full text-sm py-3 px-4 bg-white border border-[#E7E5E1] rounded-xl focus:border-[#C81E3A] focus:ring-1 focus:ring-[#C81E3A]/20 outline-none transition-all shadow-sm"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 bg-[#FAFAF9] border-t border-[#E7E5E1] flex gap-3">
+              <button
+                onClick={() => {
+                  setShowMovementModal(false);
+                  setMovementError('');
+                }}
+                disabled={isSubmittingMovement}
+                className="flex-1 px-4 py-3 bg-white border border-[#E7E5E1] text-[#1C1917] font-bold rounded-xl hover:bg-[#F0EFED] transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleRegisterMovement}
+                disabled={movementAmount === '' || parseFloat(movementAmount) <= 0 || isSubmittingMovement}
+                className={`flex-1 px-4 py-3 text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${movementType === 'sangria' ? 'bg-[#C81E3A] hover:bg-[#A8172F]' : 'bg-[#15803D] hover:bg-[#166534]'}`}
+              >
+                {isSubmittingMovement ? 'Registrando...' : 'Confirmar'}
               </button>
             </div>
           </div>
