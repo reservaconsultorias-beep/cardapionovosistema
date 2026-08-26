@@ -180,8 +180,17 @@ export default function Cart({
     const orderDate = new Date().toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' });
 
     let newOrderId = null;
+    let orderSavedSuccessfully = false;
     try {
+      // Find active cash session
+      const { data: activeSession } = await supabase
+        .from('cash_sessions')
+        .select('id')
+        .eq('status', 'aberto')
+        .maybeSingle();
+
       const { data, error } = await supabase.from('orders').insert([{
+        cash_session_id: activeSession ? activeSession.id : null,
         customer_name: name,
         customer_phone: telefone,
         order_type: orderType,
@@ -218,6 +227,7 @@ export default function Cart({
         newOrderId = data[0].id;
         setSavedOrderId(newOrderId);
         setSavedTrackingCode(data[0].tracking_code);
+        orderSavedSuccessfully = true;
 
         try {
           if (telefone) {
@@ -250,6 +260,11 @@ export default function Cart({
       }
     } catch (err) {
       console.error("Error saving order:", err);
+    }
+
+    if (!orderSavedSuccessfully) {
+      setFormError("Não foi possível registar o seu pedido agora. Por favor, verifique sua conexão e tente novamente em alguns segundos.");
+      return;
     }
 
     let text = `-----------------------------------\n`;

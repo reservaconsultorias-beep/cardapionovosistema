@@ -185,7 +185,7 @@ export default function UsersManager() {
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex justify-between items-center">
         <div>
           <h2 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
-            <Shield className="text-[#ea1d2c]" size={22} />
+            <Shield className="text-[#C81E3A]" size={22} />
             Gestão de Usuários & Permissões Granulares
           </h2>
           <p className="text-sm text-gray-500 mt-1 font-medium">
