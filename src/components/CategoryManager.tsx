@@ -16,13 +16,13 @@ export default function CategoryManager() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const { data } = await supabase.from('categories').select('*').order('order_index');
+      const { data } = await supabase.from('categories').select('*').neq('id', 'system_config').order('order_index');
       if (data) setCategories(data);
     } catch (e) {
       console.error("Erro ao carregar categorias", e);
     }
     try {
-      const { data: items } = await supabase.from('menu_items').select('category');
+      const { data: items } = await supabase.from('menu_items').select('category').neq('category', 'system_config');
       const counts: Record<string, number> = {};
       (items || []).forEach((it: any) => {
         counts[it.category] = (counts[it.category] || 0) + 1;

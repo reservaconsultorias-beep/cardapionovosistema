@@ -24,6 +24,7 @@ export function useMenu() {
         .from('categories')
         .select('id, name, order_index, display_group, display_label, display_sub, icon')
         .eq('is_active', true)
+        .neq('id', 'system_config')
         .order('order_index');
       if (catError) throw catError;
 
@@ -31,6 +32,7 @@ export function useMenu() {
         .from('menu_items')
         .select('*')
         .eq('is_active', true)
+        .neq('category', 'system_config')
         .order('sort_order');
       if (itemsError) throw itemsError;
 

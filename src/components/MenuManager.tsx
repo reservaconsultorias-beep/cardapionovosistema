@@ -19,8 +19,8 @@ export default function MenuManager() {
       const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Timeout ao carregar dados do banco")), 15000));
       const [catsResult, itemsResult, pausedResult] = await Promise.race([
         Promise.all([
-          supabase.from('categories').select('*').order('order_index'),
-          supabase.from('menu_items').select('*').order('id'),
+          supabase.from('categories').select('*').neq('id', 'system_config').order('order_index'),
+          supabase.from('menu_items').select('*').neq('category', 'system_config').order('id'),
           supabase.from('paused_items').select('id')
         ]),
         timeout
