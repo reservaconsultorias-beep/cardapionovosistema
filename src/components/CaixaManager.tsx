@@ -90,11 +90,15 @@ export default function CaixaManager() {
     }]).select().single();
     if (!error && data) {
       // Ao abrir o caixa, também abre a loja automaticamente
-      await supabase.from('settings').upsert([
-        { key: 'store_status', value: 'open', updated_at: new Date().toISOString() },
-        { key: 'manual_store_closed', value: false, updated_at: new Date().toISOString() },
-        { key: 'paused_until', value: null, updated_at: new Date().toISOString() },
-      ]);
+      try {
+        await supabase.from('settings').upsert([
+          { key: 'store_status', value: 'open', updated_at: new Date().toISOString() },
+          { key: 'manual_store_closed', value: false, updated_at: new Date().toISOString() },
+          { key: 'paused_until', value: null, updated_at: new Date().toISOString() },
+        ], { onConflict: 'key' });
+      } catch (e) {
+        console.error("Erro ao atualizar status da loja:", e);
+      }
       setSession(data);
       setOpeningAmount('');
       setClosedResult(null);
