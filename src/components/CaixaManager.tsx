@@ -89,6 +89,12 @@ export default function CaixaManager() {
       status: 'aberto'
     }]).select().single();
     if (!error && data) {
+      // Ao abrir o caixa, também abre a loja automaticamente
+      await supabase.from('settings').upsert([
+        { key: 'store_status', value: 'open', updated_at: new Date().toISOString() },
+        { key: 'manual_store_closed', value: false, updated_at: new Date().toISOString() },
+        { key: 'paused_until', value: null, updated_at: new Date().toISOString() },
+      ]);
       setSession(data);
       setOpeningAmount('');
       setClosedResult(null);
