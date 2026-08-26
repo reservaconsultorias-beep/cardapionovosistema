@@ -94,7 +94,7 @@ export default function CaixaManager() {
         await supabase.from('settings').upsert([
           { key: 'store_status', value: 'open', updated_at: new Date().toISOString() },
           { key: 'manual_store_closed', value: false, updated_at: new Date().toISOString() },
-          { key: 'paused_until', value: null, updated_at: new Date().toISOString() },
+          { key: 'paused_until', value: '', updated_at: new Date().toISOString() },
         ], { onConflict: 'key' });
       } catch (e) {
         console.error("Erro ao atualizar status da loja:", e);
@@ -152,9 +152,9 @@ export default function CaixaManager() {
     // Automagicamente fechar a loja
     await supabase.from('settings').upsert([
       { key: 'store_status', value: 'closed', updated_at: new Date().toISOString() },
-      { key: 'paused_until', value: null, updated_at: new Date().toISOString() },
+      { key: 'paused_until', value: '', updated_at: new Date().toISOString() },
       { key: 'manual_store_closed', value: true, updated_at: new Date().toISOString() }
-    ]);
+    ], { onConflict: 'key' });
 
     if (!error) {
       // Buscar dados detalhados para o relatório impresso/visual

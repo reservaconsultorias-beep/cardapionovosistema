@@ -651,9 +651,9 @@ export default function AdminDashboard() {
 
     await supabase.from('settings').upsert([
       { key: 'store_status', value: newStatus, updated_at: new Date().toISOString() },
-      { key: 'paused_until', value: newPausedUntil, updated_at: new Date().toISOString() },
+      { key: 'paused_until', value: newPausedUntil || '', updated_at: new Date().toISOString() },
       { key: 'manual_store_closed', value: newManualClosed, updated_at: new Date().toISOString() }
-    ]);
+    ], { onConflict: 'key' });
   };
   useEffect(() => {
     if (!isAuthenticated) return;
