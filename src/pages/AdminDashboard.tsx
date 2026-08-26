@@ -132,6 +132,7 @@ export default function AdminDashboard() {
   const [pausedUntil, setPausedUntil] = useState<string|null>(null);
   const [showStoreMenu, setShowStoreMenu] = useState(false);
   const [adminLogoUrl, setAdminLogoUrl] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string>('');
 
   const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
     'visao-geral': { title: 'Visão Geral', subtitle: 'Acompanhe o desempenho do seu negócio em tempo real.' },
@@ -2075,6 +2076,40 @@ export default function AdminDashboard() {
         {/* Cardápio Digital Tab */}
         {activeTab === "cardapio-digital" && (
           <div className="mt-6 space-y-8 pb-12">
+            {/* Categories Bar Sticky */}
+            <div className="bg-white border border-gray-200 sticky top-20 z-30 shadow-sm rounded-xl overflow-hidden mb-6">
+              <div className="flex overflow-x-auto no-scrollbar gap-2 p-3 items-center">
+                {currentCategoriesUI.map((cat) => {
+                  return (
+                  <a
+                    key={cat.id}
+                    href={`#admin-cat-${cat.id}`}
+                    onClick={(e) => {
+                      setActiveCategory(cat.id);
+                      const el = document.getElementById(`admin-cat-${cat.id}`);
+                      if (el) {
+                        e.preventDefault();
+                        const yOffset = -140; // compensate for sticky header
+                        const y =
+                          el.getBoundingClientRect().top +
+                          window.pageYOffset +
+                          yOffset;
+                        window.scrollTo({ top: y, behavior: "smooth" });
+                      }
+                    }}
+                    className={`py-1.5 px-3 md:px-4 rounded-full text-[12px] md:text-[13px] whitespace-nowrap font-bold transition-all duration-150 active:scale-95 active:opacity-70 cursor-pointer border ${
+                      activeCategory === cat.id
+                        ? "bg-[#8b0000] text-white border-[#8b0000]"
+                        : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                    } ${cat.id === "promocoes" && activeCategory !== cat.id ? "animate-pulse text-[#8b0000] border-[#8b0000]" : ""}`}
+                  >
+                    {cat.label}
+                  </a>
+                  );
+                })}
+              </div>
+            </div>
+
             {currentCategoriesUI.map(cat => {
               const items = itemsByCategory[cat.id];
               if (!items || items.length === 0) return null;
@@ -2083,7 +2118,7 @@ export default function AdminDashboard() {
               const allPaused = items.every(item => pausedItems.includes(item.id));
               
               return (
-                <div key={cat.id} className="bg-white p-6 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08),0_2px_4px_rgba(28,25,23,0.06)] hover:border-[#D4AF6A]/30 transition-all duration-300">
+                <div key={cat.id} id={`admin-cat-${cat.id}`} className="bg-white p-6 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08),0_2px_4px_rgba(28,25,23,0.06)] hover:border-[#D4AF6A]/30 transition-all duration-300">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <div>
                       <h2 className="text-xl font-bold text-gray-900">{cat.label}</h2>
