@@ -138,7 +138,7 @@ export default function BannerManager() {
                   type="text" 
                   value={promoConfig.title} 
                   onChange={e => setPromoConfig({...promoConfig, title: e.target.value})}
-                  placeholder="Ex: 🎉 Promoção de Terça-feira!"
+                  placeholder="Ex: Promoção de Terça-feira!"
                   className="w-full p-2.5 bg-[#FAFAF9] border border-[#E7E5E1] rounded-lg text-sm text-[#1C1917] font-semibold focus:outline-none focus:border-[#C81E3A] focus:ring-1 focus:ring-[#C81E3A]/20"
                 />
               </div>

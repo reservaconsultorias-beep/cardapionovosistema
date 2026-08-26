@@ -182,7 +182,15 @@ export default function Cart({
     let newOrderId = null;
     let orderSavedSuccessfully = false;
     try {
+      // Find active cash session
+      const { data: activeSession } = await supabase
+        .from('cash_sessions')
+        .select('id')
+        .eq('status', 'aberto')
+        .maybeSingle();
+
       const { data, error } = await supabase.from('orders').insert([{
+        cash_session_id: activeSession ? activeSession.id : null,
         customer_name: name,
         customer_phone: telefone,
         order_type: orderType,

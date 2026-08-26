@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Save } from 'lucide-react';
+import { Save, Printer, Bell, BellOff, Volume2 } from 'lucide-react';
 
 interface SettingsManagerProps {
   onTestPrint?: (order: any) => void;
@@ -343,8 +343,9 @@ export default function SettingsManager({
           <button onClick={handleSavePrintDelay} className="px-4 py-2.5 bg-[#C81E3A] text-white rounded-lg text-sm font-semibold hover:bg-[#A8172F] transition-colors">
             Salvar
           </button>
-          <button onClick={handleTestPrint} className="px-4 py-2.5 bg-[#1C1917] text-white rounded-lg text-sm font-semibold hover:bg-black transition-colors">
-            🖨️ Testar Impressão
+          <button onClick={handleTestPrint} className="px-4 py-2.5 bg-[#1C1917] text-white rounded-lg text-sm font-semibold hover:bg-black transition-colors inline-flex items-center gap-2">
+            <Printer className="w-4 h-4" />
+            Testar Impressão
           </button>
         </div>
       </div>
@@ -375,7 +376,7 @@ export default function SettingsManager({
             <label className="text-sm font-medium text-gray-700">Tempo estimado de retirada</label>
             <input type="text" value={pickupTime} onChange={e => setPickupTime(e.target.value)} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm mt-1" />
           </div>
-          <button onClick={handleSaveTimes} className="px-6 py-3 bg-[#ea1d2c] text-white rounded-xl font-medium hover:bg-[#c91825] transition-colors flex items-center gap-2 cursor-pointer shadow-sm">
+          <button onClick={handleSaveTimes} className="px-6 py-3 bg-[#C81E3A] text-white rounded-xl font-medium hover:bg-[#A8172F] transition-colors flex items-center gap-2 cursor-pointer shadow-sm">
             <Save size={18} /> Salvar Configurações
           </button>
         </div>
@@ -400,7 +401,7 @@ export default function SettingsManager({
             <label className="text-sm font-medium text-gray-700">Morada</label>
             <input type="text" value={companyInfo.address} onChange={e => setCompanyInfo({...companyInfo, address: e.target.value})} className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm mt-1" />
           </div>
-          <button onClick={handleSaveCompany} className="px-6 py-3 bg-[#ea1d2c] text-white rounded-xl font-medium hover:bg-[#c91825] transition-colors flex items-center gap-2">
+          <button onClick={handleSaveCompany} className="px-6 py-3 bg-[#C81E3A] text-white rounded-xl font-medium hover:bg-[#A8172F] transition-colors flex items-center gap-2">
             <Save size={18} /> Salvar Dados
           </button>
         </div>
@@ -438,8 +439,8 @@ export default function SettingsManager({
                 className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${soundEnabled ? 'translate-x-7' : 'translate-x-0'}`}
               />
             </button>
-            <span className="text-sm font-bold text-gray-900">
-              {soundEnabled ? '🔔 Som Ativado (Liga)' : '🔕 Som Desativado (Desliga)'}
+            <span className="text-sm font-bold text-gray-900 inline-flex items-center gap-2">
+              {soundEnabled ? <><Bell className="w-4 h-4 text-[#C81E3A]" /> Som Ativado (Liga)</> : <><BellOff className="w-4 h-4" /> Som Desativado (Desliga)</>}
             </span>
           </div>
 
@@ -449,7 +450,8 @@ export default function SettingsManager({
               onClick={onTestSound}
               className="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 text-white text-sm font-bold rounded-xl transition-colors inline-flex items-center gap-2 self-start sm:self-auto cursor-pointer"
             >
-              🔊 Testar Som
+              <Volume2 className="w-4 h-4" />
+              Testar Som
             </button>
           )}
         </div>

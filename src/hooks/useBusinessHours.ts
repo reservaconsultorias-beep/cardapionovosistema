@@ -5,7 +5,7 @@ export interface BusinessHoursStatus {
   isOpen: boolean;
   loading: boolean;
   todayLabel: string;
-  reason: 'loading' | 'closed_today' | 'outside_hours' | 'open' | 'manual_closed';
+  reason: 'loading' | 'closed_today' | 'outside_hours' | 'open' | 'manual_closed' | 'paused';
 }
 
 const DAY_NAMES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -20,15 +20,31 @@ export function useBusinessHours(): BusinessHoursStatus {
 
   const checkStatus = async () => {
     try {
-      const { data: settingsRow } = await supabase
+      const { data: settingsData } = await supabase
         .from('settings')
-        .select('value')
-        .eq('key', 'manual_store_closed')
-        .maybeSingle();
+        .select('key, value')
+        .in('key', ['manual_store_closed', 'store_status', 'paused_until']);
 
-      if (settingsRow?.value === true) {
+      const getSetting = (k: string) => settingsData?.find(s => s.key === k)?.value;
+      
+      const manualClosed = getSetting('manual_store_closed') === true;
+      const storeStatus = getSetting('store_status');
+      const pausedUntil = getSetting('paused_until');
+
+      if (manualClosed || storeStatus === 'closed') {
         setStatus({ isOpen: false, loading: false, todayLabel: '', reason: 'manual_closed' });
         return;
+      }
+
+      if (storeStatus === 'paused' && pausedUntil) {
+        const pauseEnd = new Date(pausedUntil);
+        if (new Date() < pauseEnd) {
+           const timeStr = pauseEnd.toLocaleTimeString('pt-PT', {hour: '2-digit', minute:'2-digit'});
+           setStatus({ isOpen: false, loading: false, todayLabel: `Volta às ${timeStr}`, reason: 'paused' });
+           return;
+        } else {
+           // Pause expired, continue to normal hours check
+        }
       }
 
       const { data, error } = await supabase.from('business_hours').select('*');

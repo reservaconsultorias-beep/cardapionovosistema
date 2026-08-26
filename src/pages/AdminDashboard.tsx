@@ -29,7 +29,8 @@ import {
   Check,
   Search,
   Shield,
-  Megaphone
+  Megaphone,
+  Wallet
 } from "lucide-react";
 import {
   AreaChart,
@@ -56,6 +57,7 @@ import CustomersManager from '../components/CustomersManager';
 import CaixaManager from '../components/CaixaManager';
 import UsersManager from '../components/UsersManager';
 import BannerManager from '../components/BannerManager';
+import { startOfDay, endOfDay } from 'date-fns';
 
 
 
@@ -126,6 +128,9 @@ export default function AdminDashboard() {
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [manualClosed, setManualClosed] = useState(false);
+  const [storeStatus, setStoreStatus] = useState<'open'|'paused'|'closed'>('open');
+  const [pausedUntil, setPausedUntil] = useState<string|null>(null);
+  const [showStoreMenu, setShowStoreMenu] = useState(false);
   const [adminLogoUrl, setAdminLogoUrl] = useState('');
 
   const PAGE_TITLES: Record<string, { title: string; subtitle: string }> = {
@@ -156,6 +161,7 @@ export default function AdminDashboard() {
 
   const [dashboardData, setDashboardData] = useState<any>(null);
   const [allOrders, setAllOrders] = useState<any[]>([]);
+  const [filteredOrders, setFilteredOrders] = useState<any[]>([]);
   const [reportModal, setReportModal] = useState<{isOpen: boolean, type: string, title: string}>({isOpen: false, type: '', title: ''});
   const [pausedItems, setPausedItems] = useState<string[]>([]);
   const [printOrder, setPrintOrder] = useState<any>(null);
@@ -224,6 +230,9 @@ export default function AdminDashboard() {
   const fetchDashboardData = async (isBackground = false) => {
     try {
       const filter = dateFilterRef.current || 'hoje';
+      const { data: activeSessionData } = await supabase.from('cash_sessions').select('id').eq('status', 'aberto').limit(1).maybeSingle();
+      const activeSessionId = activeSessionData?.id || null;
+      
       const { data: dbOrders, error: ordersError } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
       if (ordersError) throw ordersError;
 
@@ -242,7 +251,8 @@ export default function AdminDashboard() {
         items: o.items,
         isEdited: o.is_edited,
         updatedAt: o.updated_at,
-        createdAt: o.created_at
+        createdAt: o.created_at,
+        cashSessionId: o.cash_session_id
       }));
       setAllOrders(allDbOrders);
 
@@ -281,6 +291,18 @@ export default function AdminDashboard() {
           if (!d) return false;
           return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
         });
+      } else if (filter === 'customizado') {
+        const startStr = customStartDateRef.current;
+        const endStr = customEndDateRef.current;
+        if (startStr && endStr) {
+          const start = new Date(`${startStr}T00:00:00`);
+          const end = new Date(`${endStr}T23:59:59`);
+          allOrdersAgg = allDbOrders.filter(o => {
+            const d = safeGetTime(o.createdAt);
+            if (!d) return false;
+            return d >= start && d <= end;
+          });
+        }
       }
 
       let faturamentoBruto = 0;
@@ -387,6 +409,7 @@ export default function AdminDashboard() {
 
       const data = {
         status: "ok",
+        activeSessionId,
         totalOrders: totalPedidos,
         totalRevenue: faturamentoBruto,
         ticketMedio,
@@ -395,7 +418,7 @@ export default function AdminDashboard() {
         faturamentoNumerario,
         faturamentoMBWay,
         pendingOrders: pendingOrders.length,
-        recentOrders: allOrdersAgg.slice(0, 10),
+        recentOrders: activeSessionId ? allDbOrders.filter(o => o.cashSessionId === activeSessionId) : [],
         popularItems,
         popularPizzas,
         chartData: {
@@ -406,6 +429,7 @@ export default function AdminDashboard() {
       };
 
       setDashboardData(data);
+      setFilteredOrders(allOrdersAgg);
       if (data.recentOrders && data.recentOrders.length > 0) {
         const latestOrder = data.recentOrders[0];
         
@@ -460,10 +484,16 @@ export default function AdminDashboard() {
 
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [dateFilter, setDateFilter] = useState("hoje");
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const dateFilterRef = useRef(dateFilter);
+  const customStartDateRef = useRef(customStartDate);
+  const customEndDateRef = useRef(customEndDate);
   useEffect(() => {
     dateFilterRef.current = dateFilter;
-  }, [dateFilter]);
+    customStartDateRef.current = customStartDate;
+    customEndDateRef.current = customEndDate;
+  }, [dateFilter, customStartDate, customEndDate]);
 
   
   
@@ -573,8 +603,12 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const loadStoreStatus = async () => {
-      const { data } = await supabase.from('settings').select('value').eq('key', 'manual_store_closed').maybeSingle();
-      setManualClosed(data?.value === true);
+      const { data } = await supabase.from('settings').select('key, value').in('key', ['manual_store_closed', 'store_status', 'paused_until']);
+      const getVal = (k: string) => data?.find(d => d.key === k)?.value;
+      
+      setManualClosed(getVal('manual_store_closed') === true);
+      setStoreStatus(getVal('store_status') || 'open');
+      setPausedUntil(getVal('paused_until') || null);
     };
     loadStoreStatus();
   }, []);
@@ -587,12 +621,42 @@ export default function AdminDashboard() {
     loadAdminLogo();
   }, []);
 
-  const toggleStoreClosed = async () => {
-    const newValue = !manualClosed;
-    setManualClosed(newValue);
-    await supabase.from('settings').upsert({ key: 'manual_store_closed', value: newValue, updated_at: new Date().toISOString() });
-  };
+  const handleStoreAction = async (action: 'open' | 'pause_30m' | 'pause_1h' | 'pause_2h' | 'close') => {
+    setShowStoreMenu(false);
+    
+    if (action === 'open' && !dashboardData?.activeSessionId) {
+      alert("⚠️ Você precisa ABRIR O CAIXA primeiro (na aba 'Caixa') antes de abrir a loja para receber pedidos.");
+      setActiveTab('caixa');
+      return;
+    }
 
+    let newStatus = 'open';
+    let newPausedUntil = null;
+    let newManualClosed = false;
+
+    if (action.startsWith('pause_')) {
+      newStatus = 'paused';
+      const now = new Date();
+      if (action === 'pause_30m') now.setMinutes(now.getMinutes() + 30);
+      else if (action === 'pause_1h') now.setHours(now.getHours() + 1);
+      else if (action === 'pause_2h') now.setHours(now.getHours() + 2);
+      newPausedUntil = now.toISOString();
+    } else if (action === 'close') {
+      newStatus = 'closed';
+      newManualClosed = true;
+      setActiveTab('caixa'); // Redireciona para o caixa no fim do dia
+    }
+
+    setStoreStatus(newStatus as 'open'|'paused'|'closed');
+    setPausedUntil(newPausedUntil);
+    setManualClosed(newManualClosed);
+
+    await supabase.from('settings').upsert([
+      { key: 'store_status', value: newStatus, updated_at: new Date().toISOString() },
+      { key: 'paused_until', value: newPausedUntil, updated_at: new Date().toISOString() },
+      { key: 'manual_store_closed', value: newManualClosed, updated_at: new Date().toISOString() }
+    ]);
+  };
   useEffect(() => {
     if (!isAuthenticated) return;
     
@@ -769,7 +833,7 @@ export default function AdminDashboard() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#8b0000] focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C81E3A] focus:border-transparent outline-none transition-all"
                 placeholder="Ex: admin"
                 required
               />
@@ -780,7 +844,7 @@ export default function AdminDashboard() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#8b0000] focus:border-transparent outline-none transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-[#C81E3A] focus:border-transparent outline-none transition-all"
                 placeholder="Ex: admin"
                 required
               />
@@ -792,7 +856,7 @@ export default function AdminDashboard() {
             
             <button
               type="submit"
-              className="w-full bg-[#8b0000] text-white font-bold py-3 rounded-xl hover:bg-[#660000] transition-colors mt-2"
+              className="w-full bg-[#C81E3A] text-white font-bold py-3 rounded-xl hover:bg-[#A8172F] transition-colors mt-2"
             >
               Entrar no Dashboard
             </button>
@@ -805,37 +869,37 @@ export default function AdminDashboard() {
     const categoriesUI = [
     {
       id: "promocoes",
-      label: "PROMOÇÕES DO DIA 📢",
+      label: "PROMOÇÕES DO DIA",
       group: ["promocoes"],
     },
     {
       id: "tradicionais",
-      label: "TRADICIONAIS 🍕",
+      label: "TRADICIONAIS",
       group: ["tradicionais"],
     },
     {
       id: "especiais",
-      label: "ESPECIAIS ⭐",
+      label: "ESPECIAIS",
       group: ["especiais"],
     },
     {
       id: "gourmet",
-      label: "GOURMET 👨‍🍳",
+      label: "GOURMET",
       group: ["gourmet"],
     },
     {
       id: "vegetarianas",
-      label: "VEGETARIANA 🥗",
+      label: "VEGETARIANA",
       group: ["vegetarianas"],
     },
     {
       id: "doces",
-      label: "DOCES 🍫",
+      label: "DOCES",
       group: ["doces"],
     },
     {
       id: "esfihas",
-      label: "ESFIHAS 🧆",
+      label: "ESFIHAS",
       group: [
         "esfihas-salgadas-tradicionais",
         "esfihas-salgadas-especiais",
@@ -844,12 +908,12 @@ export default function AdminDashboard() {
     },
     {
       id: "bebidas",
-      label: "BEBIDAS 🥤",
+      label: "BEBIDAS",
       group: ["bebidas"],
     },
     {
       id: "bordas",
-      label: "BORDAS 🧀",
+      label: "BORDAS",
       group: ["bordas"],
     }
   ];
@@ -862,6 +926,14 @@ export default function AdminDashboard() {
        group: [cat.id]
     }))
     : categoriesUI;
+
+    if (!currentCategoriesUI.find(cat => cat.id === 'bordas')) {
+      currentCategoriesUI.push({
+        id: "bordas",
+        label: "BORDAS",
+        group: ["bordas"]
+      } as any);
+    }
   const itemsByCategory: Record<string, any[]> = {};
   currentCategoriesUI.forEach(cat => {
     itemsByCategory[cat.id] = menuItems.filter(item => cat.group.includes(item.category));
@@ -873,18 +945,18 @@ export default function AdminDashboard() {
   return (
     <>
       {/* Mobile Top Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm sticky top-0 z-40 md:hidden w-full no-print">
+      <header className="bg-stone-950 border-b border-stone-800 px-4 py-3 flex items-center justify-between sticky top-0 z-40 md:hidden w-full no-print">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsMobileMenuOpen(true)}
-            className="p-2 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            className="p-2 rounded-lg bg-stone-900 text-stone-300 hover:bg-stone-800 transition-colors border border-stone-800"
             aria-label="Abrir Menu Admin"
           >
-            <Menu size={22} />
+            <Menu size={20} />
           </button>
           <div>
-            <h2 className="text-lg font-black text-[#ea1d2c] tracking-tight leading-none">41 Menu's</h2>
-            <span className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+            <h2 className="text-sm font-bold text-white tracking-tight leading-none">41 Menu's</h2>
+            <span className="text-[10px] text-stone-400 font-mono uppercase tracking-wider">
               {activeTab === 'visao-geral' && 'Visão Geral'}
               {activeTab === 'pedidos' && 'Pedidos'}
               {activeTab === 'caixa' && 'Caixa'}
@@ -899,15 +971,15 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="flex items-center gap-1.5 cursor-pointer bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700">
+          <label className="flex items-center gap-1.5 cursor-pointer bg-stone-900 px-2.5 py-1.5 rounded-lg border border-stone-700 text-xs font-mono font-semibold text-stone-300">
             <input 
               type="checkbox" 
-              className="w-3.5 h-3.5 accent-[#8b0000] rounded cursor-pointer"
+              className="w-3.5 h-3.5 accent-emerald-500 rounded cursor-pointer"
               checked={autoPrint}
               onChange={toggleAutoPrint}
             />
             <span className="hidden sm:inline">Auto-Imprimir</span>
-            <Printer size={14} className="sm:hidden text-gray-600" />
+            <Printer size={14} className="sm:hidden text-stone-400" />
           </label>
         </div>
       </header>
@@ -922,46 +994,46 @@ export default function AdminDashboard() {
           />
           
           {/* Drawer Content */}
-          <div className="relative bg-white w-72 max-w-[85vw] h-full shadow-2xl p-6 flex flex-col justify-between overflow-y-auto z-10">
+          <div className="relative bg-stone-950 w-72 max-w-[85vw] h-full shadow-2xl p-5 flex flex-col justify-between overflow-y-auto z-10">
             <div>
-              <div className="flex justify-between items-center pb-4 mb-4 border-b border-gray-100">
+              <div className="flex justify-between items-center pb-4 mb-4 border-b border-stone-800">
                 <div>
-                  <h2 className="text-xl font-black text-[#ea1d2c] tracking-tight">41 Menu's</h2>
-                  <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">Painel de Gestão</p>
+                  <h2 className="text-sm font-bold text-white tracking-tight">41 Menu's</h2>
+                  <p className="text-[10px] text-stone-400 uppercase tracking-wider font-mono mt-0.5">Terminal Admin</p>
                 </div>
                 <button 
                   onClick={() => setIsMobileMenuOpen(false)} 
-                  className="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-2 text-stone-500 hover:text-white hover:bg-stone-800 rounded-lg transition-colors"
                 >
-                  <X size={20} />
+                  <X size={18} />
                 </button>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 font-mono text-xs">
                 {isOwner && (
                   <button 
                     onClick={() => { setActiveTab("visao-geral"); setIsMobileMenuOpen(false); }} 
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'visao-geral' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg font-semibold transition-colors ${activeTab === 'visao-geral' ? 'bg-white text-stone-950 font-bold' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
                   >
                     Visão Geral
                   </button>
                 )}
                 <button 
                   onClick={() => { setActiveTab("pedidos"); setIsMobileMenuOpen(false); }} 
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'pedidos' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50'}`}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg font-semibold transition-colors ${activeTab === 'pedidos' ? 'bg-white text-stone-950 font-bold' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
                 >
                   Pedidos
                 </button>
                 <button 
                   onClick={() => { setActiveTab("caixa"); setIsMobileMenuOpen(false); }} 
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'caixa' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50'}`}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg font-semibold transition-colors ${activeTab === 'caixa' ? 'bg-white text-stone-950 font-bold' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
                 >
                   Caixa
                 </button>
                 {isOwner && (
                   <button 
                     onClick={() => { setActiveTab("relatorios"); setIsMobileMenuOpen(false); }} 
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'relatorios' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg font-semibold transition-colors ${activeTab === 'relatorios' ? 'bg-white text-stone-950 font-bold' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
                   >
                     Relatórios
                   </button>
@@ -969,30 +1041,30 @@ export default function AdminDashboard() {
                 {isOwner && (
                   <button 
                     onClick={() => { setActiveTab("clientes"); setIsMobileMenuOpen(false); }} 
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'clientes' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50'}`}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg font-semibold transition-colors ${activeTab === 'clientes' ? 'bg-white text-stone-950 font-bold' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
                   >
                     Clientes
                   </button>
                 )}
 
                 {isOwner && (
-                  <div className="pt-4 mt-4 border-t border-gray-100">
-                    <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Cardápio</p>
+                  <div className="pt-3 mt-3 border-t border-stone-800">
+                    <p className="px-3 text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-1">Cardápio</p>
                     <button 
                       onClick={() => { setActiveTab("cardapio-digital"); setIsMobileMenuOpen(false); }} 
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'cardapio-digital' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50'}`}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg font-semibold transition-colors ${activeTab === 'cardapio-digital' ? 'bg-white text-stone-950 font-bold' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
                     >
                       Cardápio Digital
                     </button>
                     <button 
                       onClick={() => { setActiveTab("gestao-cardapio"); setIsMobileMenuOpen(false); }} 
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'gestao-cardapio' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50'}`}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg font-semibold transition-colors ${activeTab === 'gestao-cardapio' ? 'bg-white text-stone-950 font-bold' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
                     >
                       Produtos
                     </button>
                     <button 
                       onClick={() => { setActiveTab("categorias"); setIsMobileMenuOpen(false); }} 
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'categorias' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50'}`}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg font-semibold transition-colors ${activeTab === 'categorias' ? 'bg-white text-stone-950 font-bold' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
                     >
                       Categorias
                     </button>
@@ -1000,11 +1072,11 @@ export default function AdminDashboard() {
                 )}
 
                 {isOwner && (
-                  <div className="pt-4 mt-4 border-t border-gray-100">
-                    <p className="px-4 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Sistema</p>
+                  <div className="pt-3 mt-3 border-t border-stone-800">
+                    <p className="px-3 text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-1">Sistema</p>
                     <button 
                       onClick={() => { setActiveTab("configuracoes"); setIsMobileMenuOpen(false); }} 
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === 'configuracoes' ? 'bg-[#ea1d2c]/10 text-[#ea1d2c]' : 'text-gray-600 hover:bg-gray-50'}`}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg font-semibold transition-colors ${activeTab === 'configuracoes' ? 'bg-white text-stone-950 font-bold' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
                     >
                       Configurações
                     </button>
@@ -1013,157 +1085,195 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-100 space-y-2">
+            <div className="pt-4 border-t border-stone-100 space-y-1.5 font-mono text-xs">
               <button 
                 onClick={() => { setIsPasswordModalOpen(true); setIsMobileMenuOpen(false); }}
-                className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg font-semibold text-stone-700 hover:bg-stone-100 transition-colors"
               >
-                <Key size={16} /> Alterar Senha
+                <Key size={15} /> Alterar Senha
               </button>
               <button 
                 onClick={handleLogout}
-                className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm text-red-600 hover:bg-red-50 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg font-semibold text-rose-600 hover:bg-rose-50 transition-colors"
               >
-                <LogOut size={16} /> Sair do Painel
+                <LogOut size={15} /> Sair do Painel
               </button>
             </div>
           </div>
         </div>
       )}
 
-      <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans no-print">
+      <div className="min-h-screen bg-stone-50 flex flex-col md:flex-row font-sans no-print">
       {/* Sidebar */}
-      <aside className="w-64 bg-white border-r border-gray-100 flex-col hidden md:flex sticky top-0 h-screen overflow-y-auto hide-scrollbar">
-        {/* Clean Modern Sidebar Header */}
-        <div className="p-5 border-b border-gray-100 bg-white">
+      <aside className="w-64 bg-stone-950 text-stone-300 border-r border-stone-800/80 flex-col hidden md:flex sticky top-0 h-screen overflow-y-auto hide-scrollbar">
+        {/* Terminal Header */}
+        <div className="p-4 border-b border-stone-800/80 bg-stone-950">
           <div className="flex items-center gap-3">
-            <span className="w-9 h-9 rounded-xl bg-[#1C1917] text-[#D4AF6A] font-black flex items-center justify-center text-sm shadow-sm border border-gray-900 shrink-0">
+            <span className="w-8 h-8 rounded-lg bg-rose-600 text-white font-mono font-black flex items-center justify-center text-sm border border-rose-700 shrink-0">
               41
             </span>
             <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <h2 className="text-base font-black text-gray-900 tracking-tight leading-none">41 Menu's</h2>
-              </div>
-              <span className="text-[10px] font-extrabold text-[#D4AF6A] uppercase tracking-wider block mt-1">Pizzas e Esfihas</span>
+              <h2 className="text-sm font-bold text-white tracking-tight leading-none">41 Menu's</h2>
+              <span className="text-[10px] font-mono text-stone-400 uppercase tracking-wider block mt-1">Terminal Admin</span>
             </div>
           </div>
-          <div className="mt-3.5 pt-2.5 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Painel de Gestão</span>
-            <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Online</span>
+          <div className="mt-3 pt-2.5 border-t border-stone-800 flex items-center justify-between">
+            <span className="text-[10px] font-mono text-stone-500 uppercase tracking-wider">Status do Sistema</span>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">Online</span>
           </div>
         </div>
-        <div className="p-4 border-b border-gray-100">
+        <div className="p-3 border-b border-stone-800/80 relative">
           <button
-            onClick={toggleStoreClosed}
-            className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 shadow-sm ${manualClosed ? 'bg-red-100 text-red-700 hover:bg-red-200 border border-red-200' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-200'}`}
+            onClick={() => setShowStoreMenu(!showStoreMenu)}
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg font-mono text-xs font-bold transition-colors cursor-pointer border ${
+              storeStatus === 'closed' || manualClosed ? 'bg-rose-950/40 text-rose-300 border-rose-900/60 hover:bg-rose-900/40' : 
+              storeStatus === 'paused' ? 'bg-amber-950/40 text-amber-300 border-amber-900/60 hover:bg-amber-900/40' :
+              'bg-emerald-950/40 text-emerald-300 border-emerald-900/60 hover:bg-emerald-900/40'
+            }`}
           >
-            {manualClosed ? '🔴 Loja Fechada (clique p/ abrir)' : '🟢 Loja Aberta (clique p/ fechar)'}
+            <span className={`w-2 h-2 rounded-full ${
+              storeStatus === 'closed' || manualClosed ? 'bg-rose-500' : 
+              storeStatus === 'paused' ? 'bg-amber-500' : 
+              'bg-emerald-400'
+            } animate-pulse`} />
+            {storeStatus === 'closed' || manualClosed ? 'LOJA FECHADA' : 
+             storeStatus === 'paused' ? 'LOJA PAUSADA' : 'LOJA ABERTA'}
           </button>
+
+          {showStoreMenu && (
+            <div className="absolute top-full left-3 right-3 mt-1 bg-stone-900 border border-stone-700 rounded-lg shadow-xl z-50 overflow-hidden divide-y divide-stone-800 font-sans">
+              {(storeStatus === 'closed' || manualClosed || storeStatus === 'paused') ? (
+                <button
+                  onClick={() => handleStoreAction('open')}
+                  className="w-full text-left px-4 py-3 text-sm font-semibold text-emerald-400 hover:bg-stone-800 transition-colors"
+                >
+                  Abrir Loja Agora
+                </button>
+              ) : (
+                <>
+                  <div className="p-2">
+                    <p className="px-2 py-1 text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Pausa Temporária</p>
+                    <button onClick={() => handleStoreAction('pause_30m')} className="w-full text-left px-2 py-2 text-sm text-stone-300 hover:bg-stone-800 hover:text-white rounded transition-colors">Pausar por 30 min</button>
+                    <button onClick={() => handleStoreAction('pause_1h')} className="w-full text-left px-2 py-2 text-sm text-stone-300 hover:bg-stone-800 hover:text-white rounded transition-colors">Pausar por 1 hora</button>
+                    <button onClick={() => handleStoreAction('pause_2h')} className="w-full text-left px-2 py-2 text-sm text-stone-300 hover:bg-stone-800 hover:text-white rounded transition-colors">Pausar por 2 horas</button>
+                  </div>
+                  <div className="p-2 bg-stone-950/50">
+                    <button 
+                      onClick={() => handleStoreAction('close')}
+                      className="w-full text-left px-2 py-2 text-sm font-bold text-rose-500 hover:bg-rose-950/50 hover:text-rose-400 rounded transition-colors"
+                    >
+                      Encerrar o Dia (Caixa)
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
-        
-        <div className="p-3 flex-1 space-y-1.5">
+
+        <div className="p-3 flex-1 space-y-1.5 font-sans text-sm">
           {hasPermission('ver_relatorios') && (
             <button 
               onClick={() => setActiveTab("visao-geral")} 
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'visao-geral' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === 'visao-geral' ? 'bg-rose-600 text-white shadow-xs border border-rose-700' : 'text-white/60 hover:text-white hover:bg-stone-900/50'}`}
             >
-              <LayoutDashboard size={18} strokeWidth={1.75} className={activeTab === 'visao-geral' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
+              <LayoutDashboard size={18} className={activeTab === 'visao-geral' ? 'text-white' : 'text-white/50'} />
               Visão Geral
             </button>
           )}
           {hasPermission('ver_pedidos') && (
             <button 
               onClick={() => setActiveTab("pedidos")} 
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'pedidos' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === 'pedidos' ? 'bg-rose-600 text-white shadow-xs border border-rose-700' : 'text-white/60 hover:text-white hover:bg-stone-900/50'}`}
             >
-              <ShoppingBag size={18} strokeWidth={1.75} className={activeTab === 'pedidos' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
+              <ShoppingBag size={18} className={activeTab === 'pedidos' ? 'text-white' : 'text-white/50'} />
               Pedidos
             </button>
           )}
           {hasPermission('gerenciar_caixa') && (
             <button 
               onClick={() => setActiveTab("caixa")} 
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'caixa' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === 'caixa' ? 'bg-rose-600 text-white shadow-xs border border-rose-700' : 'text-white/60 hover:text-white hover:bg-stone-900/50'}`}
             >
-              <CreditCard size={18} strokeWidth={1.75} className={activeTab === 'caixa' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
+              <CreditCard size={18} className={activeTab === 'caixa' ? 'text-white' : 'text-white/50'} />
               Caixa
             </button>
           )}
           {hasPermission('ver_relatorios') && (
             <button 
               onClick={() => setActiveTab("relatorios")} 
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'relatorios' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === 'relatorios' ? 'bg-rose-600 text-white shadow-xs border border-rose-700' : 'text-white/60 hover:text-white hover:bg-stone-900/50'}`}
             >
-              <BarChart3 size={18} strokeWidth={1.75} className={activeTab === 'relatorios' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
+              <BarChart3 size={18} className={activeTab === 'relatorios' ? 'text-white' : 'text-white/50'} />
               Relatórios
             </button>
           )}
           {hasPermission('ver_clientes') && (
             <button 
               onClick={() => setActiveTab("clientes")} 
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'clientes' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === 'clientes' ? 'bg-rose-600 text-white shadow-xs border border-rose-700' : 'text-white/60 hover:text-white hover:bg-stone-900/50'}`}
             >
-              <Users size={18} strokeWidth={1.75} className={activeTab === 'clientes' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
+              <Users size={18} className={activeTab === 'clientes' ? 'text-white' : 'text-white/50'} />
               Clientes
             </button>
           )}
           
           {(hasPermission('gerenciar_produtos') || hasPermission('gerenciar_categorias')) && (
-            <div className="pt-3 mt-3 border-t border-gray-100 space-y-1">
-              <p className="px-3 text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">Cardápio</p>
+            <div className="pt-4 mt-4 border-t border-stone-800/80 space-y-1.5">
+              <p className="px-3 text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-2">Cardápio</p>
               <button 
                 onClick={() => setActiveTab("cardapio-digital")} 
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'cardapio-digital' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === 'cardapio-digital' ? 'bg-rose-600 text-white shadow-xs border border-rose-700' : 'text-white/60 hover:text-white hover:bg-stone-900/50'}`}
               >
-                <UtensilsCrossed size={18} strokeWidth={1.75} className={activeTab === 'cardapio-digital' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
+                <UtensilsCrossed size={18} className={activeTab === 'cardapio-digital' ? 'text-white' : 'text-white/50'} />
                 Cardápio Digital
               </button>
               {hasPermission('gerenciar_produtos') && (
                 <button 
                   onClick={() => setActiveTab("gestao-cardapio")} 
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'gestao-cardapio' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === 'gestao-cardapio' ? 'bg-rose-600 text-white shadow-xs border border-rose-700' : 'text-white/60 hover:text-white hover:bg-stone-900/50'}`}
                 >
-                  <Package size={18} strokeWidth={1.75} className={activeTab === 'gestao-cardapio' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
+                  <Package size={18} className={activeTab === 'gestao-cardapio' ? 'text-white' : 'text-white/50'} />
                   Produtos
                 </button>
               )}
               {hasPermission('gerenciar_categorias') && (
                 <button 
                   onClick={() => setActiveTab("categorias")} 
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'categorias' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === 'categorias' ? 'bg-rose-600 text-white shadow-xs border border-rose-700' : 'text-white/60 hover:text-white hover:bg-stone-900/50'}`}
                 >
-                  <FolderTree size={18} strokeWidth={1.75} className={activeTab === 'categorias' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
+                  <FolderTree size={18} className={activeTab === 'categorias' ? 'text-white' : 'text-white/50'} />
                   Categorias
                 </button>
               )}
               <button 
                 onClick={() => setActiveTab("banner-promocional")} 
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'banner-promocional' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === 'banner-promocional' ? 'bg-rose-600 text-white shadow-xs border border-rose-700' : 'text-white/60 hover:text-white hover:bg-stone-900/50'}`}
               >
-                <Megaphone size={18} strokeWidth={1.75} className={activeTab === 'banner-promocional' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
+                <Megaphone size={18} className={activeTab === 'banner-promocional' ? 'text-white' : 'text-white/50'} />
                 Banner Promocional
               </button>
             </div>
           )}
           {(hasPermission('gerenciar_configuracoes') || hasPermission('gerenciar_usuarios')) && (
-            <div className="pt-3 mt-3 border-t border-gray-100 space-y-1">
-              <p className="px-3 text-[11px] font-black text-gray-400 uppercase tracking-wider mb-1.5">Sistema</p>
+            <div className="pt-3 mt-3 border-t border-stone-850 space-y-1">
+              <p className="px-3 text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-1">Sistema</p>
               {hasPermission('gerenciar_configuracoes') && (
                 <button 
                   onClick={() => setActiveTab("configuracoes")} 
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'configuracoes' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === 'configuracoes' ? 'bg-white text-stone-950 font-bold shadow-xs' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
                 >
-                  <Settings size={18} strokeWidth={1.75} className={activeTab === 'configuracoes' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
+                  <Settings size={16} className={activeTab === 'configuracoes' ? 'text-stone-950' : 'text-stone-500'} />
                   Configurações
                 </button>
               )}
               {hasPermission('gerenciar_usuarios') && (
                 <button 
                   onClick={() => setActiveTab("usuarios")} 
-                  className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-bold text-sm transition-all duration-200 active:scale-95 ${activeTab === 'usuarios' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md border-l-4 border-[#D4AF6A]' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'}`}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === 'usuarios' ? 'bg-white text-stone-950 font-bold shadow-xs' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
                 >
-                  <Shield size={18} strokeWidth={1.75} className={activeTab === 'usuarios' ? 'text-[#D4AF6A]' : 'text-gray-400'} />
-                  Usuários & Permissões
+                  <Shield size={16} className={activeTab === 'usuarios' ? 'text-stone-950' : 'text-stone-500'} />
+                  Usuários & Acesso
                 </button>
               )}
             </div>
@@ -1176,31 +1286,31 @@ export default function AdminDashboard() {
         <div className="max-w-7xl mx-auto space-y-6">
 
           {/* Header Section */}
-        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
+        <div className="flex flex-col md:flex-row justify-between md:items-center gap-4 border-b border-stone-200/80 pb-4">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#1C1917]">
+            <h1 className="text-xl font-bold tracking-tight text-stone-900">
               {PAGE_TITLES[activeTab]?.title || 'Painel'}
             </h1>
-            <p className="text-sm text-[#78716C] mt-1">
+            <p className="text-xs text-stone-500 font-mono mt-0.5">
               {PAGE_TITLES[activeTab]?.subtitle || ''}
             </p>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {adminLogoUrl && (
               <>
-                <img src={adminLogoUrl} alt="Logo do restaurante" className="h-9 object-contain" />
-                <div className="w-px h-8 bg-[#E7E5E1]" />
+                <img src={adminLogoUrl} alt="Logo do restaurante" className="h-8 object-contain" />
+                <div className="w-px h-6 bg-stone-200" />
               </>
             )}
-            <button onClick={handleLogout} className="px-4 py-2.5 bg-transparent border border-[#E7E5E1] hover:bg-[#FAFAF9] text-[#1C1917] rounded-lg font-semibold text-sm transition-colors">
-              Sair
+            <button onClick={handleLogout} className="px-3.5 py-1.5 bg-white border border-stone-300 hover:bg-stone-100 text-stone-900 rounded-md font-semibold text-xs font-mono transition-colors cursor-pointer shadow-xs">
+              Sair do Sistema
             </button>
           </div>
         </div>
 
         {autoPrint && (
           <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-xl p-4 text-sm flex items-start gap-3">
-            <span className="text-xl">ℹ️</span>
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
             <div>
               <p className="font-bold mb-1">Impressão Automática Ativada!</p>
               <p>O sistema verificará novos pedidos a cada 15 segundos e enviará para a impressora. Para que a impressão ocorra de forma invisível (sem abrir janela de confirmação), inicie o Google Chrome com o atalho <b>--kiosk-printing</b> apontando para a sua impressora padrão (térmica 80mm).</p>
@@ -1312,14 +1422,14 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Main Chart Column */}
               <div className="lg:col-span-2 space-y-6">
-                <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md hover:shadow-lg transition-shadow">
-                  <div className="flex justify-between items-center mb-6">
+                <div className="bg-white p-5 rounded-lg border border-stone-200">
+                  <div className="flex justify-between items-center mb-4">
                     <div>
-                      <h2 className="text-lg font-bold text-gray-900">Evolução do Faturamento</h2>
-                      <p className="text-sm text-gray-500">Todos os dias da semana</p>
+                      <h2 className="text-sm font-bold text-stone-900">Evolução do Faturamento</h2>
+                      <p className="text-[11px] text-stone-500 font-mono">Todos os dias da semana</p>
                     </div>
-                    <div className="p-2 bg-slate-100 rounded-lg">
-                      <Activity size={20} className="text-slate-700" />
+                    <div className="p-1.5 bg-stone-50 rounded border border-stone-200">
+                      <Activity size={16} className="text-stone-600" />
                     </div>
                   </div>
                   <div className="h-[300px] w-full">
@@ -1328,32 +1438,32 @@ export default function AdminDashboard() {
                         data={salesData}
                         margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
                       >
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
                         <XAxis 
                           dataKey="name" 
                           axisLine={false} 
                           tickLine={false} 
-                          tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }} 
+                          tick={{ fill: '#71717a', fontSize: 11, fontWeight: 600, fontFamily: 'ui-monospace, monospace' }} 
                           dy={10}
                         />
                         <YAxis 
                           axisLine={false} 
                           tickLine={false} 
-                          tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
+                          tick={{ fill: '#71717a', fontSize: 11, fontWeight: 600, fontFamily: 'ui-monospace, monospace' }}
                           tickFormatter={(value) => `€${value}`}
                         />
                         <Tooltip
-                          contentStyle={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '14px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
-                          itemStyle={{ color: '#ffffff', fontWeight: 800 }}
-                          labelStyle={{ color: '#94a3b8', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase' }}
+                          contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', boxShadow: '0 4px 12px rgb(0 0 0 / 0.15)', fontFamily: 'ui-monospace, monospace', fontSize: '12px' }}
+                          itemStyle={{ color: '#ffffff', fontWeight: 700 }}
+                          labelStyle={{ color: '#a1a1aa', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}
                           formatter={(value: number) => [`€ ${Number(value).toFixed(2)}`, 'Faturamento']}
-                          cursor={{fill: 'rgba(15, 23, 42, 0.04)'}}
+                          cursor={{fill: 'rgba(24, 24, 27, 0.04)'}}
                         />
                         <Bar
                           dataKey="revenue"
-                          fill="#0f172a"
-                          radius={[8, 8, 0, 0]}
-                          barSize={36}
+                          fill="#18181b"
+                          radius={[4, 4, 0, 0]}
+                          barSize={32}
                         />
                       </BarChart>
                     </ResponsiveContainer>
@@ -1364,27 +1474,27 @@ export default function AdminDashboard() {
               {/* Right Column for Products and Categories */}
               <div className="space-y-6">
                 {/* Top Categories */}
-                <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
+                <div className="bg-white p-5 rounded-lg border border-stone-200 flex flex-col">
+                  <div className="flex justify-between items-center mb-4">
                     <div>
-                      <h2 className="text-lg font-bold text-gray-900">Categorias em Destaque</h2>
-                      <p className="text-sm text-gray-500">Categorias mais vendidas</p>
+                      <h2 className="text-sm font-bold text-stone-900">Categorias em Destaque</h2>
+                      <p className="text-[11px] text-stone-500 font-mono">Categorias mais vendidas</p>
                     </div>
-                    <div className="p-2 bg-slate-100 rounded-lg">
-                      <TrendingUp size={20} className="text-slate-700" />
+                    <div className="p-1.5 bg-stone-50 rounded border border-stone-200">
+                      <TrendingUp size={16} className="text-stone-600" />
                     </div>
                   </div>
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {(!(dashboardData?.chartData?.salesByCategory || [])?.length) ? (
-                      <div className="text-center text-gray-500 py-4">Sem dados.</div>
+                      <div className="text-center text-stone-500 font-mono text-xs py-4">Sem dados.</div>
                     ) : (
                       [...(dashboardData?.chartData?.salesByCategory || [])]
                         .sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0))
                         .slice(0, 3)
                         .map((cat: any, idx: number) => (
                           <div key={idx} className="flex justify-between items-center">
-                            <span className="text-sm font-medium text-gray-600 capitalize">{String(cat.name || '').replace('-', ' ')}</span>
-                            <span className="text-sm font-bold text-gray-900">€ {(Number(cat.value) || 0).toFixed(2)}</span>
+                            <span className="text-xs font-mono text-stone-600 capitalize">{String(cat.name || '').replace('-', ' ')}</span>
+                            <span className="text-xs font-mono font-bold tabular-nums text-stone-900">€ {(Number(cat.value) || 0).toFixed(2)}</span>
                           </div>
                         ))
                     )}
@@ -1392,38 +1502,38 @@ export default function AdminDashboard() {
                 </div>
 
                 {/* Top Pizzas */}
-                <div className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-md hover:shadow-lg transition-shadow flex flex-col">
-                  <div className="flex justify-between items-center mb-6">
+                <div className="bg-white p-5 rounded-lg border border-stone-200 flex flex-col">
+                  <div className="flex justify-between items-center mb-4">
                     <div>
-                      <h2 className="text-lg font-bold text-gray-900">Pizzas Favoritas</h2>
-                      <p className="text-sm text-gray-500">As mais escolhidas</p>
+                      <h2 className="text-sm font-bold text-stone-900">Pizzas Favoritas</h2>
+                      <p className="text-[11px] text-stone-500 font-mono">As mais escolhidas</p>
                     </div>
-                    <div className="p-2 bg-slate-100 rounded-lg">
-                      <Pizza size={20} className="text-slate-700" />
+                    <div className="p-1.5 bg-stone-50 rounded border border-stone-200">
+                      <Pizza size={16} className="text-stone-600" />
                     </div>
                   </div>
                   
-                  <div className="flex-1 flex flex-col justify-start space-y-4">
+                  <div className="flex-1 flex flex-col justify-start space-y-3">
                     {(!(dashboardData?.popularPizzas || [])?.length) ? (
-                      <div className="text-center text-gray-500 py-4">
+                      <div className="text-center text-stone-500 font-mono text-xs py-4">
                         Nenhuma pizza registrada ainda.
                       </div>
                     ) : (
                       (dashboardData?.popularPizzas || []).map((product: any, index: number) => (
                         <div key={index} className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-sm font-bold text-gray-600 border border-gray-100 flex-shrink-0">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-6 h-6 rounded bg-stone-100 flex items-center justify-center text-[11px] font-mono font-bold text-stone-600 border border-stone-200 flex-shrink-0">
                               {index + 1}
                             </div>
                             <div>
-                              <p className="text-sm font-bold text-gray-900 line-clamp-1 max-w-[150px]" title={product.name}>
+                              <p className="text-xs font-semibold text-stone-900 line-clamp-1 max-w-[150px]" title={product.name}>
                                 {product.name}
                               </p>
-                              <p className="text-xs text-gray-500">{product.qty} unid.</p>
+                              <p className="text-[10px] font-mono text-stone-500">{product.qty} unid.</p>
                             </div>
                           </div>
                           <div className="text-right flex-shrink-0">
-                            <p className="text-sm font-bold text-slate-800">€ {(Number(product.revenue) || 0).toFixed(2)}</p>
+                            <p className="text-xs font-mono font-bold tabular-nums text-stone-900">€ {(Number(product.revenue) || 0).toFixed(2)}</p>
                           </div>
                         </div>
                       ))
@@ -1436,26 +1546,26 @@ export default function AdminDashboard() {
             {/* Additional Modern Neutral Bar Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
               {/* Vendas por Categoria (Horizontal Bar Chart) */}
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md hover:shadow-lg transition-all duration-200">
-                <div className="flex justify-between items-center mb-6">
+              <div className="bg-white p-5 rounded-lg border border-stone-200">
+                <div className="flex justify-between items-center mb-4">
                   <div>
-                    <h2 className="text-lg font-extrabold text-gray-900">Vendas por Categoria</h2>
-                    <p className="text-sm text-gray-500 font-medium">Distribuição por receita em barras</p>
+                    <h2 className="text-sm font-bold text-stone-900">Vendas por Categoria</h2>
+                    <p className="text-[11px] text-stone-500 font-mono">Distribuição por receita</p>
                   </div>
                 </div>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={dashboardData?.chartData?.salesByCategory || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e4e4e7" />
                       <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fontWeight: 700, fill: '#334155' }} axisLine={false} tickLine={false} />
+                      <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, fontWeight: 600, fill: '#52525b', fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '14px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
-                        itemStyle={{ color: '#ffffff', fontWeight: 800 }}
+                        contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', boxShadow: '0 4px 12px rgb(0 0 0 / 0.15)', fontFamily: 'ui-monospace, monospace', fontSize: '12px' }}
+                        itemStyle={{ color: '#ffffff', fontWeight: 700 }}
                         formatter={(value: any) => [`€ ${(Number(value) || 0).toFixed(2)}`, 'Vendas']}
-                        cursor={{fill: 'rgba(15, 23, 42, 0.04)'}}
+                        cursor={{fill: 'rgba(24, 24, 27, 0.04)'}}
                       />
-                      <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={26}>
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={22}>
                         {((dashboardData?.chartData?.salesByCategory || []) || []).map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
@@ -1466,26 +1576,26 @@ export default function AdminDashboard() {
               </div>
 
               {/* Produtos Mais Vendidos (Horizontal Bar Chart) */}
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md hover:shadow-lg transition-all duration-200">
-                <div className="flex justify-between items-center mb-6">
+              <div className="bg-white p-5 rounded-lg border border-stone-200">
+                <div className="flex justify-between items-center mb-4">
                   <div>
-                    <h2 className="text-lg font-extrabold text-gray-900">Top 5 Produtos</h2>
-                    <p className="text-sm text-gray-500 font-medium">Por volume de vendas em barras</p>
+                    <h2 className="text-sm font-bold text-stone-900">Top 5 Produtos</h2>
+                    <p className="text-[11px] text-stone-500 font-mono">Por volume de vendas</p>
                   </div>
                 </div>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={dashboardData?.popularItems || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e4e4e7" />
                       <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fontWeight: 700, fill: '#334155' }} axisLine={false} tickLine={false} />
+                      <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, fontWeight: 600, fill: '#52525b', fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '14px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
-                        itemStyle={{ color: '#ffffff', fontWeight: 800 }}
+                        contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', boxShadow: '0 4px 12px rgb(0 0 0 / 0.15)', fontFamily: 'ui-monospace, monospace', fontSize: '12px' }}
+                        itemStyle={{ color: '#ffffff', fontWeight: 700 }}
                         formatter={(value: any) => [`${Number(value) || 0} unid.`, 'Quantidade']}
-                        cursor={{fill: 'rgba(15, 23, 42, 0.04)'}}
+                        cursor={{fill: 'rgba(24, 24, 27, 0.04)'}}
                       />
-                      <Bar dataKey="qty" radius={[0, 8, 8, 0]} barSize={26}>
+                      <Bar dataKey="qty" radius={[0, 4, 4, 0]} barSize={22}>
                         {(dashboardData?.popularItems || []).map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
@@ -1496,26 +1606,26 @@ export default function AdminDashboard() {
               </div>
 
               {/* Formas de Pagamento (Horizontal Bar Chart) */}
-              <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-md hover:shadow-lg transition-all duration-200">
-                <div className="flex justify-between items-center mb-6">
+              <div className="bg-white p-5 rounded-lg border border-stone-200">
+                <div className="flex justify-between items-center mb-4">
                   <div>
-                    <h2 className="text-lg font-extrabold text-gray-900">Formas de Pagamento</h2>
-                    <p className="text-sm text-gray-500 font-medium">Distribuição por método em barras</p>
+                    <h2 className="text-sm font-bold text-stone-900">Formas de Pagamento</h2>
+                    <p className="text-[11px] text-stone-500 font-mono">Distribuição por método</p>
                   </div>
                 </div>
                 <div className="h-[300px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={paymentMethodsData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f5f9" />
+                      <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e4e4e7" />
                       <XAxis type="number" hide />
-                      <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11, fontWeight: 700, fill: '#334155' }} axisLine={false} tickLine={false} />
+                      <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10, fontWeight: 600, fill: '#52525b', fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false} />
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '14px', border: '1px solid #1e293b', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.3)' }}
-                        itemStyle={{ color: '#ffffff', fontWeight: 800 }}
+                        contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', boxShadow: '0 4px 12px rgb(0 0 0 / 0.15)', fontFamily: 'ui-monospace, monospace', fontSize: '12px' }}
+                        itemStyle={{ color: '#ffffff', fontWeight: 700 }}
                         formatter={(value: any) => [`€ ${(Number(value) || 0).toFixed(2)}`, 'Total']}
-                        cursor={{fill: 'rgba(15, 23, 42, 0.04)'}}
+                        cursor={{fill: 'rgba(24, 24, 27, 0.04)'}}
                       />
-                      <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={26}>
+                      <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={22}>
                         {paymentMethodsData.map((entry: any, index: number) => (
                           <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                         ))}
@@ -1533,95 +1643,132 @@ export default function AdminDashboard() {
         {/* Pedidos Tab */}
         {activeTab === "pedidos" && (
           <div className="mt-6">
-            <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Gestor de Pedidos</h2>
-                <div className="text-sm text-gray-500">
-                  Total: {dashboardData?.recentOrders?.length || 0} pedidos
+            <div className="bg-white p-5 rounded-lg border border-stone-200">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-sm font-bold text-stone-900">Gestor de Pedidos</h2>
+                <div className="text-[11px] font-mono text-stone-500">
+                  Total: <span className="font-bold tabular-nums text-stone-900">{dashboardData?.recentOrders?.length || 0}</span> pedidos
                 </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-left">
                   <thead>
-                    <tr className="border-b border-gray-100 text-sm text-gray-500 bg-gray-50">
-                      <th className="py-4 px-4 font-semibold rounded-tl-lg">Nº / Hora</th>
-                      <th className="py-4 px-4 font-semibold">Cliente</th>
-                      <th className="py-4 px-4 font-semibold">Tipo</th>
-                      <th className="py-4 px-4 font-semibold">Valor</th>
-                      <th className="py-4 px-4 font-semibold text-center">Status</th>
-                      <th className="py-4 px-4 font-semibold rounded-tr-lg">Ações</th>
+                    <tr className="border-b border-stone-200 text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider bg-stone-50">
+                      <th className="py-3 px-4 rounded-tl-md">Nº / Hora</th>
+                      <th className="py-3 px-4">Cliente</th>
+                      <th className="py-3 px-4">Tipo</th>
+                      <th className="py-3 px-4">Valor</th>
+                      <th className="py-3 px-4 text-center">Status</th>
+                      <th className="py-3 px-4 rounded-tr-md">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="text-sm">
+                  <tbody className="text-xs font-mono">
                     {(!dashboardData?.recentOrders || dashboardData.recentOrders.length === 0) ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-gray-500">
-                          Nenhum pedido encontrado.
+                        <td colSpan={6} className="py-12 text-center">
+                          {!dashboardData?.activeSessionId ? (
+                            <div className="flex flex-col items-center justify-center text-stone-400">
+                              <Wallet size={32} className="mb-2 opacity-50" />
+                              <p className="font-bold text-stone-600 text-sm">Caixa Fechado</p>
+                              <p>Nenhum pedido em andamento no momento.</p>
+                              <p className="text-[10px] mt-1">Abra o caixa na aba "Caixa" para receber pedidos.</p>
+                            </div>
+                          ) : (
+                            <span className="text-stone-500 font-mono text-xs">Nenhum pedido recebido neste turno ainda.</span>
+                          )}
                         </td>
                       </tr>
                     ) : (
                       dashboardData.recentOrders.map((order: any) => (
-                        <tr key={order.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                          <td className="py-4 px-4">
+                        <tr key={order.id} className="border-b border-stone-100 hover:bg-stone-50 transition-colors">
+                          <td className="py-3 px-4">
                             <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-gray-900">#{order.id}</span>
+                              <span className="font-bold text-stone-900 tabular-nums">#{order.id}</span>
                               {(order.isEdited || order.is_edited) && (
-                                <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200 uppercase tracking-wider">EDITADO ✏️</span>
+                                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">EDITADO</span>
                               )}
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">{new Date(order.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</div>
+                            <div className="text-[10px] text-stone-500 mt-0.5 tabular-nums">{new Date(order.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</div>
                           </td>
-                          <td className="py-4 px-4">
-                            <div className="font-medium text-gray-900">{order.customerName}</div>
+                          <td className="py-3 px-4">
+                            <div className="font-semibold text-stone-900">{order.customerName}</div>
                           </td>
-                          <td className="py-4 px-4">
-                            <span className="text-gray-600 bg-gray-100 px-2 py-1 rounded text-xs font-medium">
+                          <td className="py-3 px-4">
+                            <span className="text-stone-600 bg-stone-100 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold border border-stone-200">
                               {order.orderType}
                             </span>
                           </td>
-                          <td className="py-4 px-4 font-bold text-gray-900">€{order.totalAmount.toFixed(2)}</td>
-                          <td className="py-4 px-4 text-center">
-                            <span className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap
-                              ${order.status === 'Pendente' ? 'bg-gray-100 text-gray-600' :
-                                order.status === 'Em Preparo' ? 'bg-orange-100 text-orange-700' :
-                                order.status === 'Saiu para Entrega' ? 'bg-blue-100 text-blue-700' :
-                                'bg-green-100 text-green-700'}`}
+                          <td className="py-3 px-4 font-bold tabular-nums text-stone-900">€{order.totalAmount.toFixed(2)}</td>
+                          <td className="py-3 px-4 text-center">
+                            <span className={`px-2 py-1 rounded text-[10px] font-mono font-bold whitespace-nowrap border
+                              ${order.status === 'Pendente' ? 'bg-stone-100 text-stone-600 border-stone-200' :
+                                order.status === 'Em Preparo' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                                order.status === 'Saiu para Entrega' ? 'bg-sky-50 text-sky-700 border-sky-200' :
+                                order.status === 'Cancelado' ? 'bg-red-50 text-red-700 border-red-200' :
+                                'bg-emerald-50 text-emerald-700 border-emerald-200'}`}
                             >
                               {order.status}
                             </span>
                           </td>
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-2">
-                              <select
-                                value={order.status}
-                                onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                                className="text-xs border border-gray-200 rounded-lg px-3 py-2 bg-white cursor-pointer hover:border-gray-300 outline-none font-medium text-gray-700 shadow-sm"
-                              >
-                                <option value="Pendente">Pendente</option>
-                                <option value="Em Preparo">Em Preparo</option>
-                                <option value="Saiu para Entrega">Saiu para Entrega</option>
-                                <option value="Finalizado">Finalizado</option>
-                              </select>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5">
+                              {order.status === 'Pendente' && (
+                                <button
+                                  onClick={() => updateOrderStatus(order.id, 'Em Preparo')}
+                                  className="text-[10px] font-mono font-bold px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-xs border border-emerald-700"
+                                >
+                                  PREPARAR
+                                </button>
+                              )}
+                              {order.status === 'Em Preparo' && (
+                                <button
+                                  onClick={() => updateOrderStatus(order.id, order.orderType === 'entrega' ? 'Saiu para Entrega' : 'Finalizado')}
+                                  className="text-[10px] font-mono font-bold px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer shadow-xs border border-blue-700"
+                                >
+                                  {order.orderType === 'entrega' ? 'DESPACHAR' : 'FINALIZAR'}
+                                </button>
+                              )}
+                              {order.status === 'Saiu para Entrega' && (
+                                <button
+                                  onClick={() => updateOrderStatus(order.id, 'Finalizado')}
+                                  className="text-[10px] font-mono font-bold px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-xs border border-emerald-700"
+                                >
+                                  FINALIZAR
+                                </button>
+                              )}
+                              {order.status !== 'Finalizado' && order.status !== 'Cancelado' && (
+                                <button
+                                  onClick={() => {
+                                    if(window.confirm('Deseja realmente CANCELAR este pedido?')) {
+                                      updateOrderStatus(order.id, 'Cancelado');
+                                    }
+                                  }}
+                                  className="p-1.5 text-red-700 hover:text-white bg-red-50 hover:bg-red-600 border border-red-200 rounded-md transition-colors cursor-pointer"
+                                  title="Cancelar Pedido"
+                                >
+                                  <X size={14} />
+                                </button>
+                              )}
                               <button
                                 onClick={() => setEditingOrder(order)}
-                                className="p-2 text-amber-700 hover:text-white bg-amber-50 hover:bg-amber-600 border border-amber-200 rounded-lg transition-colors shadow-sm cursor-pointer"
-                                title="Editar Pedido (Itens, Valores, Desconto, Endereço)"
+                                className="p-1.5 text-amber-700 hover:text-white bg-amber-50 hover:bg-amber-600 border border-amber-200 rounded-md transition-colors cursor-pointer"
+                                title="Editar Pedido"
                               >
-                                <Edit3 size={16} />
+                                <Edit3 size={14} />
                               </button>
                               <button
                                 onClick={() => handlePrintOrder(order)}
-                                className="p-2 text-gray-600 hover:text-white bg-gray-100 hover:bg-[#8b0000] rounded-lg transition-colors shadow-sm cursor-pointer"
+                                className="p-1.5 text-stone-600 hover:text-white bg-stone-50 hover:bg-stone-900 border border-stone-200 rounded-md transition-colors cursor-pointer"
                                 title="Imprimir Talão"
                               >
-                                <Printer size={16} />
+                                <Printer size={14} />
                               </button>
                               <button
                                 onClick={() => handleDeleteOrder(order.id)}
-                                className="p-2 text-red-600 hover:text-white bg-red-50 hover:bg-red-600 border border-red-200 rounded-lg transition-colors shadow-sm cursor-pointer"
+                                className="p-1.5 text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 rounded-md transition-colors cursor-pointer"
                                 title="Excluir Pedido"
                               >
-                                <Trash2 size={16} />
+                                <Trash2 size={14} />
                               </button>
                             </div>
                           </td>
@@ -1639,53 +1786,95 @@ export default function AdminDashboard() {
         {activeTab === "relatorios" && (
           <div className="mt-6 space-y-8">
             {/* Filtro de Tempo Exclusivo da Aba Relatórios */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-              <div>
-                <h2 className="text-lg font-bold text-gray-900">Período de Análise</h2>
-                <p className="text-xs text-gray-500 mt-0.5">Selecione o filtro de tempo dos relatórios.</p>
+            <div className="flex flex-col gap-4 bg-white p-5 rounded-lg border border-stone-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-sm font-bold text-stone-900">Período de Análise</h2>
+                  <p className="text-[11px] text-stone-500 font-mono mt-0.5">Selecione o filtro de tempo dos relatórios.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-1 bg-stone-100 p-1 rounded-lg border border-stone-200 self-start sm:self-auto">
+                  <button onClick={() => setDateFilter("hoje")} className={`px-3 py-1.5 text-xs font-mono font-bold rounded-md transition-colors ${dateFilter === "hoje" ? "bg-white text-stone-900 shadow-xs border border-stone-200" : "text-stone-500 hover:text-stone-900"}`}>
+                    Hoje
+                  </button>
+                  <button onClick={() => setDateFilter("7dias")} className={`px-3 py-1.5 text-xs font-mono font-bold rounded-md transition-colors ${dateFilter === "7dias" ? "bg-white text-stone-900 shadow-xs border border-stone-200" : "text-stone-500 hover:text-stone-900"}`}>
+                    7 Dias
+                  </button>
+                  <button onClick={() => setDateFilter("mes")} className={`px-3 py-1.5 text-xs font-mono font-bold rounded-md transition-colors ${dateFilter === "mes" ? "bg-white text-stone-900 shadow-xs border border-stone-200" : "text-stone-500 hover:text-stone-900"}`}>
+                    Mês
+                  </button>
+                  <button onClick={() => setDateFilter("customizado")} className={`px-3 py-1.5 text-xs font-mono font-bold rounded-md transition-colors ${dateFilter === "customizado" ? "bg-white text-stone-900 shadow-xs border border-stone-200" : "text-stone-500 hover:text-stone-900"}`}>
+                    Personalizado
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1 bg-gray-50 p-1.5 rounded-xl border border-gray-200 self-start sm:self-auto">
-                <button onClick={() => setDateFilter("hoje")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${dateFilter === "hoje" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"}`}>
-                  Hoje
-                </button>
-                <button onClick={() => setDateFilter("7dias")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${dateFilter === "7dias" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"}`}>
-                  7 Dias
-                </button>
-                <button onClick={() => setDateFilter("mes")} className={`px-4 py-2 text-sm font-bold rounded-lg transition-all ${dateFilter === "mes" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"}`}>
-                  Mês
-                </button>
-              </div>
+
+              {dateFilter === "customizado" && (
+                <div className="pt-4 mt-2 border-t border-stone-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Data Inicial</label>
+                      <input 
+                        type="date" 
+                        value={customStartDate} 
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" 
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Data Final</label>
+                      <input 
+                        type="date" 
+                        value={customEndDate} 
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" 
+                      />
+                    </div>
+                  </div>
+                  {customStartDate && customEndDate && customEndDate < customStartDate && (
+                    <p className="text-[11px] font-mono font-bold text-rose-600 mb-3">
+                      ⚠ A data final não pode ser anterior à data inicial.
+                    </p>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (!customStartDate || !customEndDate) return;
+                      if (customEndDate < customStartDate) return;
+                      customStartDateRef.current = customStartDate;
+                      customEndDateRef.current = customEndDate;
+                      fetchDashboardData();
+                    }}
+                    disabled={!customStartDate || !customEndDate || customEndDate < customStartDate}
+                    className="px-6 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-mono font-bold rounded-md transition-colors border border-rose-700 active:translate-y-px"
+                  >
+                    Aplicar Período
+                  </button>
+                </div>
+              )}
             </div>
 
             <div>
-              <h2 className="text-xl font-bold text-gray-900 mb-4">Relatórios gerais</h2>
+              <h2 className="text-sm font-bold text-stone-900 mb-4">Relatórios gerais</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <ReportCard
                   title="Faturamento Geral"
-                  value={`€ ${allOrders.reduce((acc, o) => acc + o.totalAmount, 0).toFixed(2)}`}
+                  value={`€ ${filteredOrders.reduce((acc, o) => acc + o.totalAmount, 0).toFixed(2)}`}
                   icon={<DollarSign size={24} className="text-emerald-600" />}
                   iconBg="bg-emerald-50"
                   onClick={() => setReportModal({isOpen: true, type: 'faturamento', title: 'Faturamento Geral'})}
                 />
                 <ReportCard
-                  title="Vendas por mês"
-                  value={`€ ${allOrders.filter(o => {
-                    const d = safeGetDate(o.createdAt);
-                    return d ? (d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear()) : false;
-                  }).reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0).toFixed(2)}`}
+                  title="Pedidos no período"
+                  value={`${filteredOrders.length} pedidos`}
                   icon={<Calendar size={24} className="text-blue-600" />}
                   iconBg="bg-blue-50"
-                  onClick={() => setReportModal({isOpen: true, type: 'vendas_mes', title: 'Vendas por Mês (Atual)'})}
+                  onClick={() => setReportModal({isOpen: true, type: 'vendas_mes', title: 'Pedidos no Período'})}
                 />
                 <ReportCard
-                  title="Vendas últimos 7 dias"
-                  value={`€ ${allOrders.filter(o => {
-                    const d = safeGetDate(o.createdAt);
-                    return d ? (d.getTime() >= (new Date().getTime() - 7 * 24 * 60 * 60 * 1000)) : false;
-                  }).reduce((acc, o) => acc + (Number(o.totalAmount) || 0), 0).toFixed(2)}`}
+                  title="Ticket Médio"
+                  value={`€ ${filteredOrders.length > 0 ? (filteredOrders.reduce((acc, o) => acc + o.totalAmount, 0) / filteredOrders.length).toFixed(2) : '0.00'}`}
                   icon={<TrendingUp size={24} className="text-orange-600" />}
                   iconBg="bg-orange-50"
-                  onClick={() => setReportModal({isOpen: true, type: 'vendas_7dias', title: 'Vendas Últimos 7 Dias'})}
+                  onClick={() => setReportModal({isOpen: true, type: 'vendas_7dias', title: 'Pedidos do Período'})}
                 />
               </div>
             </div>
@@ -1746,22 +1935,14 @@ export default function AdminDashboard() {
               </div>
               <div className="p-6 overflow-y-auto">
                 {(() => {
-                  let filteredOrders = allOrders;
-                  if (reportModal.type === 'vendas_mes') {
-                    filteredOrders = allOrders.filter(o => {
-                      const d = safeGetDate(o.createdAt);
-                      return d ? (d.getMonth() === new Date().getMonth() && d.getFullYear() === new Date().getFullYear()) : false;
-                    });
-                  } else if (reportModal.type === 'vendas_7dias') {
-                    filteredOrders = allOrders.filter(o => {
-                      const d = safeGetDate(o.createdAt);
-                      return d ? (d.getTime() >= (new Date().getTime() - 7 * 24 * 60 * 60 * 1000)) : false;
-                    });
+                  let reportOrders = filteredOrders;
+                  if (reportModal.type === 'cancelamentos') {
+                    reportOrders = reportOrders.filter((o: any) => o.status === 'Cancelado');
                   }
                   
                   if (reportModal.type === 'produtos' || reportModal.type === 'complementos') {
                     const counts: Record<string, { qty: number, rev: number }> = {};
-                    filteredOrders.forEach(o => {
+                    reportOrders.forEach(o => {
                       const items = safeParseItems(o.items);
                       items.forEach((it: any) => {
                         if (reportModal.type === 'produtos') {
@@ -1805,7 +1986,7 @@ export default function AdminDashboard() {
                     );
                   } else if (reportModal.type === 'pagamentos') {
                      const counts: Record<string, { count: number, rev: number }> = {};
-                     filteredOrders.forEach(o => {
+                     reportOrders.forEach(o => {
                         const pm = o.paymentMethod || 'Desconhecido';
                         counts[pm] = counts[pm] || {count: 0, rev: 0};
                         counts[pm].count++;
@@ -1839,7 +2020,7 @@ export default function AdminDashboard() {
                     <div>
                       <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl mb-4 border border-gray-200">
                          <span className="font-bold text-gray-700">Total no período:</span>
-                         <span className="font-black text-2xl text-emerald-700">€ {filteredOrders.reduce((acc, o) => acc + o.totalAmount, 0).toFixed(2)}</span>
+                         <span className="font-black text-2xl text-emerald-700">€ {reportOrders.reduce((acc, o: any) => acc + o.totalAmount, 0).toFixed(2)}</span>
                       </div>
                       <table className="w-full text-left border-collapse">
                         <thead>
@@ -1852,7 +2033,7 @@ export default function AdminDashboard() {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredOrders.map(o => (
+                          {reportOrders.map((o: any) => (
                             <tr key={o.id} className="border-b border-gray-100 hover:bg-gray-50">
                               <td className="py-3 px-4 font-medium">#{o.id}</td>
                               <td className="py-3 px-4 text-gray-600">{new Date(o.createdAt).toLocaleString('pt-PT')}</td>
@@ -1881,7 +2062,7 @@ export default function AdminDashboard() {
                               </td>
                             </tr>
                           ))}
-                          {filteredOrders.length === 0 && (
+                          {reportOrders.length === 0 && (
                             <tr><td colSpan={5} className="py-6 text-center text-gray-500">Nenhum pedido encontrado</td></tr>
                           )}
                         </tbody>
@@ -1905,7 +2086,7 @@ export default function AdminDashboard() {
               const allPaused = items.every(item => pausedItems.includes(item.id));
               
               return (
-                <div key={cat.id} className="bg-white p-6 rounded-2xl border border-gray-200/80 shadow-md hover:shadow-lg transition-shadow">
+                <div key={cat.id} className="bg-white p-6 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08),0_2px_4px_rgba(28,25,23,0.06)] hover:border-[#D4AF6A]/30 transition-all duration-300">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                     <div>
                       <h2 className="text-xl font-bold text-gray-900">{cat.label}</h2>
@@ -1921,7 +2102,7 @@ export default function AdminDashboard() {
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {items.map((item) => (
-                      <div key={item.id} className={`p-4 rounded-xl border ${pausedItems.includes(item.id) ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'} shadow-md hover:shadow-lg hover:border-gray-300 transition-all flex gap-4`}>
+                      <div key={item.id} className={`p-4 rounded-xl border ${pausedItems.includes(item.id) ? 'border-red-200 bg-red-50' : 'border-[#E7E5E1] bg-white'} shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08),0_2px_4px_rgba(28,25,23,0.06)] hover:border-[#D4AF6A]/30 transition-all flex gap-4`}>
                         <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100 relative">
                            {item.imageUrl && (
                              <img src={item.imageUrl ? (item.imageUrl.startsWith('http') ? item.imageUrl : (item.imageUrl.startsWith('/') ? item.imageUrl : '/' + item.imageUrl)) : ''} alt={item.name} className={`w-full h-full object-cover ${pausedItems.includes(item.id) ? 'grayscale opacity-50' : ''}`} />
@@ -1955,7 +2136,7 @@ export default function AdminDashboard() {
                               <div className="flex gap-2 justify-end border-t border-gray-100 pt-2 mt-1">
                                 <button
                                   onClick={() => togglePauseItem(`${item.id}-P`)}
-                                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${pausedItems.includes(`${item.id}-P`) ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${pausedItems.includes(`${item.id}-P`) ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}
                                 >
                                   {pausedItems.includes(`${item.id}-P`) ? '+ Tamanho P' : '- Tamanho P'}
                                 </button>
@@ -1996,7 +2177,7 @@ export default function AdminDashboard() {
               <X size={24} />
             </button>
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-              <Key size={24} className="text-[#8b0000]" />
+              <Key size={24} className="text-[#C81E3A]" />
               Alterar Senha
             </h2>
             <form onSubmit={handleChangePassword} className="space-y-4">
@@ -2006,7 +2187,7 @@ export default function AdminDashboard() {
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8b0000] focus:border-transparent outline-none transition-shadow"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#C81E3A] focus:border-transparent outline-none transition-shadow"
                   required
                 />
               </div>
@@ -2016,7 +2197,7 @@ export default function AdminDashboard() {
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#8b0000] focus:border-transparent outline-none transition-shadow"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#C81E3A] focus:border-transparent outline-none transition-shadow"
                   required
                 />
               </div>
@@ -2029,7 +2210,7 @@ export default function AdminDashboard() {
               
               <button
                 type="submit"
-                className="w-full py-3 bg-[#8b0000] text-white font-bold rounded-xl hover:bg-[#6b0000] transition-colors"
+                className="w-full py-3 bg-[#C81E3A] text-white font-bold rounded-xl hover:bg-[#A8172F] transition-colors"
               >
                 Salvar Nova Senha
               </button>
@@ -2044,8 +2225,8 @@ export default function AdminDashboard() {
           <div style={{ backgroundColor: '#fff', borderRadius: '12px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0,0,0,0.4)', width: '340px' }}>
             {/* Modal Header */}
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
-              <span style={{ fontWeight: 'bold', fontSize: '16px', color: '#111' }}>🖨️ Pré-visualização do Talão</span>
-              <button onClick={handleClosePrintPreview} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '20px', color: '#6b7280', lineHeight: 1 }}>✕</button>
+              <span style={{ fontWeight: 'bold', fontSize: '16px', color: '#111', display: 'flex', alignItems: 'center', gap: '8px' }}><Printer size={18} /> Pré-visualização do Talão</span>
+              <button onClick={handleClosePrintPreview} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', lineHeight: 1, display: 'flex', alignItems: 'center' }}><X size={20} /></button>
             </div>
             {/* Receipt Content */}
             <div style={{ padding: '16px 20px', flexGrow: 1, overflowY: 'auto' }}>
@@ -2061,10 +2242,10 @@ export default function AdminDashboard() {
                   <p style={{ margin: '4px 0 0 0', borderTop: '1px dotted #ccc', paddingTop: '4px' }}><strong>Cliente:</strong> {printOrder.customerName}</p>
                   {printOrder.customerPhone && <p style={{ margin: 0 }}><strong>Telefone:</strong> {printOrder.customerPhone}</p>}
                   {printOrder.nif && <p style={{ margin: 0 }}><strong>NIF:</strong> {printOrder.nif}</p>}
-                  <p style={{ margin: 0 }}><strong>Tipo:</strong> {printOrder.orderType === 'Delivery' ? '🛵 Entrega' : '🏠 Takeaway'}</p>
+                  <p style={{ margin: 0 }}><strong>Tipo:</strong> {printOrder.orderType === 'Delivery' ? 'Entrega' : 'Takeaway'}</p>
                   {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega') && printOrder.deliveryAddress && (
                     <div style={{ marginTop: '4px', padding: '4px 6px', background: '#fff8f0', border: '1px solid #fcd9b0', borderRadius: '4px' }}>
-                      <p style={{ margin: 0, fontWeight: 'bold' }}>📍 Morada de Entrega:</p>
+                      <p style={{ margin: 0, fontWeight: 'bold' }}>Morada de Entrega:</p>
                       <p style={{ margin: 0 }}>{printOrder.deliveryAddress}</p>
                       {printOrder.deliveryZone && <p style={{ margin: 0 }}>Zona: {printOrder.deliveryZone}</p>}
                     </div>
@@ -2149,15 +2330,15 @@ export default function AdminDashboard() {
             <div style={{ padding: '12px 20px', borderTop: '1px solid #e5e7eb', display: 'flex', gap: '10px', flexShrink: 0 }}>
               <button
                 onClick={handleConfirmPrint}
-                style={{ flex: 1, backgroundColor: '#8b0000', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                style={{ flex: 1, backgroundColor: '#C81E3A', color: '#fff', border: 'none', borderRadius: '8px', padding: '10px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
               >
-                🖨️ Imprimir
+                <Printer size={16} /> Imprimir
               </button>
               <button
                 onClick={handleClosePrintPreview}
                 style={{ flex: 1, backgroundColor: '#f3f4f6', color: '#374151', border: '1px solid #d1d5db', borderRadius: '8px', padding: '10px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer' }}
               >
-                ✕ Fechar
+                <X size={16} /> Fechar
               </button>
             </div>
           </div>
@@ -2381,72 +2562,72 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   }, [menuItems, selectedProductSearch]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-gray-100">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+      <div className="bg-stone-50 rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-stone-800">
         
         {/* Header */}
-        <div className="p-5 bg-gray-900 text-white flex justify-between items-center">
+        <div className="p-4 sm:p-5 bg-stone-950 text-white flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#FFDE59] text-gray-900 rounded-xl">
-              <Edit3 size={20} />
+            <div className="p-2 bg-stone-800 text-rose-500 rounded-md border border-stone-700">
+              <Edit3 size={18} />
             </div>
             <div>
-              <h3 className="font-extrabold text-lg leading-none text-white">Editar Pedido #{order.id}</h3>
-              <p className="text-xs text-gray-400 mt-1 font-medium">Altere produtos, quantidades, taxas e descontos</p>
+              <h3 className="font-extrabold text-lg leading-none text-white tracking-tight">Editar Pedido #{order.id}</h3>
+              <p className="text-xs text-stone-400 mt-1.5 font-medium">Altere produtos, quantidades, taxas e descontos</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 rounded-xl transition-colors cursor-pointer"
+            className="p-2 text-stone-400 hover:text-white bg-stone-900 hover:bg-rose-600 rounded-md transition-colors cursor-pointer border border-stone-800 hover:border-rose-500"
           >
             <X size={18} />
           </button>
         </div>
 
         {/* Content Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
           
           {/* Section 1: Customer Info */}
-          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200/80 space-y-3">
-            <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Dados do Cliente & Entrega</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Nome do Cliente</label>
+          <div className="bg-white p-4 rounded-md border border-stone-200 space-y-4">
+            <h4 className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Dados do Cliente & Entrega</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Nome do Cliente</label>
                 <input
                   type="text"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-3 py-2.5 bg-stone-50 rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Telefone</label>
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Telefone</label>
                 <input
                   type="text"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-gray-900"
+                  className="w-full px-3 py-2.5 bg-stone-50 rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Tipo de Pedido</label>
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Tipo de Pedido</label>
                 <select
                   value={orderType}
                   onChange={(e) => setOrderType(e.target.value)}
-                  className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-gray-900 cursor-pointer"
+                  className="w-full px-3 py-2.5 bg-stone-50 rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors cursor-pointer"
                 >
                   <option value="entrega">Entrega (Delivery)</option>
                   <option value="retirada">Retirada (Takeaway)</option>
                   <option value="mesa">Consumo no Local (Mesa)</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1">Forma de Pagamento</label>
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Forma de Pagamento</label>
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-gray-900 cursor-pointer"
+                  className="w-full px-3 py-2.5 bg-stone-50 rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors cursor-pointer"
                 >
                   <option value="Dinheiro">Dinheiro</option>
                   <option value="MBWay">MBWay</option>
@@ -2458,78 +2639,78 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
             </div>
 
             {paymentMethod === 'Dinheiro' && (
-              <div className="pt-2 border-t border-gray-200 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 mb-1">Troco Para (€ / R$)</label>
+              <div className="pt-4 mt-2 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Troco Para (€ / R$)</label>
                   <input
                     type="number"
                     step="0.01"
                     min="0"
                     value={cashProvided || ''}
                     onChange={(e) => setCashProvided(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-gray-900"
+                    className="w-full px-3 py-2.5 bg-stone-50 rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
                     placeholder="Ex: 50.00"
                   />
                 </div>
-                <div className="flex flex-col justify-center">
-                  <span className="text-xs font-bold text-gray-500">Troco Recalculado:</span>
-                  <span className="text-lg font-black text-emerald-600">€ {calculatedChange.toFixed(2)}</span>
+                <div className="flex flex-col justify-center bg-stone-50 p-2.5 rounded-md border border-stone-100">
+                  <span className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Troco Recalculado:</span>
+                  <span className="text-lg font-black text-emerald-600 mt-1">€ {calculatedChange.toFixed(2)}</span>
                 </div>
               </div>
             )}
           </div>
 
           {/* Section 2: Items List & Add Items */}
-          <div className="space-y-3">
+          <div className="space-y-4 bg-white p-4 rounded-md border border-stone-200">
             <div className="flex justify-between items-center">
-              <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Itens do Pedido ({items.length})</h4>
+              <h4 className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Itens do Pedido ({items.length})</h4>
             </div>
 
             {/* Current Items Table */}
-            <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">
+            <div className="border border-stone-200 rounded-md overflow-hidden bg-stone-50">
               {items.length === 0 ? (
-                <div className="p-6 text-center text-sm text-gray-400 font-medium">Nenhum item no pedido.</div>
+                <div className="p-6 text-center text-sm text-stone-400 font-medium">Nenhum item no pedido.</div>
               ) : (
-                <div className="divide-y divide-gray-100">
+                <div className="divide-y divide-stone-200">
                   {items.map((item, idx) => {
                     const price = Number(item.priceCalculated || item.price || 0);
                     const qty = Number(item.quantity || 1);
                     return (
-                      <div key={idx} className="p-3.5 flex items-center justify-between gap-3 hover:bg-gray-50/50 transition-colors">
+                      <div key={idx} className="p-3.5 flex items-center justify-between gap-3 bg-white hover:bg-stone-50 transition-colors">
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-sm text-gray-900 truncate">{item.name}</div>
-                          <div className="text-xs text-gray-500 font-medium">
-                            {item.size ? `Tamanho: ${item.size} | ` : ''}€ {price.toFixed(2)} un.
+                          <div className="font-bold text-sm text-stone-900 truncate">{item.name}</div>
+                          <div className="text-xs text-stone-500 font-medium mt-0.5">
+                            {item.size ? `Tam: ${item.size} | ` : ''}€ {price.toFixed(2)} un.
                           </div>
                         </div>
 
                         {/* Qty Controls */}
-                        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+                        <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-md border border-stone-200">
                           <button
                             type="button"
                             onClick={() => handleUpdateQty(idx, -1)}
-                            className="w-7 h-7 rounded-md bg-white text-gray-800 font-black flex items-center justify-center shadow-sm hover:bg-gray-200 transition-colors"
+                            className="w-7 h-7 rounded bg-white text-stone-800 font-bold flex items-center justify-center border border-stone-200 hover:border-stone-300 hover:bg-stone-50 transition-colors cursor-pointer"
                           >
                             -
                           </button>
-                          <span className="w-6 text-center text-sm font-extrabold text-gray-900">{qty}</span>
+                          <span className="w-8 text-center text-sm font-extrabold text-stone-900">{qty}</span>
                           <button
                             type="button"
                             onClick={() => handleUpdateQty(idx, 1)}
-                            className="w-7 h-7 rounded-md bg-white text-gray-800 font-black flex items-center justify-center shadow-sm hover:bg-gray-200 transition-colors"
+                            className="w-7 h-7 rounded bg-white text-stone-800 font-bold flex items-center justify-center border border-stone-200 hover:border-stone-300 hover:bg-stone-50 transition-colors cursor-pointer"
                           >
                             +
                           </button>
                         </div>
 
-                        <div className="font-black text-sm text-gray-900 w-20 text-right">
+                        <div className="font-black text-sm text-stone-900 w-20 text-right">
                           € {(price * qty).toFixed(2)}
                         </div>
 
                         <button
                           type="button"
                           onClick={() => handleRemoveItem(idx)}
-                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer border border-transparent hover:border-rose-100 ml-2"
                           title="Remover Item"
                         >
                           <Trash2 size={16} />
@@ -2542,21 +2723,21 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
             </div>
 
             {/* Add New Product Block */}
-            <div className="p-4 bg-amber-50/50 border border-amber-200/60 rounded-xl space-y-3">
-              <h5 className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                <Plus size={14} className="text-amber-700" /> Adicionar Produto do Cardápio ao Pedido
+            <div className="p-4 bg-stone-50 border border-stone-200 rounded-md space-y-3">
+              <h5 className="text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider flex items-center gap-1.5">
+                <Plus size={14} className="text-stone-500" /> Adicionar Produto ao Pedido
               </h5>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2 relative">
                   <input
                     type="text"
                     value={selectedProductSearch}
                     onChange={(e) => setSelectedProductSearch(e.target.value)}
                     placeholder="Pesquisar produto pelo nome..."
-                    className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-xs font-semibold outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full px-3 py-2.5 bg-white rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
                   />
                   {selectedProductSearch && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-20 max-h-48 overflow-y-auto">
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded-md shadow-lg z-20 max-h-48 overflow-y-auto">
                       {filteredMenuItems.map(m => (
                         <div
                           key={m.id}
@@ -2564,10 +2745,10 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                             setSelectedProductId(m.id);
                             setSelectedProductSearch(m.name);
                           }}
-                          className={`p-2 text-xs font-bold cursor-pointer hover:bg-amber-100 flex justify-between ${selectedProductId === m.id ? 'bg-amber-100 text-amber-900' : 'text-gray-800'}`}
+                          className={`p-2.5 text-sm font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 ${selectedProductId === m.id ? 'bg-stone-900 text-white' : 'text-stone-800 hover:bg-stone-50'}`}
                         >
                           <span>{m.name}</span>
-                          <span className="text-gray-500 font-semibold">€ {(m.priceSingle || m.priceP || m.priceM || 0).toFixed(2)}</span>
+                          <span className={selectedProductId === m.id ? 'text-stone-300' : 'text-stone-500'}>€ {(m.priceSingle || m.priceP || m.priceM || 0).toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
@@ -2578,20 +2759,20 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                   <select
                     value={selectedSize}
                     onChange={(e) => setSelectedSize(e.target.value)}
-                    className="flex-1 px-2 py-2 bg-white rounded-lg border border-gray-200 text-xs font-bold outline-none cursor-pointer"
+                    className="flex-1 px-2 py-2.5 bg-white rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none cursor-pointer"
                   >
-                    <option value="priceSingle">Único / Padrão</option>
-                    <option value="priceP">Pequena (P)</option>
-                    <option value="priceM">Média (M)</option>
-                    <option value="priceG">Grande (G)</option>
+                    <option value="priceSingle">Único/Padrão</option>
+                    <option value="priceP">Tamanho P</option>
+                    <option value="priceM">Tamanho M</option>
+                    <option value="priceG">Tamanho G</option>
                   </select>
                   <button
                     type="button"
                     onClick={handleAddItem}
                     disabled={!selectedProductId}
-                    className="px-4 py-2 bg-gray-900 hover:bg-black text-white font-bold rounded-lg text-xs transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+                    className="px-4 py-2.5 bg-stone-900 hover:bg-stone-950 text-white font-bold rounded-md text-sm transition-colors disabled:opacity-50 cursor-pointer shrink-0 border border-stone-800"
                   >
-                    + Incluir
+                    Incluir
                   </button>
                 </div>
               </div>
@@ -2599,13 +2780,13 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
           </div>
 
           {/* Section 3: Financial Adjustments (Desconto & Adicional & Audit Reason) */}
-          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200/80 space-y-3">
-            <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Ajustes Financeiros & Auditoria</h4>
+          <div className="bg-white p-4 rounded-md border border-stone-200 space-y-4">
+            <h4 className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Ajustes & Auditoria</h4>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-emerald-700 mb-1">
-                  Desconto (- € / R$)
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-mono font-bold text-emerald-700 uppercase tracking-wider">
+                  Desconto (- €)
                 </label>
                 <input
                   type="number"
@@ -2614,12 +2795,12 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                   value={discountAmount || ''}
                   onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
                   placeholder="0.00"
-                  className="w-full px-3 py-2 bg-white rounded-lg border border-emerald-300 text-sm font-extrabold text-emerald-800 outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2.5 bg-emerald-50/30 rounded-md border border-emerald-200 text-sm font-bold text-emerald-900 outline-none focus:border-emerald-500 transition-colors"
                 />
               </div>
-              <div>
-                <label className="block text-xs font-bold text-blue-700 mb-1">
-                  Taxa Adicional / Surcharge (+ € / R$)
+              <div className="space-y-1.5">
+                <label className="block text-[10px] font-mono font-bold text-amber-700 uppercase tracking-wider">
+                  Taxa Adicional (+ €)
                 </label>
                 <input
                   type="number"
@@ -2628,62 +2809,62 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                   value={additionalAmount || ''}
                   onChange={(e) => setAdditionalAmount(parseFloat(e.target.value) || 0)}
                   placeholder="0.00"
-                  className="w-full px-3 py-2 bg-white rounded-lg border border-blue-300 text-sm font-extrabold text-blue-800 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2.5 bg-amber-50/30 rounded-md border border-amber-200 text-sm font-bold text-amber-900 outline-none focus:border-amber-500 transition-colors"
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">Motivo da Alteração (Histórico / Audit Log)</label>
+            <div className="space-y-1.5 pt-2">
+              <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Motivo da Alteração (Auditoria)</label>
               <input
                 type="text"
                 value={editReason}
                 onChange={(e) => setEditReason(e.target.value)}
-                placeholder="Ex: Cliente adicionou produto pelo WhatsApp / Aplicado cupom cortesia"
-                className="w-full px-3 py-2 bg-white rounded-lg border border-gray-200 text-xs font-semibold outline-none focus:ring-2 focus:ring-gray-900"
+                placeholder="Ex: Cliente adicionou produto no balcão"
+                className="w-full px-3 py-2.5 bg-stone-50 rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
               />
             </div>
           </div>
 
           {/* Section 4: Live Total Calculation Bar */}
-          <div className="p-4 bg-gray-900 text-white rounded-xl space-y-2">
-            <div className="flex justify-between text-xs text-gray-400 font-semibold">
+          <div className="p-5 bg-stone-950 text-white rounded-md space-y-3 border border-stone-900 shadow-sm">
+            <div className="flex justify-between text-xs text-stone-400 font-mono tracking-wide">
               <span>Subtotal dos Itens:</span>
-              <span>€ {subtotal.toFixed(2)}</span>
+              <span className="font-semibold text-stone-300">€ {subtotal.toFixed(2)}</span>
             </div>
             {additionalAmount > 0 && (
-              <div className="flex justify-between text-xs text-blue-400 font-semibold">
-                <span>(+) Taxa Adicional / Surcharge:</span>
-                <span>+ € {Number(additionalAmount).toFixed(2)}</span>
+              <div className="flex justify-between text-xs text-amber-400/90 font-mono tracking-wide">
+                <span>(+) Taxa Adicional:</span>
+                <span className="font-semibold">+ € {Number(additionalAmount).toFixed(2)}</span>
               </div>
             )}
             {discountAmount > 0 && (
-              <div className="flex justify-between text-xs text-emerald-400 font-semibold">
-                <span>(-) Desconto Aplicado:</span>
-                <span>- € {Number(discountAmount).toFixed(2)}</span>
+              <div className="flex justify-between text-xs text-emerald-400/90 font-mono tracking-wide">
+                <span>(-) Desconto:</span>
+                <span className="font-semibold">- € {Number(discountAmount).toFixed(2)}</span>
               </div>
             )}
-            <div className="pt-2 border-t border-gray-800 flex justify-between items-center">
-              <span className="text-sm font-black text-white uppercase tracking-wider">TOTAL RECALCULADO:</span>
-              <span className="text-2xl font-black text-[#FFDE59]">€ {finalTotal.toFixed(2)}</span>
+            <div className="pt-3 border-t border-stone-800 flex justify-between items-end">
+              <span className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-wider">Total Recalculado</span>
+              <span className="text-3xl font-black text-rose-500 leading-none">€ {finalTotal.toFixed(2)}</span>
             </div>
           </div>
 
           {/* Footer Actions */}
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl font-bold text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors cursor-pointer"
+              className="px-6 py-3 rounded-md font-bold text-sm bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer border border-stone-200"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 rounded-xl font-bold text-sm bg-[#ea1d2c] hover:bg-[#c91825] text-white shadow-md transition-all active:scale-95 cursor-pointer flex items-center gap-2"
+              className="px-8 py-3 rounded-md font-bold text-sm bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition-all active:translate-y-px cursor-pointer flex items-center gap-2 border border-rose-700"
             >
-              {saving ? 'Salvando...' : '💾 Salvar Alterações'}
+              {saving ? 'Salvando...' : 'Salvar Alterações'}
             </button>
           </div>
 
@@ -2749,7 +2930,7 @@ function KpiCard({
   trendUp, 
   description,
   sparklineData,
-  sparklineColor = "#C81E3A"
+  sparklineColor = "#18181B"
 }: { 
   title: string; 
   value: string; 
@@ -2761,27 +2942,15 @@ function KpiCard({
   sparklineColor?: string;
 }) {
   return (
-    <div className="group relative bg-white p-6 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08),0_2px_4px_rgba(28,25,23,0.06)] hover:border-[#D4AF6A]/30 transition-all duration-300 before:absolute before:inset-0 before:rounded-xl before:bg-gradient-to-r before:from-[#D4AF6A]/0 before:via-[#D4AF6A]/5 before:to-[#D4AF6A]/0 before:opacity-0 group-hover:before:opacity-100 before:transition-opacity">
-      <div className="flex justify-between items-start mb-3 relative z-10">
-        <span className="text-xs font-semibold uppercase tracking-wider text-[#A8A29E]">{title}</span>
-        <div className="flex items-center gap-1.5">
-          <div className={`flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full ${trendUp ? 'text-[#15803D] bg-[#F0FDF4] border border-[#15803D]/20' : 'text-[#B91C1C] bg-[#FEF2F2] border border-[#B91C1C]/20'}`}>
-            {trendUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-            <span className="font-mono tabular-nums">{trend}</span>
-          </div>
-          <div className="p-1.5 bg-[#FAFAF9] rounded-lg border border-[#E7E5E1] text-[#D4AF6A]">
-            {icon}
-          </div>
+    <div className="bg-white p-5 rounded-lg border border-stone-200 transition-colors">
+      <div className="flex justify-between items-start mb-4">
+        <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-stone-500">{title}</span>
+        <div className="p-1.5 bg-stone-50 rounded border border-stone-200 text-stone-600">
+          {icon}
         </div>
       </div>
-      <div className="relative z-10 space-y-2">
-        <p className="text-3xl font-bold font-mono tabular-nums text-[#1C1917] tracking-tight">{value}</p>
-        <p className="text-xs text-[#78716C] font-medium">{description}</p>
-        {sparklineData && sparklineData.length > 1 && (
-          <div className="pt-1 mt-1 border-t border-[#E7E5E1]/50">
-            <Sparkline data={sparklineData} color={sparklineColor} />
-          </div>
-        )}
+      <div>
+        <p className="text-2xl sm:text-3xl font-bold font-mono tabular-nums text-stone-900 tracking-tight">{value}</p>
       </div>
     </div>
   );
@@ -2805,20 +2974,20 @@ function ReportCard({
   return (
     <button
       onClick={onClick}
-      className="group relative bg-white p-6 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08),0_2px_4px_rgba(28,25,23,0.06)] hover:border-[#D4AF6A]/30 transition-all duration-300 cursor-pointer flex flex-col items-center justify-center text-center min-h-[120px] before:absolute before:inset-0 before:rounded-xl before:bg-gradient-to-r before:from-[#D4AF6A]/0 before:via-[#D4AF6A]/5 before:to-[#D4AF6A]/0 before:opacity-0 group-hover:before:opacity-100 before:transition-opacity"
+      className="bg-white p-5 rounded-lg border border-stone-200 hover:border-stone-400 transition-colors cursor-pointer flex flex-col items-center justify-center text-center min-h-[120px] relative text-left w-full group"
     >
-      <div className={`p-3 rounded-xl ${iconBg} border border-current/20 text-current mb-3 group-hover:scale-105 transition-transform duration-300 relative z-10`}>
+      <div className={`p-2.5 rounded-lg ${iconBg} border border-current/20 text-current mb-2.5 group-hover:scale-105 transition-transform`}>
         {icon}
       </div>
-      <div className="relative z-10 w-full">
-        <p className="text-sm font-medium text-[#78716C] mb-1">{title}</p>
+      <div className="w-full">
+        <p className="text-xs font-mono font-semibold uppercase tracking-wider text-stone-500 mb-1">{title}</p>
         {value ? (
-          <p className="text-2xl font-bold font-mono tabular-nums text-[#1C1917] tracking-tight">{value}</p>
+          <p className="text-xl font-bold font-mono tabular-nums text-stone-900 tracking-tight">{value}</p>
         ) : (
-          <p className="text-xs text-[#A8A29E] font-medium">{subtitle || ''}</p>
+          <p className="text-xs text-stone-500 font-mono">{subtitle || ''}</p>
         )}
       </div>
-      <ArrowDownRight className="absolute bottom-4 right-4 text-[#A8A29E] group-hover:text-[#D4AF6A] transition-colors w-5 h-5" />
+      <ArrowDownRight className="absolute bottom-3 right-3 text-stone-400 group-hover:text-stone-900 transition-colors w-4 h-4" />
     </button>
   );
 }

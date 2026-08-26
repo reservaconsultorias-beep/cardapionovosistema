@@ -14,10 +14,10 @@ interface PizzaModalProps {
   allMenuItems: MenuItem[];
 }
 
-export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initialSize, pausedItems, allMenuItems }: PizzaModalProps) {
+export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initialSize, pausedItems = [], allMenuItems = [] }: PizzaModalProps) {
   const extrasList = useExtras();
   const menuPizzas = allMenuItems.filter(i => i.id.startsWith('p-'));
-  const menuBordas = allMenuItems.filter(i => i.id.startsWith('bd-'));
+  const menuBordas = allMenuItems.filter(i => i.id.startsWith('bd-') && !pausedItems.includes(i.id));
   const menuBebidas = allMenuItems.filter(i => i.id.startsWith('b-') && !i.id.startsWith('bd-'));
   const [selectedSize, setSelectedSize] = useState<'P' | 'M' | 'G'>(initialSize);
   const [isHalf, setIsHalf] = useState(false);

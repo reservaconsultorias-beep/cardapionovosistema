@@ -108,21 +108,23 @@ function App() {
   const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [pausedItems, setPausedItems] = useState<string[]>([]);
+  const [pausedItemsLoaded, setPausedItemsLoaded] = useState(false);
   const [hasOpenedPromoAutomatically, setHasOpenedPromoAutomatically] = useState(false);
 
   useEffect(() => {
-    if (!menuLoading && menuItems.length > 0 && !hasOpenedPromoAutomatically) {
+    if (!menuLoading && pausedItemsLoaded && menuItems.length > 0 && !hasOpenedPromoAutomatically) {
       const todayDayOfWeek = new Date().getDay();
       const todaysPromos = menuItems.filter(i => 
         (i.category === 'promocoes' || (i as any).groupOverride === 'promocoes') && 
-        i.dayOfWeek === todayDayOfWeek
+        i.dayOfWeek === todayDayOfWeek &&
+        !pausedItems.includes(i.id)
       );
       if (todaysPromos.length > 0) {
         setIsMenuDoDiaOpen(true);
       }
       setHasOpenedPromoAutomatically(true);
     }
-  }, [menuLoading, menuItems, hasOpenedPromoAutomatically]);
+  }, [menuLoading, pausedItemsLoaded, menuItems, pausedItems, hasOpenedPromoAutomatically]);
 
   useEffect(() => {
     const fetchPausedItems = async () => {
@@ -134,6 +136,8 @@ function App() {
         }
       } catch (err) {
         console.error("Failed to fetch paused items", err);
+      } finally {
+        setPausedItemsLoaded(true);
       }
     };
     fetchPausedItems();

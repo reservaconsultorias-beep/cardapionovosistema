@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Lock, Unlock, Printer, BarChart3, ArrowDownCircle, ArrowUpCircle, AlertCircle } from 'lucide-react';
+import { Lock, Unlock, Printer, BarChart3, ArrowDownCircle, ArrowUpCircle, AlertCircle, Search } from 'lucide-react';
+import CashSessionDetailsModal from './reports/CashSessionDetailsModal';
 
 export default function CaixaManager() {
   const [session, setSession] = useState<any>(null);
@@ -11,6 +12,7 @@ export default function CaixaManager() {
   const [history, setHistory] = useState<any[]>([]);
   const [closedResult, setClosedResult] = useState<any>(null);
   const [showCloseModal, setShowCloseModal] = useState(false);
+  const [selectedSessionForDetails, setSelectedSessionForDetails] = useState<any>(null);
 
   // Estados de Movimentações
   const [movements, setMovements] = useState<any[]>([]);
@@ -136,6 +138,14 @@ export default function CaixaManager() {
       expected_amount: expected,
       difference: difference
     }).eq('id', session.id);
+
+    // Automagicamente fechar a loja
+    await supabase.from('settings').upsert([
+      { key: 'store_status', value: 'closed', updated_at: new Date().toISOString() },
+      { key: 'paused_until', value: null, updated_at: new Date().toISOString() },
+      { key: 'manual_store_closed', value: true, updated_at: new Date().toISOString() }
+    ]);
+
     if (!error) {
       // Buscar dados detalhados para o relatório impresso/visual
       const { data: orders } = await supabase
@@ -263,93 +273,105 @@ export default function CaixaManager() {
     printWindow.document.close();
   };
 
-  if (loading) return <div className="p-8 text-center text-[#78716C] font-medium">Carregando dados do caixa...</div>;
+  if (loading) return <div className="p-8 text-center text-zinc-500 font-mono text-xs">Carregando dados do caixa...</div>;
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] p-6">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-[#1C1917]">Controle de Caixa</h2>
-          <p className="text-sm text-[#78716C]">Abertura, fechamento e conferência diária de valores.</p>
+    <div className="space-y-6 font-sans">
+      <div className="bg-white rounded-xl border border-zinc-200 p-6">
+        <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-zinc-100 pb-4">
+          <div>
+            <h2 className="text-lg font-bold tracking-tight text-zinc-900">Terminal de Caixa</h2>
+            <p className="text-xs text-zinc-500 font-mono mt-0.5">Abertura, fechamento e conferência operacional de valores.</p>
+          </div>
+          {session && (
+            <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-xs font-mono font-semibold px-2.5 py-1 rounded-md self-start sm:self-auto">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              SESSÃO ATIVA
+            </div>
+          )}
         </div>
 
         {!session ? (
           <div className="space-y-6">
-            <div className="bg-[#FEF2F2] border border-[#FECDD3] rounded-xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="bg-zinc-900 text-white rounded-xl p-5 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-5 border border-zinc-800">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-[#FEE2E2] rounded-xl text-[#B91C1C]">
-                  <Lock className="w-8 h-8" />
+                <div className="p-3 bg-zinc-800 rounded-lg text-zinc-300 border border-zinc-700/60">
+                  <Lock className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-[#991B1B]">Caixa Fechado</h3>
-                  <p className="text-sm text-[#B91C1C]">Informe o valor inicial (fundo de maneio) para abrir a sessão de caixa.</p>
+                  <h3 className="font-bold text-base text-white tracking-tight">Caixa Fechado</h3>
+                  <p className="text-xs text-zinc-400 font-mono mt-0.5">Informe o fundo inicial de maneio para iniciar a sessão.</p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 w-full md:w-auto">
-                <input
-                  type="number"
-                  step="0.01"
-                  value={openingAmount}
-                  onChange={(e) => setOpeningAmount(e.target.value)}
-                  placeholder="Valor Inicial (€)"
-                  className="px-4 py-2.5 bg-white border border-[#E7E5E1] rounded-lg text-sm font-mono tabular-nums focus:outline-none focus:border-[#C81E3A] focus:ring-1 focus:ring-[#C81E3A]/20 w-full md:w-40 font-bold"
-                />
+                <div className="relative w-full md:w-44">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 font-mono font-semibold text-sm">€</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={openingAmount}
+                    onChange={(e) => setOpeningAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="pl-8 pr-3 py-2.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm font-mono tabular-nums text-white font-bold focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500/20 w-full placeholder-zinc-500"
+                  />
+                </div>
                 <button
                   onClick={handleOpen}
-                  className="bg-[#C81E3A] hover:bg-[#A8172F] text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm"
+                  disabled={!openingAmount || parseFloat(openingAmount) < 0}
+                  className="bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold px-4 py-2.5 rounded-lg text-xs font-mono uppercase tracking-wider transition-colors flex items-center gap-2 whitespace-nowrap cursor-pointer shrink-0"
                 >
-                  <Unlock className="w-4 h-4" />
+                  <Unlock className="w-3.5 h-3.5" />
                   Abrir Caixa
                 </button>
               </div>
             </div>
 
             {closedResult && (
-              <div className="bg-[#FAFAF9] border border-[#E7E5E1] rounded-xl p-6 space-y-4">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-extrabold text-[#1C1917] text-sm uppercase tracking-wide flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4" />
-                    Relatório Resumido do Fechamento de Caixa
+              <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-200/80 pb-3">
+                  <h4 className="font-bold text-zinc-900 text-xs font-mono uppercase tracking-wider flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4 text-zinc-600" />
+                    Resumo do Último Fechamento
                   </h4>
                   <button
                     onClick={() => handlePrintReport(closedResult)}
-                    className="px-4 py-2 bg-[#1C1917] hover:bg-black text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-2 shadow-sm"
+                    className="px-3 py-1.5 bg-zinc-900 hover:bg-black text-white rounded-md text-xs font-mono font-semibold transition-colors flex items-center gap-2 self-start sm:self-auto cursor-pointer"
                   >
                     <Printer className="w-3.5 h-3.5" />
-                    Imprimir Talão do Fechamento
+                    Imprimir Talão
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
-                  <div className="bg-white p-3 rounded-lg border border-[#E7E5E1]">
-                    <span className="text-xs text-[#A8A29E] font-semibold uppercase tracking-wide block">Fundo Inicial</span>
-                    <span className="font-bold font-mono tabular-nums text-[#1C1917]">€{Number(closedResult.openingAmount || 0).toFixed(2)}</span>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                  <div className="bg-white p-3.5 rounded-lg border border-zinc-200">
+                    <span className="text-[11px] text-zinc-500 font-mono font-semibold uppercase tracking-wider block">Fundo Inicial</span>
+                    <span className="font-bold font-mono tabular-nums text-base text-zinc-900 mt-1 block">€ {Number(closedResult.openingAmount || 0).toFixed(2)}</span>
                   </div>
-                  <div className="bg-white p-3 rounded-lg border border-[#E7E5E1]">
-                    <span className="text-xs text-[#A8A29E] font-semibold uppercase tracking-wide block">Total Esperado</span>
-                    <span className="font-bold font-mono tabular-nums text-[#1C1917]">€{Number(closedResult.expected).toFixed(2)}</span>
+                  <div className="bg-white p-3.5 rounded-lg border border-zinc-200">
+                    <span className="text-[11px] text-zinc-500 font-mono font-semibold uppercase tracking-wider block">Esperado</span>
+                    <span className="font-bold font-mono tabular-nums text-base text-zinc-900 mt-1 block">€ {Number(closedResult.expected).toFixed(2)}</span>
                   </div>
-                  <div className="bg-white p-3 rounded-lg border border-[#E7E5E1]">
-                    <span className="text-xs text-[#A8A29E] font-semibold uppercase tracking-wide block">Total Contado</span>
-                    <span className="font-bold font-mono tabular-nums text-[#1C1917]">€{Number(closedResult.counted).toFixed(2)}</span>
+                  <div className="bg-white p-3.5 rounded-lg border border-zinc-200">
+                    <span className="text-[11px] text-zinc-500 font-mono font-semibold uppercase tracking-wider block">Informado</span>
+                    <span className="font-bold font-mono tabular-nums text-base text-zinc-900 mt-1 block">€ {Number(closedResult.counted).toFixed(2)}</span>
                   </div>
-                  <div className="bg-white p-3 rounded-lg border border-[#E7E5E1]">
-                    <span className="text-xs text-[#A8A29E] font-semibold uppercase tracking-wide block">Diferença</span>
-                    <span className={`font-bold font-mono tabular-nums ${closedResult.difference >= 0 ? 'text-[#15803D]' : 'text-[#B91C1C]'}`}>
-                      {closedResult.difference >= 0 ? '+' : ''}€{Number(closedResult.difference).toFixed(2)}
+                  <div className={`p-3.5 rounded-lg border ${closedResult.difference >= 0 ? 'bg-emerald-50/60 border-emerald-200' : 'bg-rose-50/60 border-rose-200'}`}>
+                    <span className={`text-[11px] font-mono font-semibold uppercase tracking-wider block ${closedResult.difference >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>Diferença</span>
+                    <span className={`font-bold font-mono tabular-nums text-base mt-1 block ${closedResult.difference >= 0 ? 'text-emerald-800' : 'text-rose-800'}`}>
+                      {closedResult.difference >= 0 ? '+' : ''}€ {Number(closedResult.difference).toFixed(2)}
                     </span>
                   </div>
                 </div>
 
                 {closedResult.paySummary && (
-                  <div className="bg-white p-4 rounded-lg border border-[#E7E5E1] space-y-2">
-                    <span className="text-xs text-[#1C1917] font-bold uppercase tracking-wide block">Vendas por Forma de Pagamento</span>
+                  <div className="bg-white p-3.5 rounded-lg border border-zinc-200 space-y-2">
+                    <span className="text-[11px] text-zinc-500 font-mono font-semibold uppercase tracking-wider block">Discriminação por Meio de Pagamento</span>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                       {Object.entries(closedResult.paySummary).map(([pm, val]: any) => (
-                        <div key={pm} className="bg-[#FAFAF9] p-2 rounded border border-[#E7E5E1]">
-                          <span className="text-gray-500 font-medium block">{pm}</span>
-                          <span className="font-bold text-gray-900 font-mono">€ {val.toFixed(2)}</span>
+                        <div key={pm} className="bg-zinc-50 p-2.5 rounded border border-zinc-200/80">
+                          <span className="text-zinc-500 font-mono block text-[11px]">{pm}</span>
+                          <span className="font-bold text-zinc-900 font-mono text-sm mt-0.5 block">€ {val.toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
@@ -360,107 +382,103 @@ export default function CaixaManager() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-[#DCFCE7] rounded-xl text-[#15803D]">
-                  <Unlock className="w-8 h-8" />
+            <div className="bg-zinc-900 text-white rounded-xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-zinc-800">
+              <div className="flex items-center gap-3.5">
+                <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400">
+                  <Unlock className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-lg text-[#166534]">Caixa Aberto</h3>
-                  <p className="text-sm text-[#15803D]">
-                    Aberto em {new Date(session.opened_at).toLocaleString('pt-PT')} · Valor Inicial: <span className="font-mono tabular-nums font-bold">€{Number(session.opening_amount).toFixed(2)}</span>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-base text-white tracking-tight">Sessão em Andamento</h3>
+                    <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border border-emerald-500/30">Operacional</span>
+                  </div>
+                  <p className="text-xs text-zinc-400 font-mono mt-1">
+                    Aberto às {new Date(session.opened_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })} · Fundo Inicial: <span className="text-white font-bold">€ {Number(session.opening_amount).toFixed(2)}</span>
                   </p>
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center justify-end gap-3 w-full md:w-auto">
+              <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
                 <button
                   onClick={() => {
                     setMovementType('sangria');
                     setShowMovementModal(true);
                   }}
-                  className="bg-white border border-[#E7E5E1] hover:bg-[#FAFAF9] text-[#B91C1C] font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm"
+                  className="bg-zinc-800 hover:bg-zinc-700 text-rose-300 border border-rose-900/60 font-semibold px-3.5 py-2 rounded-lg text-xs font-mono transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <ArrowDownCircle className="w-4 h-4" />
-                  <span className="hidden sm:inline">Registrar</span> Sangria
+                  <ArrowDownCircle className="w-4 h-4 text-rose-400" />
+                  Sangria (-)
                 </button>
                 <button
                   onClick={() => {
                     setMovementType('suprimento');
                     setShowMovementModal(true);
                   }}
-                  className="bg-white border border-[#E7E5E1] hover:bg-[#FAFAF9] text-[#15803D] font-semibold px-4 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-2 shadow-sm"
+                  className="bg-zinc-800 hover:bg-zinc-700 text-emerald-300 border border-emerald-900/60 font-semibold px-3.5 py-2 rounded-lg text-xs font-mono transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <ArrowUpCircle className="w-4 h-4" />
-                  <span className="hidden sm:inline">Registrar</span> Suprimento
+                  <ArrowUpCircle className="w-4 h-4 text-emerald-400" />
+                  Suprimento (+)
                 </button>
                 <button
                   onClick={() => setShowCloseModal(true)}
-                  className="bg-[#1C1917] hover:bg-black text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-2 whitespace-nowrap shadow-sm cursor-pointer"
+                  className="bg-rose-600 hover:bg-rose-500 text-white font-bold px-4 py-2 rounded-lg text-xs font-mono uppercase tracking-wider transition-colors flex items-center gap-2 whitespace-nowrap cursor-pointer shrink-0 ml-auto md:ml-0"
                 >
-                  <Lock className="w-4 h-4" />
+                  <Lock className="w-3.5 h-3.5" />
                   Fechar Caixa
                 </button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-[#FAFAF9] border border-[#E7E5E1] p-4 rounded-xl">
-                <span className="text-xs text-[#A8A29E] font-semibold uppercase tracking-wide">Pedidos Registrados</span>
-                <p className="text-xl font-bold font-mono tabular-nums text-[#1C1917] mt-1">{summary.count}</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+              <div className="bg-white border border-zinc-200 p-4 rounded-lg">
+                <span className="text-[11px] text-zinc-500 font-mono font-semibold uppercase tracking-wider">Pedidos Registrados</span>
+                <p className="text-2xl font-bold font-mono tabular-nums text-zinc-900 mt-1 tracking-tight">{summary.count}</p>
               </div>
-              <div className="bg-[#FAFAF9] border border-[#E7E5E1] p-4 rounded-xl">
-                <span className="text-xs text-[#A8A29E] font-semibold uppercase tracking-wide">Vendas em Numerário</span>
-                <p className="text-xl font-bold font-mono tabular-nums text-[#1C1917] mt-1">€{summary.numerario.toFixed(2)}</p>
+              <div className="bg-white border border-zinc-200 p-4 rounded-lg">
+                <span className="text-[11px] text-zinc-500 font-mono font-semibold uppercase tracking-wider">Vendas em Numerário</span>
+                <p className="text-2xl font-bold font-mono tabular-nums text-zinc-900 mt-1 tracking-tight">€ {summary.numerario.toFixed(2)}</p>
               </div>
-              <div className="bg-[#FAFAF9] border border-[#E7E5E1] p-4 rounded-xl">
-                <span className="text-xs text-[#A8A29E] font-semibold uppercase tracking-wide">Vendas via MB Way</span>
-                <p className="text-xl font-bold font-mono tabular-nums text-[#1C1917] mt-1">€{summary.mbway.toFixed(2)}</p>
+              <div className="bg-white border border-zinc-200 p-4 rounded-lg">
+                <span className="text-[11px] text-zinc-500 font-mono font-semibold uppercase tracking-wider">Vendas via MB Way</span>
+                <p className="text-2xl font-bold font-mono tabular-nums text-zinc-900 mt-1 tracking-tight">€ {summary.mbway.toFixed(2)}</p>
               </div>
-              <div className="bg-[#FEF2F2] border border-[#FECDD3] p-4 rounded-xl">
-                <span className="text-xs text-[#B91C1C] font-bold uppercase tracking-wide">Esperado em Dinheiro</span>
-                <p className="text-xl font-bold font-mono tabular-nums text-[#B91C1C] mt-1">
-                  €{currentExpected.toFixed(2)}
+              <div className="bg-zinc-900 border border-zinc-900 p-4 rounded-lg text-white">
+                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-rose-400 flex items-center justify-between">
+                  Esperado na Gaveta
+                  <span className="text-[10px] text-zinc-400 font-normal">Dinheiro</span>
+                </span>
+                <p className="text-2xl font-bold font-mono tabular-nums text-white mt-1 tracking-tight">
+                  € {currentExpected.toFixed(2)}
                 </p>
               </div>
             </div>
 
             {movements.length > 0 && (
-              <div className="border border-[#E7E5E1] rounded-xl overflow-hidden shadow-sm">
-                <div className="bg-[#FAFAF9] px-5 py-3.5 border-b border-[#E7E5E1] flex items-center justify-between">
-                  <h4 className="font-bold text-sm text-[#1C1917] uppercase tracking-wide">Movimentações do Turno</h4>
-                  <span className="text-xs font-semibold text-[#78716C] bg-[#E7E5E1] px-2 py-1 rounded-md">{movements.length} Registros</span>
+              <div className="border border-zinc-200 rounded-lg overflow-hidden bg-white">
+                <div className="bg-zinc-50 px-4 py-3 border-b border-zinc-200 flex items-center justify-between">
+                  <h4 className="font-bold text-xs text-zinc-700 uppercase font-mono tracking-wider">Movimentações Registradas no Turno</h4>
+                  <span className="text-[11px] font-mono font-semibold text-zinc-600 bg-white border border-zinc-200 px-2 py-0.5 rounded">
+                    {movements.length} {movements.length === 1 ? 'registro' : 'registros'}
+                  </span>
                 </div>
-                <div className="divide-y divide-[#E7E5E1] bg-white">
+                <div className="divide-y divide-zinc-100">
                   {movements.map((mov) => (
-                    <div key={mov.id} className="p-4 sm:px-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-[#FAFAF9] transition-colors">
+                    <div key={mov.id} className="p-3.5 px-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 hover:bg-zinc-50/60 transition-colors">
                       <div className="flex items-center gap-3">
-                        {mov.type === 'sangria' ? (
-                          <div className="p-2 bg-[#FEF2F2] rounded-lg text-[#B91C1C]">
-                            <ArrowDownCircle className="w-5 h-5" />
-                          </div>
-                        ) : (
-                          <div className="p-2 bg-[#F0FDF4] rounded-lg text-[#15803D]">
-                            <ArrowUpCircle className="w-5 h-5" />
-                          </div>
-                        )}
-                        <div>
-                          <p className={`font-bold text-sm capitalize ${mov.type === 'sangria' ? 'text-[#B91C1C]' : 'text-[#15803D]'}`}>
-                            {mov.type}
-                          </p>
-                          <p className="text-xs text-[#78716C] mt-0.5">
-                            {new Date(mov.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
-                            {mov.reason && (
-                              <>
-                                <span className="mx-1.5 opacity-50">•</span>
-                                <span className="text-[#1C1917]">{mov.reason}</span>
-                              </>
-                            )}
-                          </p>
+                        <span className={`text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded border shrink-0 ${mov.type === 'sangria' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                          {mov.type}
+                        </span>
+                        <div className="text-xs">
+                          <span className="font-mono text-zinc-500">{new Date(mov.created_at).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</span>
+                          {mov.reason && (
+                            <span className="text-zinc-800 font-medium ml-2">
+                              — {mov.reason}
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <div className={`font-mono font-bold tabular-nums text-lg text-right ${mov.type === 'sangria' ? 'text-[#B91C1C]' : 'text-[#15803D]'}`}>
-                        {mov.type === 'sangria' ? '-' : '+'}€{Number(mov.amount).toFixed(2)}
+                      <div className={`font-mono font-bold tabular-nums text-sm sm:text-right ${mov.type === 'sangria' ? 'text-rose-700' : 'text-emerald-700'}`}>
+                        {mov.type === 'sangria' ? '-' : '+'} € {Number(mov.amount).toFixed(2)}
                       </div>
                     </div>
                   ))}
@@ -471,44 +489,56 @@ export default function CaixaManager() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] p-6">
-        <h3 className="font-bold text-lg text-[#1C1917] mb-4">Histórico de Fechamentos Recentes</h3>
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-xl border border-zinc-200 p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="font-bold text-base text-zinc-900 tracking-tight">Histórico de Fechamentos Recentes</h3>
+          <span className="text-xs text-zinc-500 font-mono">Últimas sessões arquivadas</span>
+        </div>
+        <div className="overflow-x-auto border border-zinc-200 rounded-lg">
           <table className="min-w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-[#E7E5E1] text-xs font-semibold uppercase tracking-wide text-[#A8A29E] bg-[#FAFAF9]">
-                <th className="py-3 px-4 rounded-tl-lg">Abertura</th>
-                <th className="py-3 px-4">Fechamento</th>
-                <th className="py-3 px-4">Inicial</th>
-                <th className="py-3 px-4">Esperado</th>
-                <th className="py-3 px-4">Contado</th>
-                <th className="py-3 px-4">Diferença</th>
-                <th className="py-3 px-4 text-right rounded-tr-lg">Ação</th>
+              <tr className="border-b border-zinc-200 text-[11px] font-mono uppercase tracking-wider text-zinc-500 bg-zinc-50 font-semibold">
+                <th className="py-2.5 px-3.5">Abertura</th>
+                <th className="py-2.5 px-3.5">Fechamento</th>
+                <th className="py-2.5 px-3.5">Inicial</th>
+                <th className="py-2.5 px-3.5">Esperado</th>
+                <th className="py-2.5 px-3.5">Contado</th>
+                <th className="py-2.5 px-3.5">Diferença</th>
+                <th className="py-2.5 px-3.5 text-right">Comprovante</th>
               </tr>
             </thead>
-            <tbody className="text-sm">
+            <tbody className="text-xs font-mono">
               {history.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-[#78716C]">
+                  <td colSpan={7} className="py-6 text-center text-zinc-500">
                     Nenhum fechamento registrado até o momento.
                   </td>
                 </tr>
               ) : (
                 history.map((h) => (
-                  <tr key={h.id} className="border-b border-[#F0EFED] hover:bg-[#FAFAF9] transition-colors">
-                    <td className="py-3.5 px-4 text-[#78716C] font-mono tabular-nums">
+                  <tr key={h.id} className="border-b border-zinc-100 hover:bg-zinc-50/70 transition-colors">
+                    <td className="py-3 px-3.5 text-zinc-600 tabular-nums">
                       {h.opened_at ? new Date(h.opened_at).toLocaleString('pt-PT') : '-'}
                     </td>
-                    <td className="py-3.5 px-4 text-[#78716C] font-mono tabular-nums">
+                    <td className="py-3 px-3.5 text-zinc-600 tabular-nums">
                       {h.closed_at ? new Date(h.closed_at).toLocaleString('pt-PT') : '-'}
                     </td>
-                    <td className="py-3.5 px-4 font-mono tabular-nums text-[#1C1917]">€{Number(h.opening_amount || 0).toFixed(2)}</td>
-                    <td className="py-3.5 px-4 font-mono tabular-nums text-[#1C1917]">€{Number(h.expected_amount || 0).toFixed(2)}</td>
-                    <td className="py-3.5 px-4 font-mono tabular-nums text-[#1C1917]">€{Number(h.closing_counted_amount || 0).toFixed(2)}</td>
-                    <td className={`py-3.5 px-4 font-mono tabular-nums font-bold ${Number(h.difference || 0) >= 0 ? 'text-[#15803D]' : 'text-[#B91C1C]'}`}>
-                      {Number(h.difference || 0) >= 0 ? '+' : ''}€{Number(h.difference || 0).toFixed(2)}
+                    <td className="py-3 px-3.5 font-bold tabular-nums text-zinc-900">€ {Number(h.opening_amount || 0).toFixed(2)}</td>
+                    <td className="py-3 px-3.5 font-bold tabular-nums text-zinc-900">€ {Number(h.expected_amount || 0).toFixed(2)}</td>
+                    <td className="py-3 px-3.5 font-bold tabular-nums text-zinc-900">€ {Number(h.closing_counted_amount || 0).toFixed(2)}</td>
+                    <td className="py-3 px-3.5">
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-bold tabular-nums ${Number(h.difference || 0) >= 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
+                        {Number(h.difference || 0) >= 0 ? '+' : ''}€ {Number(h.difference || 0).toFixed(2)}
+                      </span>
                     </td>
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3 px-3.5 text-right flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => setSelectedSessionForDetails(h)}
+                        className="text-xs font-semibold font-mono text-zinc-900 bg-white border border-zinc-300 hover:bg-zinc-100 px-2.5 py-1 rounded transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
+                      >
+                        <Search className="w-3 h-3 text-amber-600" />
+                        Detalhes
+                      </button>
                       <button
                         onClick={async () => {
                           const { data: orders } = await supabase.from('orders').select('*').gte('created_at', h.opened_at).lte('created_at', h.closed_at || new Date().toISOString());
@@ -551,10 +581,10 @@ export default function CaixaManager() {
                             retiradaCount
                           });
                         }}
-                        className="text-xs font-bold text-[#1C1917] hover:underline inline-flex items-center gap-1.5"
+                        className="text-xs font-semibold font-mono text-zinc-900 bg-white border border-zinc-300 hover:bg-zinc-100 px-2.5 py-1 rounded transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-xs"
                       >
-                        <Printer className="w-3.5 h-3.5" />
-                        Relatório
+                        <Printer className="w-3 h-3 text-zinc-600" />
+                        Reimprimir
                       </button>
                     </td>
                   </tr>
@@ -567,65 +597,67 @@ export default function CaixaManager() {
 
       {/* Modal de Fechamento de Caixa */}
       {showCloseModal && session && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-md border border-zinc-200 shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-zinc-200 bg-zinc-900 text-white flex justify-between items-center">
               <div>
-                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Lock className="w-5 h-5 text-[#B91C1C]" />
-                  Fechamento de Caixa
+                <h3 className="text-base font-bold flex items-center gap-2 tracking-tight">
+                  <Lock className="w-4 h-4 text-rose-400" />
+                  Fechamento e Conferência de Caixa
                 </h3>
-                <p className="text-sm text-gray-500 mt-1">Conferência final de valores do turno</p>
+                <p className="text-xs text-zinc-400 font-mono mt-0.5">Validação física da gaveta de dinheiro</p>
               </div>
             </div>
             
-            <div className="p-6 space-y-6">
-              <div className="bg-[#FAFAF9] border border-[#E7E5E1] rounded-xl p-4 space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Fundo Inicial</span>
-                  <span className="font-mono font-medium">€ {Number(session.opening_amount).toFixed(2)}</span>
+            <div className="p-5 space-y-4">
+              <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3.5 space-y-2 text-xs font-mono">
+                <div className="flex justify-between text-zinc-600">
+                  <span>Fundo Inicial de Abertura</span>
+                  <span className="font-bold text-zinc-900">€ {Number(session.opening_amount).toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Vendas em Numerário</span>
-                  <span className="font-mono font-medium">+ € {summary.numerario.toFixed(2)}</span>
+                <div className="flex justify-between text-zinc-600">
+                  <span>(+) Vendas em Numerário</span>
+                  <span className="font-bold text-zinc-900">+ € {summary.numerario.toFixed(2)}</span>
                 </div>
                 {totalSuprimentos > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Suprimentos (Entradas)</span>
-                    <span className="font-mono font-medium text-[#15803D]">+ € {totalSuprimentos.toFixed(2)}</span>
+                  <div className="flex justify-between text-emerald-700">
+                    <span>(+) Suprimentos de Caixa</span>
+                    <span className="font-bold">+ € {totalSuprimentos.toFixed(2)}</span>
                   </div>
                 )}
                 {totalSangrias > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Sangrias (Retiradas)</span>
-                    <span className="font-mono font-medium text-[#B91C1C]">- € {totalSangrias.toFixed(2)}</span>
+                  <div className="flex justify-between text-rose-700">
+                    <span>(-) Sangrias Realizadas</span>
+                    <span className="font-bold">- € {totalSangrias.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="pt-3 border-t border-gray-200 flex justify-between font-bold text-gray-900">
-                  <span>Valor Esperado (Dinheiro)</span>
-                  <span className="font-mono">€ {currentExpected.toFixed(2)}</span>
+                <div className="pt-2 border-t border-zinc-200 flex justify-between font-bold text-zinc-900 text-sm">
+                  <span>(=) Esperado em Dinheiro</span>
+                  <span className="text-base">€ {currentExpected.toFixed(2)}</span>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
-                  Valor Contado na Gaveta (€)
+              <div className="space-y-2">
+                <label className="block text-[11px] font-bold font-mono text-zinc-600 uppercase tracking-wider">
+                  Valor Contado Fisicamente (€)
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={closingAmount}
-                  onChange={(e) => setClosingAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full text-center text-3xl font-mono py-4 border-2 border-gray-200 rounded-xl focus:border-[#C81E3A] focus:ring-0 outline-none transition-colors"
-                  autoFocus
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={closingAmount}
+                    onChange={(e) => setClosingAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full text-center text-3xl font-mono font-bold py-3 bg-white border-2 border-zinc-300 rounded-lg focus:border-zinc-900 focus:outline-none transition-colors tracking-tight text-zinc-900"
+                    autoFocus
+                  />
+                </div>
               </div>
 
               {closingAmount !== '' && (
-                <div className="flex justify-between items-center pt-2">
-                  <span className="text-sm font-medium text-gray-600">Diferença calculada:</span>
-                  <span className={`font-mono text-lg font-bold ${(Number(closingAmount) - currentExpected) >= 0 ? 'text-[#15803D]' : 'text-[#B91C1C]'}`}>
+                <div className="bg-zinc-50 border border-zinc-200 rounded-lg p-3 flex justify-between items-center font-mono">
+                  <span className="text-xs text-zinc-600 font-semibold">Diferença de Caixa:</span>
+                  <span className={`text-base font-bold tabular-nums ${(Number(closingAmount) - currentExpected) >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                     {(Number(closingAmount) - currentExpected) >= 0 ? '+' : ''}
                     € {(Number(closingAmount) - currentExpected).toFixed(2)}
                   </span>
@@ -633,19 +665,19 @@ export default function CaixaManager() {
               )}
             </div>
 
-            <div className="p-6 bg-gray-50 border-t border-gray-100 flex gap-3">
+            <div className="p-4 bg-zinc-50 border-t border-zinc-200 flex gap-2.5">
               <button
                 onClick={() => setShowCloseModal(false)}
-                className="flex-1 px-4 py-3 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors"
+                className="flex-1 px-4 py-2.5 bg-white border border-zinc-300 text-zinc-700 font-semibold rounded-lg hover:bg-zinc-100 transition-colors text-xs font-mono cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleClose}
                 disabled={closingAmount === ''}
-                className="flex-1 px-4 py-3 bg-[#1C1917] text-white font-bold rounded-xl hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 bg-zinc-900 text-white font-bold rounded-lg hover:bg-black transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 text-xs font-mono uppercase tracking-wider cursor-pointer"
               >
-                <Lock className="w-4 h-4" />
+                <Lock className="w-3.5 h-3.5" />
                 Confirmar Fechamento
               </button>
             </div>
@@ -655,79 +687,93 @@ export default function CaixaManager() {
 
       {/* Modal de Movimentação */}
       {showMovementModal && session && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b border-[#E7E5E1] flex justify-between items-center" style={{ backgroundColor: movementType === 'sangria' ? '#FEF2F2' : '#F0FDF4' }}>
+        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-md border border-zinc-200 shadow-2xl overflow-hidden">
+            <div className="p-5 border-b border-zinc-200 bg-zinc-900 text-white flex justify-between items-center">
               <div>
-                <h3 className={`text-xl font-bold flex items-center gap-2 ${movementType === 'sangria' ? 'text-[#991B1B]' : 'text-[#166534]'}`}>
-                  {movementType === 'sangria' ? <ArrowDownCircle className="w-6 h-6" /> : <ArrowUpCircle className="w-6 h-6" />}
-                  Registrar {movementType === 'sangria' ? 'Sangria' : 'Suprimento'}
+                <h3 className="text-base font-bold flex items-center gap-2 tracking-tight">
+                  {movementType === 'sangria' ? (
+                    <ArrowDownCircle className="w-5 h-5 text-rose-400" />
+                  ) : (
+                    <ArrowUpCircle className="w-5 h-5 text-emerald-400" />
+                  )}
+                  {movementType === 'sangria' ? 'Registrar Sangria (Retirada)' : 'Registrar Suprimento (Entrada)'}
                 </h3>
-                <p className={`text-sm mt-1 ${movementType === 'sangria' ? 'text-[#B91C1C]' : 'text-[#15803D]'}`}>
-                  {movementType === 'sangria' ? 'Retirada de dinheiro do caixa' : 'Reforço de dinheiro no caixa'}
+                <p className="text-xs text-zinc-400 font-mono mt-0.5">
+                  {movementType === 'sangria' ? 'Saída de dinheiro físico da gaveta' : 'Reforço de dinheiro físico na gaveta'}
                 </p>
               </div>
             </div>
             
-            <div className="p-6 space-y-5">
+            <div className="p-5 space-y-4">
               {movementError && (
-                <div className="bg-[#FEF2F2] border border-[#FECDD3] p-3 rounded-lg flex gap-2 text-sm text-[#B91C1C]">
-                  <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <div className="bg-rose-50 border border-rose-200 p-3 rounded-lg flex gap-2 text-xs font-mono text-rose-700">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
                   <p>{movementError}</p>
                 </div>
               )}
 
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-[#1C1917] uppercase tracking-wide">
-                  Valor (€) <span className="text-[#B91C1C]">*</span>
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold font-mono text-zinc-600 uppercase tracking-wider">
+                  Valor da Movimentação (€) <span className="text-rose-600">*</span>
                 </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={movementAmount}
-                  onChange={(e) => setMovementAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full text-lg font-mono py-3 px-4 bg-white border border-[#E7E5E1] rounded-xl focus:border-[#C81E3A] focus:ring-1 focus:ring-[#C81E3A]/20 outline-none transition-all shadow-sm"
-                  autoFocus
-                />
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 font-mono font-semibold text-base">€</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={movementAmount}
+                    onChange={(e) => setMovementAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full text-xl font-mono font-bold pl-8 pr-4 py-2.5 bg-white border-2 border-zinc-300 rounded-lg focus:border-zinc-900 focus:outline-none transition-colors tracking-tight text-zinc-900 placeholder-zinc-400"
+                    autoFocus
+                  />
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-[#1C1917] uppercase tracking-wide">
-                  Motivo (Opcional)
+              <div className="space-y-1.5">
+                <label className="block text-[11px] font-bold font-mono text-zinc-600 uppercase tracking-wider">
+                  Motivo / Justificativa (Opcional)
                 </label>
                 <input
                   type="text"
                   value={movementReason}
                   onChange={(e) => setMovementReason(e.target.value)}
-                  placeholder={movementType === 'sangria' ? 'Ex: Pagamento fornecedor' : 'Ex: Troco inicial'}
-                  className="w-full text-sm py-3 px-4 bg-white border border-[#E7E5E1] rounded-xl focus:border-[#C81E3A] focus:ring-1 focus:ring-[#C81E3A]/20 outline-none transition-all shadow-sm"
+                  placeholder={movementType === 'sangria' ? 'Ex: Pagamento fornecedor hortifrúti' : 'Ex: Troco inicial extra'}
+                  className="w-full text-xs font-sans py-2.5 px-3 bg-white border border-zinc-300 rounded-lg focus:border-zinc-900 focus:outline-none transition-colors placeholder-zinc-400"
                 />
               </div>
             </div>
 
-            <div className="p-6 bg-[#FAFAF9] border-t border-[#E7E5E1] flex gap-3">
+            <div className="p-4 bg-zinc-50 border-t border-zinc-200 flex gap-2.5">
               <button
                 onClick={() => {
                   setShowMovementModal(false);
                   setMovementError('');
                 }}
                 disabled={isSubmittingMovement}
-                className="flex-1 px-4 py-3 bg-white border border-[#E7E5E1] text-[#1C1917] font-bold rounded-xl hover:bg-[#F0EFED] transition-colors disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 bg-white border border-zinc-300 text-zinc-700 font-semibold rounded-lg hover:bg-zinc-100 transition-colors text-xs font-mono cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleRegisterMovement}
                 disabled={movementAmount === '' || parseFloat(movementAmount) <= 0 || isSubmittingMovement}
-                className={`flex-1 px-4 py-3 text-white font-bold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${movementType === 'sangria' ? 'bg-[#C81E3A] hover:bg-[#A8172F]' : 'bg-[#15803D] hover:bg-[#166534]'}`}
+                className={`flex-1 px-4 py-2.5 text-white font-bold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 text-xs font-mono uppercase tracking-wider cursor-pointer ${movementType === 'sangria' ? 'bg-rose-600 hover:bg-rose-500' : 'bg-emerald-600 hover:bg-emerald-500'}`}
               >
-                {isSubmittingMovement ? 'Registrando...' : 'Confirmar'}
+                {isSubmittingMovement ? 'Gravando...' : 'Confirmar Registro'}
               </button>
             </div>
           </div>
         </div>
+      )}
+
+      {selectedSessionForDetails && (
+        <CashSessionDetailsModal 
+          session={selectedSessionForDetails} 
+          onClose={() => setSelectedSessionForDetails(null)} 
+        />
       )}
     </div>
   );
