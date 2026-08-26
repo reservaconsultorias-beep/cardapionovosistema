@@ -2087,14 +2087,12 @@ export default function AdminDashboard() {
                     onClick={(e) => {
                       setActiveCategory(cat.id);
                       const el = document.getElementById(`admin-cat-${cat.id}`);
-                      if (el) {
+                      const container = document.querySelector('main');
+                      if (el && container) {
                         e.preventDefault();
-                        const yOffset = -140; // compensate for sticky header
-                        const y =
-                          el.getBoundingClientRect().top +
-                          window.pageYOffset +
-                          yOffset;
-                        window.scrollTo({ top: y, behavior: "smooth" });
+                        const yOffset = -90; // compensate for sticky header
+                        const y = el.getBoundingClientRect().top + container.scrollTop - container.getBoundingClientRect().top + yOffset;
+                        container.scrollTo({ top: y, behavior: "smooth" });
                       }
                     }}
                     className={`py-1.5 px-3 md:px-4 rounded-full text-[12px] md:text-[13px] whitespace-nowrap font-bold transition-all duration-150 active:scale-95 active:opacity-70 cursor-pointer border ${
