@@ -2271,97 +2271,91 @@ export default function AdminDashboard() {
             <div style={{ padding: '16px 20px', flexGrow: 1, overflowY: 'auto' }}>
               <div className="print-receipt-content" style={{ fontFamily: 'Arial, Helvetica, sans-serif', color: '#000' }}>
                 {/* Store Name + Order Type */}
-                <div style={{ textAlign: 'center', marginBottom: '8px', borderBottom: '2px solid #000', paddingBottom: '8px' }}>
-                  <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '900', letterSpacing: '1px' }}>41 Menu's</h2>
-                  <p style={{ margin: '4px 0 0 0', fontSize: '18px', fontWeight: '800' }}>
-                    {printOrder.orderType === 'Delivery' ? 'ENTREGA' : 'RETIRADA'}
-                  </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '8px' }}>
+                  <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '900', letterSpacing: '0.5px' }}>41 Menu's</h2>
+                  <span style={{ fontSize: '22px', fontWeight: '800' }}>
+                    {printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega' ? 'ENTREGA' : 'RETIRADA'}
+                  </span>
                 </div>
 
-                {/* Customer Name + Order ID */}
-                <div style={{ borderBottom: '2px solid #000', marginBottom: '10px', paddingBottom: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <span style={{ fontSize: '18px', fontWeight: '900' }}>{printOrder.customerName}</span>
-                    <span style={{ fontSize: '18px', fontWeight: '900' }}>#{printOrder.id}</span>
-                  </div>
-                  {printOrder.customerPhone && <p style={{ margin: '2px 0 0 0', fontSize: '14px' }}>Tel: {printOrder.customerPhone}</p>}
-                  {printOrder.nif && <p style={{ margin: '2px 0 0 0', fontSize: '14px' }}>NIF: {printOrder.nif}</p>}
+                {/* Customer Name + Order ID (Black Bar) */}
+                <div style={{ backgroundColor: '#000', color: '#fff', padding: '6px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '20px', fontWeight: '900' }}>{printOrder.customerName}</span>
+                  <span style={{ fontSize: '20px', fontWeight: '900' }}>#{printOrder.id}</span>
                 </div>
 
-                {/* Delivery Address */}
-                {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega') && printOrder.deliveryAddress && (
-                  <div style={{ borderBottom: '1px dashed #000', marginBottom: '10px', paddingBottom: '8px' }}>
-                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 'bold' }}>Morada de Entrega:</p>
-                    <p style={{ margin: '2px 0 0 0', fontSize: '14px' }}>{printOrder.deliveryAddress}</p>
-                    {printOrder.deliveryZone && <p style={{ margin: '2px 0 0 0', fontSize: '14px' }}>Zona: {printOrder.deliveryZone}</p>}
-                  </div>
-                )}
+                {/* Customer Info (Notes / Address) */}
+                <div style={{ marginBottom: '12px', padding: '0 4px' }}>
+                  {printOrder.customerPhone && <p style={{ margin: '0 0 2px 0', fontSize: '13px', fontWeight: 'bold' }}>Tel: {printOrder.customerPhone}</p>}
+                  {printOrder.nif && <p style={{ margin: '0 0 2px 0', fontSize: '13px', fontWeight: 'bold' }}>NIF: {printOrder.nif}</p>}
+                  {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega') && printOrder.deliveryAddress && (
+                    <>
+                      <p style={{ margin: '4px 0 2px 0', fontSize: '14px' }}>{printOrder.deliveryAddress}</p>
+                      {printOrder.deliveryZone && <p style={{ margin: '0', fontSize: '14px' }}>Zona: {printOrder.deliveryZone}</p>}
+                    </>
+                  )}
+                </div>
+
+                <div style={{ borderBottom: '2px solid #000', marginBottom: '10px' }}></div>
 
                 {/* Order Items */}
-                <div style={{ marginBottom: '10px', borderBottom: '1px dashed #000', paddingBottom: '8px' }}>
+                <div style={{ marginBottom: '10px' }}>
                   {safeParseItems(printOrder.items).map((item: any, idx: number) => (
-                    <div key={idx} style={{ marginBottom: '6px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                        <span style={{ fontSize: '15px', fontWeight: '700' }}>{item.quantity} x {item.name}</span>
-                        <span style={{ fontSize: '15px', fontWeight: '700', whiteSpace: 'nowrap', marginLeft: '8px' }}>
+                    <div key={idx} style={{ marginBottom: '10px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: '16px', fontWeight: '800', flex: 1, paddingRight: '8px' }}>{item.quantity} x {item.name}</span>
+                        <span style={{ fontSize: '16px', fontWeight: '800', whiteSpace: 'nowrap' }}>
                           {(((item.basePrice !== undefined ? item.basePrice : item.priceCalculated) || 0) * (item.quantity || 1)).toFixed(2)} €
                         </span>
                       </div>
                       {item.extras && item.extras.length > 0 && item.extras.map((extra: any, extraIdx: number) => (
-                        <div key={`${idx}-extra-${extraIdx}`} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '12px' }}>
-                          <span style={{ fontSize: '13px' }}>+ {extra.name}</span>
+                        <div key={`${idx}-extra-${extraIdx}`} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '12px', marginTop: '2px' }}>
+                          <span style={{ fontSize: '13px' }}>{extra.quantity > 1 ? `${extra.quantity}x ` : ''}{extra.name}</span>
                           <span style={{ fontSize: '13px' }}>{((extra.price || 0) * (item.quantity || 1)).toFixed(2)} €</span>
                         </div>
                       ))}
-                      {item.extras && item.extras.length > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '12px', fontWeight: 'bold' }}>
-                          <span style={{ fontSize: '13px' }}>= Subtotal</span>
-                          <span style={{ fontSize: '13px' }}>{((item.priceCalculated || 0) * (item.quantity || 1)).toFixed(2)} €</span>
-                        </div>
-                      )}
                       {item.notes && (
-                        <p style={{ margin: '2px 0 0 12px', fontSize: '13px', fontStyle: 'italic' }}>Obs: {item.notes}</p>
+                        <p style={{ margin: '4px 0 0 12px', fontSize: '13px', fontStyle: 'italic' }}>Obs: {item.notes}</p>
                       )}
                     </div>
                   ))}
                 </div>
 
+                <div style={{ borderBottom: '1px solid #000', marginBottom: '10px' }}></div>
+
                 {/* Totals Section */}
-                <div style={{ marginBottom: '10px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px' }}>
+                <div style={{ marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '4px' }}>
                     <span>Subtotal</span>
                     <span>{safeParseItems(printOrder.items).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * (item.quantity || 1), 0).toFixed(2)} €</span>
                   </div>
                   {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega') && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '15px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '4px' }}>
                       <span>Taxa de Entrega</span>
                       <span>{((printOrder.totalAmount || 0) - safeParseItems(printOrder.items).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * (item.quantity || 1), 0)).toFixed(2)} €</span>
                     </div>
                   )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: '900', borderTop: '1px dashed #000', paddingTop: '6px', marginTop: '4px' }}>
-                    <span>TOTAL</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '900', marginTop: '4px' }}>
+                    <span>Montante pago</span>
                     <span>{(printOrder.totalAmount || 0).toFixed(2)} €</span>
                   </div>
                 </div>
 
                 {/* Payment + Time */}
-                <div style={{ borderTop: '1px dashed #000', paddingTop: '6px', fontSize: '14px' }}>
-                  <p style={{ margin: 0, fontWeight: 'bold' }}>Pagamento: {printOrder.paymentMethod}</p>
-                  {printOrder.changeFor && <p style={{ margin: '2px 0 0 0' }}>Troco para: € {printOrder.changeFor}</p>}
-                  <p style={{ margin: '6px 0 0 0', fontWeight: 'bold', fontSize: '14px' }}>
+                <div style={{ fontSize: '13px' }}>
+                  <p style={{ margin: '0 0 4px 0' }}>Realizado a {new Date(printOrder.createdAt).toLocaleString('pt-PT')}</p>
+                  <p style={{ margin: '0 0 4px 0', fontWeight: 'bold' }}>
                     {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega')
-                      ? 'Tempo est. de entrega: 40 a 50 min'
-                      : 'Tempo est. de prep.: 25 a 35 min'}
+                      ? 'Entrega est.: 40 a 50 min'
+                      : 'Recolher em: 25 a 35 min'}
                   </p>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '13px' }}>
-                    Data: {new Date(printOrder.createdAt).toLocaleString('pt-PT')}
-                  </p>
+                  <p style={{ margin: 0 }}>Pagamento: {printOrder.paymentMethod}</p>
+                  {printOrder.changeFor && <p style={{ margin: '2px 0 0 0' }}>Troco para: € {printOrder.changeFor}</p>}
                 </div>
 
                 {/* Footer */}
-                <div style={{ textAlign: 'center', marginTop: '12px', paddingTop: '6px', borderTop: '1px dashed #000', fontSize: '13px' }}>
-                  <p style={{ margin: 0 }}>Obrigado por fazer um pedido</p>
-                  <p style={{ margin: 0 }}>de 41Menu's Pizzas e Esfirras</p>
+                <div style={{ textAlign: 'center', marginTop: '16px', paddingTop: '8px', borderTop: '1px solid #000', fontSize: '12px' }}>
+                  <p style={{ margin: 0 }}>Obrigado por fazer um pedido de 41Menu's Pizzas e Esfihas</p>
                 </div>
               </div>
             </div>
@@ -2389,97 +2383,91 @@ export default function AdminDashboard() {
         <div className="print-only">
           <div className="print-receipt-content">
             {/* Store Name + Order Type */}
-            <div style={{ textAlign: 'center', marginBottom: '8px', borderBottom: '2px solid #000', paddingBottom: '8px' }}>
-              <h2 style={{ margin: 0, fontSize: '28pt', fontWeight: '900', letterSpacing: '1px' }}>41 Menu's</h2>
-              <p style={{ margin: '4px 0 0 0', fontSize: '22pt', fontWeight: '800' }}>
-                {printOrder.orderType === 'Delivery' ? 'ENTREGA' : 'RETIRADA'}
-              </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '8px' }}>
+              <h2 style={{ margin: 0, fontSize: '24pt', fontWeight: '900', letterSpacing: '1px' }}>41 Menu's</h2>
+              <span style={{ fontSize: '26pt', fontWeight: '800' }}>
+                {printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega' ? 'ENTREGA' : 'RETIRADA'}
+              </span>
             </div>
 
-            {/* Customer Name + Order ID */}
-            <div style={{ borderBottom: '2px solid #000', marginBottom: '10px', paddingBottom: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <span style={{ fontSize: '22pt', fontWeight: '900' }}>{printOrder.customerName}</span>
-                <span style={{ fontSize: '22pt', fontWeight: '900' }}>#{printOrder.id}</span>
-              </div>
-              {printOrder.customerPhone && <p style={{ margin: '2px 0 0 0', fontSize: '16pt' }}>Tel: {printOrder.customerPhone}</p>}
-              {printOrder.nif && <p style={{ margin: '2px 0 0 0', fontSize: '16pt' }}>NIF: {printOrder.nif}</p>}
+            {/* Customer Name + Order ID (Black Bar) */}
+            <div style={{ backgroundColor: '#000', color: '#fff', padding: '6px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <span style={{ fontSize: '24pt', fontWeight: '900' }}>{printOrder.customerName}</span>
+              <span style={{ fontSize: '24pt', fontWeight: '900' }}>#{printOrder.id}</span>
             </div>
 
-            {/* Delivery Address */}
-            {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega') && printOrder.deliveryAddress && (
-              <div style={{ borderBottom: '1px dashed #000', marginBottom: '10px', paddingBottom: '8px' }}>
-                <p style={{ margin: 0, fontSize: '16pt', fontWeight: 'bold' }}>Morada de Entrega:</p>
-                <p style={{ margin: '2px 0 0 0', fontSize: '16pt' }}>{printOrder.deliveryAddress}</p>
-                {printOrder.deliveryZone && <p style={{ margin: '2px 0 0 0', fontSize: '16pt' }}>Zona: {printOrder.deliveryZone}</p>}
-              </div>
-            )}
+            {/* Customer Info (Notes / Address) */}
+            <div style={{ marginBottom: '14px', padding: '0 4px' }}>
+              {printOrder.customerPhone && <p style={{ margin: '0 0 2px 0', fontSize: '15pt', fontWeight: 'bold' }}>Tel: {printOrder.customerPhone}</p>}
+              {printOrder.nif && <p style={{ margin: '0 0 2px 0', fontSize: '15pt', fontWeight: 'bold' }}>NIF: {printOrder.nif}</p>}
+              {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega') && printOrder.deliveryAddress && (
+                <>
+                  <p style={{ margin: '4px 0 2px 0', fontSize: '16pt' }}>{printOrder.deliveryAddress}</p>
+                  {printOrder.deliveryZone && <p style={{ margin: '0', fontSize: '16pt' }}>Zona: {printOrder.deliveryZone}</p>}
+                </>
+              )}
+            </div>
+
+            <div style={{ borderBottom: '2px solid #000', marginBottom: '12px' }}></div>
 
             {/* Order Items */}
-            <div style={{ marginBottom: '10px', borderBottom: '1px dashed #000', paddingBottom: '8px' }}>
+            <div style={{ marginBottom: '12px' }}>
               {safeParseItems(printOrder.items).map((item: any, idx: number) => (
-                <div key={idx} style={{ marginBottom: '6px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                    <span style={{ fontSize: '18pt', fontWeight: '700' }}>{item.quantity} x {item.name}</span>
-                    <span style={{ fontSize: '18pt', fontWeight: '700', whiteSpace: 'nowrap', marginLeft: '8px' }}>
+                <div key={idx} style={{ marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{ fontSize: '18pt', fontWeight: '800', flex: 1, paddingRight: '8px' }}>{item.quantity} x {item.name}</span>
+                    <span style={{ fontSize: '18pt', fontWeight: '800', whiteSpace: 'nowrap' }}>
                       {(((item.basePrice !== undefined ? item.basePrice : item.priceCalculated) || 0) * (item.quantity || 1)).toFixed(2)} €
                     </span>
                   </div>
                   {item.extras && item.extras.length > 0 && item.extras.map((extra: any, extraIdx: number) => (
-                    <div key={`${idx}-extra-${extraIdx}`} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '12px' }}>
-                      <span style={{ fontSize: '15pt' }}>+ {extra.name}</span>
+                    <div key={`${idx}-extra-${extraIdx}`} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '12px', marginTop: '2px' }}>
+                      <span style={{ fontSize: '15pt' }}>{extra.quantity > 1 ? `${extra.quantity}x ` : ''}{extra.name}</span>
                       <span style={{ fontSize: '15pt' }}>{((extra.price || 0) * (item.quantity || 1)).toFixed(2)} €</span>
                     </div>
                   ))}
-                  {item.extras && item.extras.length > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '12px', fontWeight: 'bold' }}>
-                      <span style={{ fontSize: '15pt' }}>= Subtotal</span>
-                      <span style={{ fontSize: '15pt' }}>{((item.priceCalculated || 0) * (item.quantity || 1)).toFixed(2)} €</span>
-                    </div>
-                  )}
                   {item.notes && (
-                    <p style={{ margin: '2px 0 0 12px', fontSize: '15pt', fontStyle: 'italic' }}>Obs: {item.notes}</p>
+                    <p style={{ margin: '4px 0 0 12px', fontSize: '15pt', fontStyle: 'italic' }}>Obs: {item.notes}</p>
                   )}
                 </div>
               ))}
             </div>
 
+            <div style={{ borderBottom: '2px solid #000', marginBottom: '12px' }}></div>
+
             {/* Totals Section */}
-            <div style={{ marginBottom: '10px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18pt' }}>
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16pt', marginBottom: '4px' }}>
                 <span>Subtotal</span>
                 <span>{safeParseItems(printOrder.items).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * (item.quantity || 1), 0).toFixed(2)} €</span>
               </div>
               {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega') && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18pt' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16pt', marginBottom: '4px' }}>
                   <span>Taxa de Entrega</span>
                   <span>{((printOrder.totalAmount || 0) - safeParseItems(printOrder.items).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * (item.quantity || 1), 0)).toFixed(2)} €</span>
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '22pt', fontWeight: '900', borderTop: '1px dashed #000', paddingTop: '6px', marginTop: '4px' }}>
-                <span>TOTAL</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '20pt', fontWeight: '900', marginTop: '4px' }}>
+                <span>Montante pago</span>
                 <span>{(printOrder.totalAmount || 0).toFixed(2)} €</span>
               </div>
             </div>
 
             {/* Payment + Time */}
-            <div style={{ borderTop: '1px dashed #000', paddingTop: '6px', fontSize: '16pt' }}>
-              <p style={{ margin: 0, fontWeight: 'bold' }}>Pagamento: {printOrder.paymentMethod}</p>
-              {printOrder.changeFor && <p style={{ margin: '2px 0 0 0' }}>Troco para: € {printOrder.changeFor}</p>}
-              <p style={{ margin: '6px 0 0 0', fontWeight: 'bold', fontSize: '16pt' }}>
+            <div style={{ fontSize: '15pt' }}>
+              <p style={{ margin: '0 0 4px 0' }}>Realizado a {new Date(printOrder.createdAt).toLocaleString('pt-PT')}</p>
+              <p style={{ margin: '0 0 4px 0', fontWeight: 'bold' }}>
                 {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega')
-                  ? 'Tempo est. de entrega: 40 a 50 min'
-                  : 'Tempo est. de prep.: 25 a 35 min'}
+                  ? 'Entrega est.: 40 a 50 min'
+                  : 'Recolher em: 25 a 35 min'}
               </p>
-              <p style={{ margin: '2px 0 0 0', fontSize: '14pt' }}>
-                Data: {new Date(printOrder.createdAt).toLocaleString('pt-PT')}
-              </p>
+              <p style={{ margin: 0 }}>Pagamento: {printOrder.paymentMethod}</p>
+              {printOrder.changeFor && <p style={{ margin: '2px 0 0 0' }}>Troco para: € {printOrder.changeFor}</p>}
             </div>
 
             {/* Footer */}
-            <div style={{ textAlign: 'center', marginTop: '12px', paddingTop: '6px', borderTop: '1px dashed #000', fontSize: '14pt' }}>
-              <p style={{ margin: 0 }}>Obrigado por fazer um pedido</p>
-              <p style={{ margin: 0 }}>de 41Menu's Pizzas e Esfirras</p>
+            <div style={{ textAlign: 'center', marginTop: '16px', paddingTop: '8px', borderTop: '2px solid #000', fontSize: '14pt' }}>
+              <p style={{ margin: 0 }}>Obrigado por fazer um pedido de 41Menu's Pizzas e Esfihas</p>
             </div>
           </div>
         </div>
