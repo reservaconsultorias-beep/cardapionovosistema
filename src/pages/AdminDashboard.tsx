@@ -2415,7 +2415,10 @@ export default function AdminDashboard() {
               {safeParseItems(printOrder.items).map((item: any, idx: number) => (
                 <div key={idx} style={{ marginBottom: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '10pt', fontWeight: 'normal', flex: 1, paddingRight: '6px' }}>{item.quantity} x {item.name}</span>
+                    <div style={{ flex: 1, paddingRight: '6px' }}>
+                      <span style={{ fontSize: '13pt', fontWeight: 'bold' }}>{item.quantity} x </span>
+                      <span style={{ fontSize: '10pt', fontWeight: 'normal' }}>{item.name}</span>
+                    </div>
                     <span style={{ fontSize: '12pt', fontWeight: '800', whiteSpace: 'nowrap' }}>
                       {(((item.basePrice !== undefined ? item.basePrice : item.priceCalculated) || 0) * (item.quantity || 1)).toFixed(2)} €
                     </span>
