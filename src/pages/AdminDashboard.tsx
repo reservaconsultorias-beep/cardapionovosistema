@@ -2318,7 +2318,7 @@ export default function AdminDashboard() {
                         </div>
                       ))}
                       {item.notes && (
-                        <p style={{ margin: '2px 0 0 8px', fontSize: '10px', fontStyle: 'italic', fontWeight: 'normal' }}>Obs: {item.notes}</p>
+                        <p style={{ margin: '2px 0 0 8px', fontSize: '10px', fontStyle: 'italic', fontWeight: 'bold' }}>Obs: {item.notes}</p>
                       )}
                     </div>
                   ))}
@@ -2433,7 +2433,7 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                   {item.notes && (
-                    <p style={{ margin: '3px 0 0 10px', fontSize: '10pt', fontStyle: 'italic', fontWeight: 'normal' }}>Obs: {item.notes}</p>
+                    <p style={{ margin: '3px 0 0 10px', fontSize: '10pt', fontStyle: 'italic', fontWeight: 'bold' }}>Obs: {item.notes}</p>
                   )}
                 </div>
               ))}
