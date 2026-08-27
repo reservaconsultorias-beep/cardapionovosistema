@@ -2384,16 +2384,16 @@ export default function AdminDashboard() {
           <div className="print-receipt-content">
             {/* Store Name + Order Type */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '6px' }}>
-              <h2 style={{ margin: 0, fontSize: '16pt', fontWeight: '900', letterSpacing: '0.5px' }}>41 Menu's</h2>
-              <span style={{ fontSize: '18pt', fontWeight: '800' }}>
+              <h2 style={{ margin: 0, fontSize: '14pt', fontWeight: '900', letterSpacing: '0.5px' }}>41 Menu's</h2>
+              <span style={{ fontSize: '12pt', fontWeight: '800' }}>
                 {printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega' ? 'ENTREGA' : 'RETIRADA'}
               </span>
             </div>
 
             {/* Customer Name + Order ID (Black Bar) */}
             <div style={{ backgroundColor: '#000', color: '#fff', padding: '4px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '14pt', fontWeight: '900' }}>{printOrder.customerName}</span>
-              <span style={{ fontSize: '14pt', fontWeight: '900' }}>#{printOrder.id}</span>
+              <span style={{ fontSize: '12pt', fontWeight: '900' }}>{printOrder.customerName}</span>
+              <span style={{ fontSize: '12pt', fontWeight: '900' }}>#{printOrder.id}</span>
             </div>
 
             {/* Customer Info (Notes / Address) */}
@@ -2402,8 +2402,8 @@ export default function AdminDashboard() {
               {printOrder.nif && <p style={{ margin: '0 0 2px 0', fontSize: '11pt', fontWeight: 'bold' }}>NIF: {printOrder.nif}</p>}
               {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega') && printOrder.deliveryAddress && (
                 <>
-                  <p style={{ margin: '3px 0 2px 0', fontSize: '11pt' }}>{printOrder.deliveryAddress}</p>
-                  {printOrder.deliveryZone && <p style={{ margin: '0', fontSize: '11pt' }}>Zona: {printOrder.deliveryZone}</p>}
+                  <p style={{ margin: '3px 0 2px 0', fontSize: '10pt', fontWeight: 'normal' }}>{printOrder.deliveryAddress}</p>
+                  {printOrder.deliveryZone && <p style={{ margin: '0', fontSize: '10pt', fontWeight: 'normal' }}>Zona: {printOrder.deliveryZone}</p>}
                 </>
               )}
             </div>
@@ -2415,19 +2415,19 @@ export default function AdminDashboard() {
               {safeParseItems(printOrder.items).map((item: any, idx: number) => (
                 <div key={idx} style={{ marginBottom: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <span style={{ fontSize: '12pt', fontWeight: '800', flex: 1, paddingRight: '6px' }}>{item.quantity} x {item.name}</span>
+                    <span style={{ fontSize: '10pt', fontWeight: 'normal', flex: 1, paddingRight: '6px' }}>{item.quantity} x {item.name}</span>
                     <span style={{ fontSize: '12pt', fontWeight: '800', whiteSpace: 'nowrap' }}>
                       {(((item.basePrice !== undefined ? item.basePrice : item.priceCalculated) || 0) * (item.quantity || 1)).toFixed(2)} €
                     </span>
                   </div>
                   {item.extras && item.extras.length > 0 && item.extras.map((extra: any, extraIdx: number) => (
                     <div key={`${idx}-extra-${extraIdx}`} style={{ display: 'flex', justifyContent: 'space-between', paddingLeft: '10px', marginTop: '2px' }}>
-                      <span style={{ fontSize: '10pt' }}>{extra.quantity > 1 ? `${extra.quantity}x ` : ''}{extra.name}</span>
-                      <span style={{ fontSize: '10pt' }}>{((extra.price || 0) * (item.quantity || 1)).toFixed(2)} €</span>
+                      <span style={{ fontSize: '10pt', fontWeight: 'normal' }}>{extra.quantity > 1 ? `${extra.quantity}x ` : ''}{extra.name}</span>
+                      <span style={{ fontSize: '10pt', fontWeight: 'normal' }}>{((extra.price || 0) * (item.quantity || 1)).toFixed(2)} €</span>
                     </div>
                   ))}
                   {item.notes && (
-                    <p style={{ margin: '3px 0 0 10px', fontSize: '10pt', fontStyle: 'italic' }}>Obs: {item.notes}</p>
+                    <p style={{ margin: '3px 0 0 10px', fontSize: '10pt', fontStyle: 'italic', fontWeight: 'normal' }}>Obs: {item.notes}</p>
                   )}
                 </div>
               ))}
@@ -2437,17 +2437,17 @@ export default function AdminDashboard() {
 
             {/* Totals Section */}
             <div style={{ marginBottom: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', marginBottom: '3px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', fontWeight: 'normal', marginBottom: '3px' }}>
                 <span>Subtotal</span>
                 <span>{safeParseItems(printOrder.items).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * (item.quantity || 1), 0).toFixed(2)} €</span>
               </div>
               {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega') && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', marginBottom: '3px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', fontWeight: 'normal', marginBottom: '3px' }}>
                   <span>Taxa de Entrega</span>
                   <span>{((printOrder.totalAmount || 0) - safeParseItems(printOrder.items).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * (item.quantity || 1), 0)).toFixed(2)} €</span>
                 </div>
               )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14pt', fontWeight: '900', marginTop: '3px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10pt', fontWeight: '900', marginTop: '3px' }}>
                 <span>Montante pago</span>
                 <span>{(printOrder.totalAmount || 0).toFixed(2)} €</span>
               </div>
@@ -2455,18 +2455,18 @@ export default function AdminDashboard() {
 
             {/* Payment + Time */}
             <div style={{ fontSize: '10pt' }}>
-              <p style={{ margin: '0 0 3px 0' }}>Realizado a {new Date(printOrder.createdAt).toLocaleString('pt-PT')}</p>
+              <p style={{ margin: '0 0 3px 0', fontWeight: 'normal' }}>Realizado a {new Date(printOrder.createdAt).toLocaleString('pt-PT')}</p>
               <p style={{ margin: '0 0 3px 0', fontWeight: 'bold' }}>
                 {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega')
                   ? 'Entrega est.: 40 a 50 min'
                   : 'Recolher em: 25 a 35 min'}
               </p>
-              <p style={{ margin: 0 }}>Pagamento: {printOrder.paymentMethod}</p>
-              {printOrder.changeFor && <p style={{ margin: '2px 0 0 0' }}>Troco para: € {printOrder.changeFor}</p>}
+              <p style={{ margin: 0, fontWeight: 'normal' }}>Pagamento: {printOrder.paymentMethod}</p>
+              {printOrder.changeFor && <p style={{ margin: '2px 0 0 0', fontWeight: 'normal' }}>Troco para: € {printOrder.changeFor}</p>}
             </div>
 
             {/* Footer */}
-            <div style={{ textAlign: 'center', marginTop: '10px', paddingTop: '6px', borderTop: '1px solid #000', fontSize: '10pt' }}>
+            <div style={{ textAlign: 'center', marginTop: '10px', paddingTop: '6px', borderTop: '1px solid #000', fontSize: '10pt', fontWeight: 'normal' }}>
               <p style={{ margin: 0 }}>Obrigado por fazer um pedido de 41Menu's Pizzas e Esfihas</p>
             </div>
           </div>
