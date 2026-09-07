@@ -161,7 +161,9 @@ export default function MenuManager() {
       price_m: editingItem.price_m || null,
       price_g: editingItem.price_g || null,
       image_url: finalImageUrl,
-      day_of_week: editingItem.day_of_week || null
+      day_of_week: editingItem.day_of_week || null,
+      is_active: editingItem.is_active !== undefined ? editingItem.is_active : true,
+      is_bestseller: editingItem.is_bestseller !== undefined ? editingItem.is_bestseller : false
     };
 
     const { error } = await supabase.from('menu_items').upsert(dbItem, { onConflict: 'id' });
@@ -222,7 +224,8 @@ export default function MenuManager() {
       ingredients: '',
       category: categories[0]?.id || '',
       price_single: '',
-      image_url: ''
+      image_url: '',
+      is_bestseller: false
     });
     setIsModalOpen(true);
   };
@@ -244,7 +247,7 @@ export default function MenuManager() {
               Puxar Cardápio Inicial (Migrar)
             </button>
           )}
-          <button onClick={openNewModal} className="px-4 py-2.5 bg-[#C81E3A] text-white rounded-lg font-semibold text-sm hover:bg-[#A8172F] transition-colors flex items-center gap-2">
+          <button onClick={openNewModal} className="px-4 py-2.5 bg-[#fdde58] text-stone-950 font-bold rounded-lg text-sm hover:bg-[#e2c23f] transition-colors flex items-center gap-2 border border-[#d8ba39] cursor-pointer shadow-sm">
             <Plus size={16} /> Novo Produto
           </button>
         </div>
@@ -478,11 +481,18 @@ export default function MenuManager() {
                 </div>
               </div>
 
-              <div className="pt-6 flex justify-end gap-3">
+              <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm text-[#1C1917] font-bold cursor-pointer">
+                  <input type="checkbox" checked={editingItem.is_bestseller || false} onChange={e => setEditingItem({...editingItem, is_bestseller: e.target.checked})} className="w-4 h-4 accent-[#d8ba39] rounded cursor-pointer" />
+                  🌟 Marcar como Mais Pedido (Destaque)
+                </label>
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 rounded-md font-bold text-sm bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer border border-stone-200">
                   Cancelar
                 </button>
-                <button type="submit" className="px-8 py-3 rounded-md font-bold text-sm bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition-all active:translate-y-px cursor-pointer flex items-center gap-2 border border-rose-700">
+                <button type="submit" className="px-8 py-3 rounded-md font-bold text-sm bg-[#fdde58] hover:bg-[#e2c23f] text-stone-950 shadow-sm transition-all active:translate-y-px cursor-pointer flex items-center gap-2 border border-[#d8ba39]">
                   <Save size={16} /> Salvar Produto
                 </button>
               </div>

@@ -11,11 +11,11 @@ export const ADMIN_COLORS = {
   textSecondary: '#78716C',// Texto secundário
   textTertiary: '#A8A29E', // Labels/legenda
 
-  brand: '#C81E3A',        // Vermelho refinado 41 Menus
-  brandHover: '#A8172F',
-  brandLight: '#FDEEF0',
+  brand: '#fdde58',        // Amarelo fosco oficial 41 Menus
+  brandHover: '#e2c23f',
+  brandLight: '#fefce8',
 
-  accentGold: '#D4AF6A',   // Dourado sóbrio da sidebar (item ativo)
+  accentGold: '#d8ba39',   // Dourado/âmbar da sidebar (item ativo)
   darkBg: '#1C1917',       // Preto-tinta da sidebar
 
   success: '#15803D',
@@ -37,8 +37,8 @@ export const ADMIN_STYLES = {
   label: 'text-xs font-semibold uppercase tracking-wide text-[#A8A29E]',
   kpiNumber: 'text-3xl font-bold font-mono tabular-nums text-[#1C1917]',
   monoText: 'font-mono tabular-nums',
-  input: 'bg-[#FAFAF9] border border-[#E7E5E1] rounded-lg text-sm focus:border-[#C81E3A] focus:ring-1 focus:ring-[#C81E3A]/20 outline-none transition-all',
-  btnPrimary: 'px-4 py-2.5 bg-[#C81E3A] hover:bg-[#A8172F] text-white rounded-lg font-semibold text-sm transition-colors shadow-sm disabled:opacity-50',
+  input: 'bg-[#FAFAF9] border border-[#E7E5E1] rounded-lg text-sm focus:border-[#fdde58] focus:ring-1 focus:ring-[#fdde58]/30 outline-none transition-all',
+  btnPrimary: 'px-4 py-2.5 bg-[#fdde58] hover:bg-[#e2c23f] text-stone-950 font-bold rounded-lg text-sm transition-colors shadow-sm disabled:opacity-50 border border-[#d8ba39]',
   btnSecondary: 'px-4 py-2.5 bg-transparent border border-[#E7E5E1] hover:bg-[#FAFAF9] text-[#1C1917] rounded-lg font-semibold text-sm transition-colors',
   btnDanger: 'px-4 py-2.5 bg-transparent border border-[#B91C1C] text-[#B91C1C] hover:bg-[#FEF2F2] rounded-lg font-semibold text-sm transition-colors',
 };

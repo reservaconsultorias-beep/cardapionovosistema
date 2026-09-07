@@ -70,8 +70,9 @@ export function useMenu() {
   useEffect(() => {
     loadData();
 
+    const channelId = `public:menu-live-${Math.random().toString(36).substring(7)}`;
     const channel = supabase
-      .channel('public:menu-live')
+      .channel(channelId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => loadData())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'categories' }, () => loadData())
       .subscribe();
@@ -81,5 +82,5 @@ export function useMenu() {
     };
   }, []);
 
-  return { menuItems, categories, loading, usingFallback };
+  return { menuItems, categories, loading, usingFallback, refresh: loadData };
 }

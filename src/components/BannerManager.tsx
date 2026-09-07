@@ -202,7 +202,7 @@ export default function BannerManager() {
               <div className="pt-3">
                 <button 
                   type="submit" 
-                  className="w-full py-3 bg-[#C81E3A] hover:bg-[#A8172F] text-white rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm"
+                  className="w-full py-3 bg-[#fdde58] hover:bg-[#e2c23f] text-stone-950 rounded-lg font-bold text-sm transition-colors flex items-center justify-center gap-2 shadow-sm border border-[#d8ba39] cursor-pointer"
                 >
                   <Save size={18} /> Salvar Promoção
                 </button>
@@ -215,7 +215,7 @@ export default function BannerManager() {
         <div className="lg:col-span-5 space-y-4">
           <div className="bg-white rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] p-6">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-[#A8A29E] mb-3 flex items-center gap-1.5">
-              <Sparkles size={14} className="text-[#C81E3A]" /> Pré-visualização do Pop-up na Loja
+              <Sparkles size={14} className="text-[#d8ba39]" /> Pré-visualização do Pop-up na Loja
             </h3>
 
             {/* Mobile / Screen Mockup Frame */}

@@ -5,7 +5,8 @@ export interface BusinessHoursStatus {
   isOpen: boolean;
   loading: boolean;
   todayLabel: string;
-  reason: 'loading' | 'closed_today' | 'outside_hours' | 'open' | 'manual_closed' | 'paused';
+  reason: 'loading' | 'closed_today' | 'outside_hours' | 'open' | 'manual_closed' | 'paused' | 'blocked';
+  subscriptionStatus: string;
 }
 
 const DAY_NAMES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -16,6 +17,7 @@ export function useBusinessHours(): BusinessHoursStatus {
     loading: true,
     todayLabel: '',
     reason: 'loading',
+    subscriptionStatus: 'active',
   });
 
   const checkStatus = async () => {
@@ -23,16 +25,22 @@ export function useBusinessHours(): BusinessHoursStatus {
       const { data: settingsData } = await supabase
         .from('settings')
         .select('key, value')
-        .in('key', ['manual_store_closed', 'store_status', 'paused_until']);
+        .in('key', ['manual_store_closed', 'store_status', 'paused_until', 'subscription_status']);
 
       const getSetting = (k: string) => settingsData?.find(s => s.key === k)?.value;
       
       const manualClosed = getSetting('manual_store_closed') === true;
       const storeStatus = getSetting('store_status');
       const pausedUntil = getSetting('paused_until');
+      const subscriptionStatus = getSetting('subscription_status') || 'active';
+
+      if (subscriptionStatus === 'blocked') {
+        setStatus({ isOpen: false, loading: false, todayLabel: '', reason: 'blocked', subscriptionStatus });
+        return;
+      }
 
       if (manualClosed || storeStatus === 'closed') {
-        setStatus({ isOpen: false, loading: false, todayLabel: '', reason: 'manual_closed' });
+        setStatus({ isOpen: false, loading: false, todayLabel: '', reason: 'manual_closed', subscriptionStatus });
         return;
       }
 
@@ -40,7 +48,7 @@ export function useBusinessHours(): BusinessHoursStatus {
         const pauseEnd = new Date(pausedUntil);
         if (new Date() < pauseEnd) {
            const timeStr = pauseEnd.toLocaleTimeString('pt-PT', {hour: '2-digit', minute:'2-digit'});
-           setStatus({ isOpen: false, loading: false, todayLabel: `Volta às ${timeStr}`, reason: 'paused' });
+           setStatus({ isOpen: false, loading: false, todayLabel: `Volta às ${timeStr}`, reason: 'paused', subscriptionStatus });
            return;
         } else {
            // Pause expired, continue to normal hours check
@@ -50,7 +58,7 @@ export function useBusinessHours(): BusinessHoursStatus {
       const { data, error } = await supabase.from('business_hours').select('*');
       if (error) throw error;
       if (!data || data.length === 0) {
-        setStatus({ isOpen: true, loading: false, todayLabel: '', reason: 'open' });
+        setStatus({ isOpen: true, loading: false, todayLabel: '', reason: 'open', subscriptionStatus });
         return;
       }
 
@@ -70,6 +78,7 @@ export function useBusinessHours(): BusinessHoursStatus {
           loading: false,
           todayLabel: DAY_NAMES[dayOfWeek] || 'Fechado',
           reason: 'closed_today',
+          subscriptionStatus
         });
         return;
       }
@@ -92,10 +101,11 @@ export function useBusinessHours(): BusinessHoursStatus {
         loading: false,
         todayLabel: `${today.opens_at.slice(0,5)} às ${today.closes_at.slice(0,5)}`,
         reason: isOpen ? 'open' : 'outside_hours',
+        subscriptionStatus
       });
     } catch (err) {
       console.warn('[useBusinessHours] Não foi possível verificar o horário, assumindo loja aberta.', err);
-      setStatus({ isOpen: true, loading: false, todayLabel: '', reason: 'open' });
+      setStatus({ isOpen: true, loading: false, todayLabel: '', reason: 'open', subscriptionStatus: 'active' });
     }
   };
 

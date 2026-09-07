@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase';
 import { X, Search, ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { normalizePaymentMethod, normalizeOrderType, isOrderActive } from '../../utils/paymentAndOrderHelper';
 
 interface CashSessionDetailsModalProps {
   session: any;
@@ -29,14 +30,31 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
       .gte('created_at', session.opened_at)
       .lte('created_at', session.closed_at || new Date().toISOString());
 
-    const { data: movements } = await supabase
-      .from('cash_movements')
-      .select('*')
-      .eq('session_id', sessionId);
+    let movementsData: any[] = [];
+    try {
+      const { data: movements, error } = await supabase
+        .from('cash_movements')
+        .select('*')
+        .eq('session_id', sessionId);
+      if (!error && movements) {
+        movementsData = movements;
+      } else {
+        throw error;
+      }
+    } catch (e) {
+      const { data: setRow } = await supabase
+        .from('settings')
+        .select('value')
+        .eq('key', `cash_movements_${sessionId}`)
+        .maybeSingle();
+      if (setRow?.value) {
+        try { movementsData = JSON.parse(setRow.value); } catch(err) { movementsData = []; }
+      }
+    }
 
     setSessionDetails({
-      orders: orders || [],
-      movements: movements || []
+      orders: (orders || []).filter(isOrderActive),
+      movements: movementsData || []
     });
     setLoading(false);
   };
@@ -45,7 +63,7 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl relative">
+      <div className="bg-white rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl relative">
         <div className="p-6 border-b border-stone-100 flex justify-between items-center bg-stone-900 text-white rounded-t-2xl">
           <div>
             <h3 className="font-extrabold text-xl">
@@ -53,6 +71,7 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
             </h3>
             <p className="text-stone-400 text-sm font-mono mt-1">
               Abertura: {format(new Date(session.opened_at), "dd 'de' MMMM, HH:mm", { locale: ptBR })}
+              {session.closed_at && ` | Fechamento: ${format(new Date(session.closed_at), "dd 'de' MMMM, HH:mm", { locale: ptBR })}`}
             </p>
           </div>
           <button
@@ -71,154 +90,227 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Resumo Financeiro */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                  <p className="text-xs text-stone-500 font-mono uppercase tracking-wider mb-1">Total em Pedidos</p>
-                  <p className="text-xl font-black text-stone-900">
-                    € {sessionDetails?.orders.reduce((acc: number, o: any) => acc + o.total_amount, 0).toFixed(2)}
-                  </p>
-                  <p className="text-xs text-stone-400 mt-1">{sessionDetails?.orders.length} pedidos vinculados</p>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                  <p className="text-xs text-stone-500 font-mono uppercase tracking-wider mb-1">Suprimentos</p>
-                  <p className="text-xl font-black text-emerald-600 flex items-center gap-1">
-                    <ArrowUpRight size={18} />
-                    € {sessionDetails?.movements.filter((m: any) => m.type === 'suprimento').reduce((acc: number, m: any) => acc + m.amount, 0).toFixed(2)}
-                  </p>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                  <p className="text-xs text-stone-500 font-mono uppercase tracking-wider mb-1">Sangrias</p>
-                  <p className="text-xl font-black text-rose-600 flex items-center gap-1">
-                    <ArrowDownRight size={18} />
-                    € {sessionDetails?.movements.filter((m: any) => m.type === 'sangria').reduce((acc: number, m: any) => acc + m.amount, 0).toFixed(2)}
-                  </p>
-                </div>
-                <div className="bg-white p-4 rounded-xl border border-stone-200 shadow-sm">
-                  <p className="text-xs text-stone-500 font-mono uppercase tracking-wider mb-1">Diferença Registrada</p>
-                  <p className={`text-xl font-black ${session.difference_amount < 0 ? 'text-rose-600' : session.difference_amount > 0 ? 'text-emerald-600' : 'text-stone-900'}`}>
-                    € {session.difference_amount ? Number(session.difference_amount).toFixed(2) : '0.00'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Lista de Pedidos */}
-              <div>
-                <h4 className="font-bold text-sm text-stone-900 mb-3 flex items-center gap-2">
-                  <Search size={16} className="text-stone-400" /> Detalhamento de Pedidos
-                </h4>
+              
+              {/* Resumo por Tipo de Venda */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* ENTREGA */}
                 <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-stone-100 font-mono text-stone-500 text-xs border-b border-stone-200">
-                      <tr>
-                        <th className="py-3 px-4 font-semibold uppercase tracking-wider">Hora</th>
-                        <th className="py-3 px-4 font-semibold uppercase tracking-wider">Cliente</th>
-                        <th className="py-3 px-4 font-semibold uppercase tracking-wider">Pagamento</th>
-                        <th className="py-3 px-4 font-semibold uppercase tracking-wider text-right">Valor</th>
-                        <th className="py-3 px-4 w-10"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100">
-                      {sessionDetails?.orders.length === 0 ? (
-                        <tr><td colSpan={5} className="py-8 text-center text-stone-500 font-mono">Nenhum pedido atrelado</td></tr>
-                      ) : (
-                        sessionDetails?.orders.map((order: any) => {
-                          let items = [];
-                          try {
-                            items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []);
-                          } catch (e) { }
+                  <div className="bg-stone-800 text-white px-4 py-2 font-bold text-center uppercase tracking-wider text-sm">
+                    Entrega
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="flex justify-between items-center font-bold text-stone-700 pb-2 border-b border-stone-100">
+                      <span>Número de pedidos:</span>
+                      <span className="bg-stone-100 px-2 py-0.5 rounded text-stone-900">
+                        {sessionDetails?.orders.filter((o: any) => normalizeOrderType(o.order_type) === 'entrega').length}
+                      </span>
+                    </div>
+                    {Object.entries(
+                      sessionDetails?.orders.filter((o: any) => normalizeOrderType(o.order_type) === 'entrega').reduce((acc: any, o: any) => {
+                        const pm = normalizePaymentMethod(o.payment_method);
+                        acc[pm] = (acc[pm] || 0) + Number(o.total_amount);
+                        return acc;
+                      }, {}) || {}
+                    ).map(([pm, val]: any) => (
+                      <div key={pm} className="flex justify-between items-center text-sm font-medium text-stone-600">
+                        <span>{pm}:</span>
+                        <span className="tabular-nums font-mono">€ {val.toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-center text-sm font-bold text-amber-700 pt-2 border-t border-stone-100">
+                      <span>Total Vendas Entrega:</span>
+                      <span className="tabular-nums font-mono">
+                        € {sessionDetails?.orders.filter((o: any) => normalizeOrderType(o.order_type) === 'entrega').reduce((acc: any, o: any) => acc + Number(o.total_amount), 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-                          const isExpanded = expandedOrder === order.id;
+                {/* MESA */}
+                <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+                  <div className="bg-stone-800 text-white px-4 py-2 font-bold text-center uppercase tracking-wider text-sm">
+                    Mesa
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="flex justify-between items-center font-bold text-stone-700 pb-2 border-b border-stone-100">
+                      <span>Número de pedidos:</span>
+                      <span className="bg-stone-100 px-2 py-0.5 rounded text-stone-900">
+                        {sessionDetails?.orders.filter((o: any) => normalizeOrderType(o.order_type) === 'mesa').length}
+                      </span>
+                    </div>
+                    {Object.entries(
+                      sessionDetails?.orders.filter((o: any) => normalizeOrderType(o.order_type) === 'mesa').reduce((acc: any, o: any) => {
+                        const pm = normalizePaymentMethod(o.payment_method);
+                        acc[pm] = (acc[pm] || 0) + Number(o.total_amount);
+                        return acc;
+                      }, {}) || {}
+                    ).map(([pm, val]: any) => (
+                      <div key={pm} className="flex justify-between items-center text-sm font-medium text-stone-600">
+                        <span>{pm}:</span>
+                        <span className="tabular-nums font-mono">€ {val.toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-center text-sm font-bold text-amber-700 pt-2 border-t border-stone-100">
+                      <span>Total Vendas Mesa:</span>
+                      <span className="tabular-nums font-mono">
+                        € {sessionDetails?.orders.filter((o: any) => normalizeOrderType(o.order_type) === 'mesa').reduce((acc: any, o: any) => acc + Number(o.total_amount), 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-                          return (
-                            <React.Fragment key={order.id}>
-                              <tr className="hover:bg-stone-50 transition-colors">
-                                <td className="py-3 px-4 text-stone-500 font-mono tabular-nums">{format(new Date(order.created_at), 'HH:mm')}</td>
-                                <td className="py-3 px-4 font-medium text-stone-900">{order.customer_name}</td>
-                                <td className="py-3 px-4">
-                                  <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${order.payment_method === 'Numerário' ? 'bg-emerald-100 text-emerald-700' :
-                                      order.payment_method === 'MB Way' ? 'bg-blue-100 text-blue-700' :
-                                        'bg-purple-100 text-purple-700'
-                                    }`}>
-                                    {order.payment_method}
-                                  </span>
-                                </td>
-                                <td className="py-3 px-4 text-right font-mono font-bold text-stone-900 tabular-nums">
-                                  € {Number(order.total_amount).toFixed(2)}
-                                </td>
-                                <td className="py-3 px-4 text-right w-10">
-                                  <button
-                                    onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
-                                    className="p-1.5 text-stone-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors"
-                                  >
-                                    <Search size={16} />
-                                  </button>
-                                </td>
-                              </tr>
-                              {isExpanded && (
-                                <tr className="bg-stone-50/50">
-                                  <td colSpan={5} className="p-4 border-t border-stone-100">
-                                    <div className="text-sm relative">
-                                      <div className="flex items-center justify-between mb-3">
-                                        <div className="font-bold text-stone-900 text-base">Itens do Pedido:</div>
-                                        <button
-                                          onClick={() => setExpandedOrder(null)}
-                                          className="text-xs font-bold text-stone-500 hover:text-stone-900 bg-stone-200/50 hover:bg-stone-200 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
-                                        >
-                                          <X size={14} /> Fechar Detalhes
-                                        </button>
-                                      </div>
-                                      <ul className="space-y-1.5 mb-3">
-                                        {items.map((item: any, idx: number) => (
-                                          <li key={idx} className="flex justify-between items-center bg-white p-2 rounded border border-stone-200">
-                                            <div className="flex flex-col">
-                                              <span className="font-medium text-stone-800">
-                                                {item.quantity}x {item.name}
-                                              </span>
-                                              {(item.border || item.removeItems || item.observacao) && (
-                                                <span className="text-xs text-stone-500">
-                                                  {[
-                                                    item.border ? `Borda: ${item.border}` : null,
-                                                    item.removeItems && item.removeItems.length > 0 ? `Sem: ${item.removeItems.join(', ')}` : null,
-                                                    item.observacao ? `Obs: ${item.observacao}` : null
-                                                  ].filter(Boolean).join(' | ')}
-                                                </span>
-                                              )}
-                                            </div>
-                                            <span className="font-mono text-stone-600">
-                                              € {(Number(item.priceCalculated || item.price || 0) * Number(item.quantity || 1)).toFixed(2)}
-                                            </span>
-                                          </li>
-                                        ))}
-                                      </ul>
-                                      <div className="grid grid-cols-2 gap-4 text-xs bg-white p-3 rounded border border-stone-200">
-                                        <div>
-                                          <span className="font-bold text-stone-700">Tipo:</span> {order.order_type}
-                                          {order.customer_phone && <div><span className="font-bold text-stone-700">Telefone:</span> {order.customer_phone}</div>}
-                                          {order.change_for > 0 && <div><span className="font-bold text-stone-700">Troco para:</span> € {Number(order.change_for).toFixed(2)}</div>}
-                                        </div>
-                                        <div>
-                                          {(order.customer_address || order.customer_postal_code) && (
-                                            <div>
-                                              <span className="font-bold text-stone-700">Endereço:</span><br />
-                                              {order.customer_address} {order.customer_door && `(Porta ${order.customer_door})`}<br />
-                                              {order.customer_postal_code}
-                                            </div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </React.Fragment>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
+                {/* RETIRADA / BALCÃO */}
+                <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
+                  <div className="bg-stone-800 text-white px-4 py-2 font-bold text-center uppercase tracking-wider text-sm">
+                    Retirada / Balcão
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <div className="flex justify-between items-center font-bold text-stone-700 pb-2 border-b border-stone-100">
+                      <span>Número de pedidos:</span>
+                      <span className="bg-stone-100 px-2 py-0.5 rounded text-stone-900">
+                        {sessionDetails?.orders.filter((o: any) => ['retirada', 'balcao'].includes(normalizeOrderType(o.order_type))).length}
+                      </span>
+                    </div>
+                    {Object.entries(
+                      sessionDetails?.orders.filter((o: any) => ['retirada', 'balcao'].includes(normalizeOrderType(o.order_type))).reduce((acc: any, o: any) => {
+                        const pm = normalizePaymentMethod(o.payment_method);
+                        acc[pm] = (acc[pm] || 0) + Number(o.total_amount);
+                        return acc;
+                      }, {}) || {}
+                    ).map(([pm, val]: any) => (
+                      <div key={pm} className="flex justify-between items-center text-sm font-medium text-stone-600">
+                        <span>{pm}:</span>
+                        <span className="tabular-nums font-mono">€ {val.toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-center text-sm font-bold text-amber-700 pt-2 border-t border-stone-100">
+                      <span>Total Vendas Retirada / Balcão:</span>
+                      <span className="tabular-nums font-mono">
+                        € {sessionDetails?.orders.filter((o: any) => ['retirada', 'balcao'].includes(normalizeOrderType(o.order_type))).reduce((acc: any, o: any) => acc + Number(o.total_amount), 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Blocos Financeiros Inferiores */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Entradas */}
+                <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-5 space-y-3">
+                  <h4 className="font-bold text-stone-900 uppercase tracking-wider text-sm border-b border-stone-100 pb-2 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500"></div> Entradas (Vendas)
+                  </h4>
+                  {(() => {
+                    const payTotals = sessionDetails?.orders.reduce((acc: any, o: any) => {
+                      const pm = normalizePaymentMethod(o.payment_method);
+                      acc[pm] = (acc[pm] || 0) + Number(o.total_amount);
+                      return acc;
+                    }, {});
+                    const totalVendas = sessionDetails?.orders.reduce((acc: any, o: any) => acc + Number(o.total_amount), 0);
+                    return (
+                      <>
+                        {Object.entries(payTotals || {}).map(([pm, val]: any) => (
+                          <div key={pm} className="flex justify-between text-sm font-medium text-stone-600">
+                            <span>{pm}:</span>
+                            <span className="tabular-nums font-mono text-stone-900">€ {val.toFixed(2)}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between text-sm font-black text-stone-900 pt-2 border-t border-stone-100">
+                          <span>Total Entradas:</span>
+                          <span className="tabular-nums font-mono text-emerald-600">€ {totalVendas.toFixed(2)}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Movimentações */}
+                <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-5 space-y-3">
+                  <h4 className="font-bold text-stone-900 uppercase tracking-wider text-sm border-b border-stone-100 pb-2 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-500"></div> Movimentações Manuais
+                  </h4>
+                  {(() => {
+                    const depTotals = sessionDetails?.movements.filter((m: any) => m.type === 'suprimento').reduce((a: number, m: any) => a + Number(m.amount), 0);
+                    const sangTotals = sessionDetails?.movements.filter((m: any) => m.type === 'sangria').reduce((a: number, m: any) => a + Number(m.amount), 0);
+                    return (
+                      <>
+                        <div className="flex justify-between text-sm font-medium text-stone-600">
+                          <span>Depósitos (Suprimentos):</span>
+                          <span className="tabular-nums font-mono text-emerald-600">+ € {depTotals.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-medium text-stone-600">
+                          <span>Sangrias (Retiradas):</span>
+                          <span className="tabular-nums font-mono text-rose-600">- € {sangTotals.toFixed(2)}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {/* Em Caixa */}
+                <div className="bg-white rounded-xl border border-stone-200 shadow-sm p-5 space-y-3 bg-stone-900 text-white">
+                  <h4 className="font-bold uppercase tracking-wider text-sm border-b border-stone-700 pb-2 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-500"></div> Conferência (Dinheiro Físico)
+                  </h4>
+                  {(() => {
+                    const payTotals = sessionDetails?.orders.reduce((acc: any, o: any) => {
+                      const pm = normalizePaymentMethod(o.payment_method);
+                      acc[pm] = (acc[pm] || 0) + Number(o.total_amount);
+                      return acc;
+                    }, {});
+                    const totalDinheiro = payTotals['Numerário'] || 0;
+                    const depTotals = sessionDetails?.movements.filter((m: any) => m.type === 'suprimento').reduce((a: number, m: any) => a + Number(m.amount), 0);
+                    const sangTotals = sessionDetails?.movements.filter((m: any) => m.type === 'sangria').reduce((a: number, m: any) => a + Number(m.amount), 0);
+                    const fundoInicial = Number(session.opening_amount || 0);
+                    const expectedCash = fundoInicial + totalDinheiro + depTotals - sangTotals;
+                    const countedCash = Number(session.closing_counted_amount || 0);
+
+                    return (
+                      <>
+                        <div className="flex justify-between text-sm font-medium text-stone-300">
+                          <span>Fundo Inicial:</span>
+                          <span className="tabular-nums font-mono text-stone-100">€ {fundoInicial.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-medium text-stone-300">
+                          <span>Dinheiro em Vendas:</span>
+                          <span className="tabular-nums font-mono text-stone-100">+ € {totalDinheiro.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-medium text-stone-300">
+                          <span>Depósitos (Suprimentos):</span>
+                          <span className="tabular-nums font-mono text-emerald-400">+ € {depTotals.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-medium text-stone-300">
+                          <span>Sangrias:</span>
+                          <span className="tabular-nums font-mono text-rose-400">- € {sangTotals.toFixed(2)}</span>
+                        </div>
+                        
+                        <div className="mt-4 pt-3 border-t border-stone-700">
+                          <div className="flex justify-between text-sm font-bold text-stone-300 mb-1">
+                            <span>Esperado em Gaveta:</span>
+                            <span className="tabular-nums font-mono text-white">€ {expectedCash.toFixed(2)}</span>
+                          </div>
+                          {session.status === 'fechado' && (
+                            <>
+                              <div className="flex justify-between text-sm font-bold text-stone-300 mb-1">
+                                <span>Contado no Fechamento:</span>
+                                <span className="tabular-nums font-mono text-white">€ {countedCash.toFixed(2)}</span>
+                              </div>
+                              <div className={`flex justify-between text-sm font-bold px-2 py-1 rounded mt-2 ${session.difference_amount < 0 ? 'bg-rose-500/20 text-rose-400' : session.difference_amount > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-stone-800 text-stone-300'}`}>
+                                <span>Diferença:</span>
+                                <span className="tabular-nums font-mono">{session.difference_amount >= 0 ? '+' : ''}€ {Number(session.difference_amount || 0).toFixed(2)}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
+
             </div>
           )}
         </div>

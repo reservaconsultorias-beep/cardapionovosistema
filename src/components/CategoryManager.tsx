@@ -126,7 +126,7 @@ export default function CategoryManager() {
               )}
             </span>
           )}
-          <button onClick={() => { setEditingCat({ id: '', name: '', order_index: categories.length + 1 }); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2.5 bg-[#C81E3A] hover:bg-[#A8172F] text-white rounded-lg text-sm font-semibold transition-all duration-200 active:scale-95 shadow-sm cursor-pointer">
+          <button onClick={() => { setEditingCat({ id: '', name: '', order_index: categories.length + 1 }); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2.5 bg-[#fdde58] hover:bg-[#e2c23f] text-stone-950 font-bold rounded-lg text-sm transition-all duration-200 active:scale-95 shadow-sm cursor-pointer border border-[#d8ba39]">
             <Plus size={16}/> Nova Categoria
           </button>
         </div>
@@ -147,7 +147,7 @@ export default function CategoryManager() {
           </div>
           <p className="font-bold text-[#1C1917]">Nenhuma categoria ainda</p>
           <p className="text-xs text-[#78716C] mt-1 mb-4 max-w-xs">Crie a primeira seção do cardápio para começar a organizar seus produtos.</p>
-          <button onClick={() => { setEditingCat({ id: '', name: '', order_index: 1 }); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2.5 bg-[#C81E3A] hover:bg-[#A8172F] text-white rounded-lg text-sm font-semibold transition-all duration-200 active:scale-95 shadow-sm cursor-pointer">
+          <button onClick={() => { setEditingCat({ id: '', name: '', order_index: 1 }); setIsModalOpen(true); }} className="flex items-center gap-2 px-4 py-2.5 bg-[#fdde58] hover:bg-[#e2c23f] text-stone-950 font-bold rounded-lg text-sm transition-all duration-200 active:scale-95 shadow-sm cursor-pointer border border-[#d8ba39]">
             <Plus size={16}/> Criar Categoria
           </button>
         </div>
@@ -220,12 +220,12 @@ export default function CategoryManager() {
             </div>
 
             <label className="flex items-center gap-2 text-sm text-[#1C1917] font-medium">
-              <input type="checkbox" checked={editingCat.is_active !== false} onChange={e => setEditingCat({...editingCat, is_active: e.target.checked})} className="w-4 h-4 accent-[#C81E3A] rounded" />
+              <input type="checkbox" checked={editingCat.is_active !== false} onChange={e => setEditingCat({...editingCat, is_active: e.target.checked})} className="w-4 h-4 accent-[#d8ba39] rounded" />
               Categoria ativa (visível no cardápio)
             </label>
 
             <div className="pt-2">
-              <button type="submit" className="w-full bg-[#C81E3A] text-white py-2.5 rounded-lg font-semibold hover:bg-[#A8172F] transition-colors shadow-sm">Salvar Categoria</button>
+              <button type="submit" className="w-full bg-[#fdde58] hover:bg-[#e2c23f] text-stone-950 py-2.5 rounded-lg font-bold transition-colors shadow-sm border border-[#d8ba39] cursor-pointer">Salvar Categoria</button>
             </div>
           </form>
         </div>

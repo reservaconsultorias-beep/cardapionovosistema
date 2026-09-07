@@ -89,7 +89,15 @@ export const categoriesUI = [
       sub: "Refrigerantes e sumos",
       group: ["bebidas"],
     },
+    {
+      id: "cafe",
+      label: "CAFÉ ☕",
+      sub: "Cafés e acompanhamentos",
+      group: ["cafe"],
+    },
   ];
+
+import { useAnalytics } from './hooks/useAnalytics';
 
 export default // App principal
 function App() {
@@ -98,6 +106,14 @@ function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>("tradicionais");
   const [searchTerm, setSearchTerm] = useState<string>("");
+  
+  const { trackEvent } = useAnalytics();
+
+  useEffect(() => {
+    trackEvent('page_view');
+  }, []);
+
+
 
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -168,6 +184,12 @@ function App() {
   };
 
   const handleAddToCart = (newItem: CartItem, openCart: boolean = true) => {
+    trackEvent('add_to_cart', { 
+      item_id: newItem.menuItem.id, 
+      item_name: newItem.menuItem.name, 
+      price: newItem.priceCalculated 
+    });
+    
     const oldSubtotal = cart.reduce((acc, item) => acc + item.priceCalculated * item.quantity, 0);
     const newSubtotal = oldSubtotal + newItem.priceCalculated * newItem.quantity;
 
@@ -290,6 +312,30 @@ function App() {
     return map;
   }, [allItems, searchTerm, currentCategoriesUI]); // Re-calculate only when these change
 
+  if (!businessStatus.loading && businessStatus.subscriptionStatus === 'blocked') {
+    return (
+      <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center p-4 font-sans">
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Search className="w-10 h-10 text-gray-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-4">Cardápio Indisponível</h1>
+          <p className="text-gray-600 mb-6 font-medium">
+            Nosso cardápio digital está temporariamente fora do ar. Por favor, tente novamente mais tarde ou faça seu pedido diretamente pelo nosso WhatsApp.
+          </p>
+          <a
+            href={`https://wa.me/${RESTAURANT_WHATSAPP_PHONE}`}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-block bg-[#25D366] text-white font-bold px-6 py-3 rounded-xl hover:bg-[#20bd5a] transition-colors shadow-lg active:scale-95"
+          >
+            Falar no WhatsApp
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#f5f5f5] font-sans text-[#1a1a1a] scroll-smooth pb-20 lg:pb-0">
       {/* Navbar Topo */}
@@ -363,7 +409,7 @@ function App() {
 
       {/* Categories Bar Sticky */}
       <div className="bg-white border-b border-gray-200 sticky top-16 z-30 shadow-sm relative">
-        <div className="max-w-7xl mx-auto flex overflow-x-auto no-scrollbar gap-2 p-3 items-center">
+        <div className="max-w-7xl mx-auto flex overflow-x-auto hide-scrollbar gap-2 p-3 items-center">
           {currentCategoriesUI.map((cat) => {
             return (
             <a

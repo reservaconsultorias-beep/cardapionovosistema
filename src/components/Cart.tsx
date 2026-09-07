@@ -8,6 +8,7 @@ import {
 } from "../data/menu";
 import { useBusinessHours } from '../hooks/useBusinessHours';
 import { ShoppingBag, Plus, Minus, X, Check, MapPin } from "lucide-react";
+import { useAnalytics } from '../hooks/useAnalytics';
 
 interface CartProps {
   items: CartItem[];
@@ -50,6 +51,7 @@ export default function Cart({
   isOpen,
   onClose,
 }: CartProps) {
+  const { trackEvent } = useAnalytics();
   const [name, setName] = useState("");
   const [telefone, setTelefone] = useState("");
   const [morada, setMorada] = useState("");
@@ -149,6 +151,7 @@ export default function Cart({
   const businessStatus = useBusinessHours();
 
   const handleCheckout = async () => {
+    trackEvent('initiate_checkout', { total_value: total, item_count: items.length });
     setFormError(null);
     const errors: string[] = [];
 
@@ -361,6 +364,8 @@ export default function Cart({
 
     const encoded = encodeURIComponent(text);
     const wappUrl = `https://wa.me/351938360931?text=${encoded}`;
+
+    trackEvent('purchase', { total_value: total, order_id: newOrderId || orderNumber });
 
     // Abertura síncrona em nova aba / app do WhatsApp para evitar bloqueio de pop-up e contornar a recusa de conexão em iframe
     window.open(wappUrl, "_blank");
