@@ -11,7 +11,6 @@ import {
   Tag, Utensils, Bike, Store, AlertCircle, 
   RotateCcw, Sparkles, ChevronRight, Hash
 } from 'lucide-react';
-import gsap from 'gsap';
 
 interface PDVModalProps {
   isOpen: boolean;
@@ -91,14 +90,6 @@ export default function PDVModal({
   const modalRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
-  useEffect(() => {
-    if (isOpen && modalRef.current) {
-      gsap.fromTo(modalRef.current,
-        { opacity: 0, y: 20, scale: 0.98 },
-        { opacity: 1, y: 0, scale: 1, duration: 0.3, ease: 'power2.out' }
-      );
-    }
-  }, [isOpen]);
 
   // History interception for mobile back button
   const cartRef = useRef(cart);
@@ -689,10 +680,8 @@ export default function PDVModal({
                     ref={(el) => {
                       if (el) cardsRef.current.push(el);
                     }}
-                    onMouseEnter={(e) => gsap.to(e.currentTarget, { scale: 1.02, y: -2, duration: 0.2, ease: 'power1.out' })}
-                    onMouseLeave={(e) => gsap.to(e.currentTarget, { scale: 1, y: 0, duration: 0.2, ease: 'power1.out' })}
                     onClick={() => handleProductClick(product)}
-                    className="group bg-[var(--pdv-surface)] rounded-xl p-2 pb-2 flex flex-col text-left transition-shadow duration-200 hover:shadow-[var(--pdv-shadow-md)] shadow-[var(--pdv-shadow-sm)] cursor-pointer active:scale-95 relative border border-[var(--pdv-border)] touch-manipulation select-none"
+                    className="group bg-[var(--pdv-surface)] rounded-xl p-2 pb-2 flex flex-col text-left transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.02] hover:shadow-[var(--pdv-shadow-md)] shadow-[var(--pdv-shadow-sm)] cursor-pointer active:scale-95 relative border border-[var(--pdv-border)] touch-manipulation select-none"
                   >
                     {/* Image / Thumbnail (4:5 para Promoção do Dia, 1:1 Quadrado para os demais itens) */}
                     <div className={`w-full ${isPromoItem ? 'aspect-[4/5]' : 'aspect-square'} bg-stone-50 rounded-lg mb-1.5 overflow-hidden flex items-center justify-center relative shadow-inner border border-stone-200/50`}>
