@@ -7,7 +7,22 @@ import {
   ALL_MENU_ITEMS,
 } from "../data/menu";
 import { useBusinessHours } from '../hooks/useBusinessHours';
-import { ShoppingBag, Plus, Minus, X, Check, MapPin } from "lucide-react";
+import { 
+  ShoppingBag, 
+  Plus, 
+  Minus, 
+  X, 
+  Check, 
+  MapPin, 
+  ArrowLeft, 
+  ArrowRight, 
+  Trash2, 
+  Clock, 
+  AlertCircle,
+  Phone,
+  User,
+  FileText
+} from "lucide-react";
 import { useAnalytics } from '../hooks/useAnalytics';
 
 interface CartProps {
@@ -20,28 +35,6 @@ interface CartProps {
   onClose: () => void; // Used for mobile modal
 }
 
-const DeliveryScooter = () => (
-  <svg viewBox="0 0 64 64" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-[#8b0000]">
-    {/* Box */}
-    <rect x="8" y="18" width="18" height="16" rx="2" fill="#8b0000" stroke="#8b0000" />
-    <path d="M8 24h18" stroke="white" strokeWidth="1" />
-    {/* Body */}
-    <path d="M26 34 L40 34 L48 44" strokeWidth="4" />
-    <path d="M42 22 L36 44" strokeWidth="4" />
-    <path d="M38 22 L46 22" strokeWidth="4" />
-    <path d="M30 34 L26 22 L18 22" strokeWidth="4" />
-    <path d="M26 34 L32 44" strokeWidth="4" />
-    {/* Wheels */}
-    <circle cx="16" cy="46" r="6" strokeWidth="4" />
-    <circle cx="44" cy="46" r="6" strokeWidth="4" />
-    {/* Details */}
-    <path d="M20 22 L20 18" strokeWidth="2" />
-    {/* Motion Lines */}
-    <path d="M4 42 L1 42" stroke="gray" strokeWidth="2" />
-    <path d="M6 38 L2 38" stroke="gray" strokeWidth="2" />
-  </svg>
-);
-
 export default function Cart({
   items,
   onUpdateQuantity,
@@ -52,14 +45,21 @@ export default function Cart({
   onClose,
 }: CartProps) {
   const { trackEvent } = useAnalytics();
+
+  // Navigation Steps: 'items' (Meu Pedido) | 'checkout' (Dados de Entrega & Pagamento)
+  const [currentStep, setCurrentStep] = useState<'items' | 'checkout'>('items');
+  const [showNifInput, setShowNifInput] = useState(false);
+
+  // Form State
   const [name, setName] = useState("");
   const [telefone, setTelefone] = useState("");
   const [morada, setMorada] = useState("");
   const [zona, setZona] = useState("");
   const [nif, setNif] = useState("");
-  const [orderType, setOrderType] = useState("Delivery");
+  const [orderType, setOrderType] = useState<"Delivery" | "Takeaway">("Delivery");
   const [pagamento, setPagamento] = useState("MB Way");
   const [trocoPara, setTrocoPara] = useState("");
+
   const [hasShownParty, setHasShownParty] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -74,6 +74,62 @@ export default function Cart({
   const [minDeliveryOrder, setMinDeliveryOrder] = useState(10);
   const [deliveryTimeEstimate, setDeliveryTimeEstimate] = useState('40 a 50 min');
   const [pickupTimeEstimate, setPickupTimeEstimate] = useState('25 a 35 min');
+
+  // Load saved customer checkout details from localStorage (Memory for fast re-orders)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('customer_checkout_data');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.name) setName(parsed.name);
+        if (parsed.telefone) setTelefone(parsed.telefone);
+        if (parsed.morada) setMorada(parsed.morada);
+        if (parsed.zona) setZona(parsed.zona);
+        if (parsed.nif) {
+          setNif(parsed.nif);
+          setShowNifInput(true);
+        }
+        if (parsed.orderType) setOrderType(parsed.orderType);
+        if (parsed.pagamento) setPagamento(parsed.pagamento);
+      }
+    } catch (e) {
+      console.warn('[Cart] Error reading localStorage customer data', e);
+    }
+  }, []);
+
+  // Save changes to localStorage
+  const saveCustomerData = (updates: Partial<{
+    name: string;
+    telefone: string;
+    morada: string;
+    zona: string;
+    nif: string;
+    orderType: "Delivery" | "Takeaway";
+    pagamento: string;
+  }>) => {
+    try {
+      const current = {
+        name,
+        telefone,
+        morada,
+        zona,
+        nif,
+        orderType,
+        pagamento,
+        ...updates
+      };
+      localStorage.setItem('customer_checkout_data', JSON.stringify(current));
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  // Reset to step 1 if cart becomes empty
+  useEffect(() => {
+    if (items.length === 0 && currentStep === 'checkout') {
+      setCurrentStep('items');
+    }
+  }, [items.length, currentStep]);
 
   useEffect(() => {
     const loadDeliverySettings = async () => {
@@ -112,18 +168,17 @@ export default function Cart({
     (acc, item) => acc + item.priceCalculated * item.quantity,
     0,
   );
+  const totalItemCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
   useEffect(() => {
     if (subtotal >= freeDeliveryThreshold && !hasShownParty) {
       setHasShownParty(true);
-      
-      // Trigger confetti
       try {
         const fireConfetti = typeof confetti === 'function' ? confetti : (confetti ? (confetti as any).default : null);
         if (typeof fireConfetti === 'function') {
           fireConfetti({
-            particleCount: 150,
-            spread: 70,
+            particleCount: 100,
+            spread: 50,
             origin: { y: 0.6 },
             colors: ['#8b0000', '#ffffff', '#ffd700', '#4CAF50']
           });
@@ -131,11 +186,10 @@ export default function Cart({
       } catch (e) {
         console.warn('Confetti error:', e);
       }
-      
     } else if (subtotal < freeDeliveryThreshold && hasShownParty) {
       setHasShownParty(false);
     }
-  }, [subtotal, hasShownParty]);
+  }, [subtotal, hasShownParty, freeDeliveryThreshold]);
 
   let deliveryFee = 0;
   if (orderType === "Delivery") {
@@ -147,7 +201,6 @@ export default function Cart({
   }
 
   const total = subtotal + deliveryFee;
-
   const businessStatus = useBusinessHours();
 
   const handleCheckout = async () => {
@@ -156,7 +209,7 @@ export default function Cart({
     const errors: string[] = [];
 
     if (!businessStatus.isOpen) {
-      errors.push("Estamos fechados no momento. Você poderá finalizar o pedido durante o nosso horário de funcionamento.");
+      errors.push("Estamos fechados no momento. Poderá finalizar o pedido durante o nosso horário de funcionamento.");
     }
 
     if (orderType === "Delivery" && subtotal < minDeliveryOrder) {
@@ -170,7 +223,7 @@ export default function Cart({
         errors.push("Por favor, preencha a morada de entrega.");
       }
       if (!zona.trim()) {
-        errors.push("Por favor, preencha a zona/freguesia de entrega.");
+        errors.push("Por favor, selecione a zona/freguesia de entrega.");
       }
     }
 
@@ -179,13 +232,12 @@ export default function Cart({
       return;
     }
 
+    setIsSubmitting(true);
     const orderNumber = Math.floor(1000 + Math.random() * 9000);
-    const orderDate = new Date().toLocaleString('pt-PT', { timeZone: 'Europe/Lisbon' });
 
     let newOrderId = null;
     let orderSavedSuccessfully = false;
     try {
-      // Find active cash session
       const { data: activeSession } = await supabase
         .from('cash_sessions')
         .select('id')
@@ -263,10 +315,12 @@ export default function Cart({
       }
     } catch (err) {
       console.error("Error saving order:", err);
+    } finally {
+      setIsSubmitting(false);
     }
 
     if (!orderSavedSuccessfully) {
-      setFormError("Não foi possível registar o seu pedido agora. Por favor, verifique sua conexão e tente novamente em alguns segundos.");
+      setFormError("Não foi possível registar o seu pedido agora. Verifique a ligação e tente novamente.");
       return;
     }
 
@@ -306,14 +360,12 @@ export default function Cart({
     const sortedItems = [...items].sort((a, b) => {
       const catA = (a.menuItem.category || "").toLowerCase();
       const catB = (b.menuItem.category || "").toLowerCase();
-      
       const getWeight = (cat: string) => {
         if (cat.includes('esfiha')) return 2;
         if (cat.includes('bebida')) return 3;
         if (cat.includes('borda')) return 4;
-        return 1; // default to 1 (Pizzas)
+        return 1;
       };
-
       return getWeight(catA) - getWeight(catB);
     });
 
@@ -327,7 +379,6 @@ export default function Cart({
       
       const extrasTotalPrice = (item.extras || []).reduce((sum, e) => sum + e.price, 0);
       const basePrice = item.priceCalculated - extrasTotalPrice;
-      
       const priceStr = `€ ${(basePrice * item.quantity).toFixed(2)}`;
       text += `*${item.quantity}x* ${desc} (${priceStr})\n`;
       
@@ -340,7 +391,6 @@ export default function Cart({
       if (item.notes) {
         text += `   📝 Obs: ${item.notes}\n`;
       }
-      
       text += `\n`;
     });
 
@@ -366,27 +416,25 @@ export default function Cart({
     const wappUrl = `https://wa.me/351938360931?text=${encoded}`;
 
     trackEvent('purchase', { total_value: total, order_id: newOrderId || orderNumber });
-
-    // Abertura síncrona em nova aba / app do WhatsApp para evitar bloqueio de pop-up e contornar a recusa de conexão em iframe
     window.open(wappUrl, "_blank");
 
-    // Atualização de estado após o redirecionamento (fire-and-forget)
     setWhatsappUrl(wappUrl);
     setIsSuccess(true);
     onClearCart();
   };
 
+  // SUCCESS SCREEN
   if (isSuccess) {
     const successActionButtons = (
-      <div className="w-full max-w-sm mx-auto flex flex-col gap-3 mt-2">
+      <div className="w-full max-w-xs mx-auto flex flex-col gap-2.5 mt-3">
         {savedOrderId && (
           <a
             href={`/track/${savedTrackingCode}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full bg-[#8b0000] hover:bg-[#6b0000] text-white font-black py-4 px-6 rounded-2xl flex items-center justify-center gap-3 text-lg shadow-xl transition-all duration-200 cursor-pointer"
+            className="w-full bg-[#8b0000] hover:bg-[#6b0000] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-sm transition-all cursor-pointer"
           >
-            🔍 ACOMPANHAR PEDIDO
+            🔍 Acompanhar Pedido
           </a>
         )}
         <a
@@ -398,13 +446,20 @@ export default function Cart({
             setIsSuccess(false);
             onClose();
           }}
-          className="w-full bg-[#25D366] hover:bg-[#1EBE5D] text-white font-black py-4 px-6 rounded-2xl flex items-center justify-center gap-3 text-lg shadow-xl transition-all duration-200 animate-pulse cursor-pointer"
+          className="w-full bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-sm transition-all animate-pulse cursor-pointer"
         >
-          📲 ENVIAR PEDIDO NO WHATSAPP
+          📲 Abrir WhatsApp do Pedido
         </a>
-        <p className="text-xs text-gray-500 font-semibold text-center">
-          Se o WhatsApp não abriu automaticamente, clique no botão acima!
-        </p>
+        <button
+          onClick={() => {
+            setIsSuccess(false);
+            setCurrentStep('items');
+            onClose();
+          }}
+          className="text-[11px] text-gray-500 hover:text-gray-800 font-medium text-center py-1 cursor-pointer"
+        >
+          Voltar ao Cardápio
+        </button>
       </div>
     );
 
@@ -412,12 +467,12 @@ export default function Cart({
       <>
         {/* Desktop Inline Cart */}
         <div className="hidden lg:block sticky top-28 w-full z-10">
-          <div className="bg-white lg:border text-[#1a1a1a] border-gray-200 lg:rounded-xl lg:p-10 p-6 shadow-sm flex flex-col items-center justify-center text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <Check className="w-10 h-10 text-green-600" />
+          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs flex flex-col items-center justify-center text-center">
+            <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2.5">
+              <Check className="w-6 h-6 text-green-600" />
             </div>
-            <h2 className="text-2xl font-black text-gray-800 mb-1">Pedido Pronto!</h2>
-            <p className="text-gray-600 mb-4">O seu pedido foi gerado com sucesso.</p>
+            <h2 className="text-base font-black text-gray-800 mb-0.5">Pedido Gerado!</h2>
+            <p className="text-gray-500 text-xs mb-1">O seu pedido foi enviado com sucesso.</p>
             {successActionButtons}
           </div>
         </div>
@@ -426,15 +481,15 @@ export default function Cart({
         {isOpen && (
           <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
             <div
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
               onClick={() => {}}
             />
-            <div className="relative bg-white w-full min-h-[50vh] rounded-t-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-center p-6 text-center">
-              <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <Check className="w-10 h-10 text-green-600" />
+            <div className="relative bg-white w-full rounded-t-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-center p-6 text-center">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2.5">
+                <Check className="w-6 h-6 text-green-600" />
               </div>
-              <h2 className="text-2xl font-black text-gray-800 mb-1">Pedido Pronto!</h2>
-              <p className="text-gray-600 mb-4 text-base">O seu pedido foi gerado com sucesso.</p>
+              <h2 className="text-base font-black text-gray-800 mb-0.5">Pedido Gerado!</h2>
+              <p className="text-gray-500 text-xs mb-1">O seu pedido foi enviado com sucesso.</p>
               {successActionButtons}
             </div>
           </div>
@@ -443,380 +498,551 @@ export default function Cart({
     );
   }
 
+  // MAIN CART CONTENT (ULTRA-COMPACT, ELEGANT, HIGH-CONVERSION)
   const CartContent = (
-    <div className="bg-white lg:border text-[#1a1a1a] border-gray-200 lg:rounded-xl lg:p-5 p-4 shadow-sm flex flex-col h-full max-h-screen lg:max-h-[calc(100vh-140px)] z-10 w-full relative overflow-hidden">
-      <div className="flex justify-between items-center mb-6 shrink-0">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <ShoppingBag className="w-5 h-5 text-[#8b0000]" /> Meu Pedido
-        </h2>
-        <button
-          onClick={onClose}
-          className="lg:hidden p-2 text-gray-500 rounded-full hover:bg-gray-100"
-        >
-          <X className="w-5 h-5" />
-        </button>
+    <div className="bg-white lg:border border-gray-200 lg:rounded-2xl shadow-xs flex flex-col w-full relative">
+      
+      {/* HEADER WITH DISCREET STEP TABS */}
+      <div className="bg-white border-b border-gray-100 p-3 shrink-0">
+        <div className="flex justify-between items-center mb-2">
+          <div className="flex items-center gap-1.5">
+            <ShoppingBag className="w-4 h-4 text-[#8b0000]" />
+            <h2 className="text-[13px] font-black uppercase tracking-wide text-gray-800">
+              {currentStep === 'items' ? 'Meu Pedido' : 'Entrega & Pagamento'}
+            </h2>
+            <span className="bg-gray-100 text-gray-600 text-[10px] font-bold px-1.5 py-0.2 rounded-full">
+              {totalItemCount}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1">
+            {items.length > 0 && currentStep === 'items' && (
+              <button
+                onClick={onClearCart}
+                className="text-[10px] text-gray-400 hover:text-red-600 font-semibold px-1.5 py-0.5 rounded transition-colors flex items-center gap-1 cursor-pointer"
+                title="Limpar carrinho"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Limpar</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="lg:hidden p-1 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* COMPACT STEP SWITCHER */}
+        {items.length > 0 && (
+          <div className="grid grid-cols-2 gap-1 bg-gray-100 p-0.5 rounded-lg text-[11px] font-bold">
+            <button
+              type="button"
+              onClick={() => setCurrentStep('items')}
+              className={`py-1 px-2 rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                currentStep === 'items'
+                  ? 'bg-white text-[#8b0000] shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              <span>1. Itens ({totalItemCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (items.length > 0) setCurrentStep('checkout');
+              }}
+              className={`py-1 px-2 rounded-md transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                currentStep === 'checkout'
+                  ? 'bg-[#8b0000] text-white shadow-xs'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              <span>2. Entrega ➔</span>
+            </button>
+          </div>
+        )}
       </div>
 
+      {/* EMPTY CART STATE */}
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-10 flex-1">
-          <ShoppingBag className="w-12 h-12 text-gray-200 mb-3" />
-          <p className="text-gray-500 font-medium text-sm">
-            O seu pedido está vazio
+        <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+          <div className="w-10 h-10 rounded-full bg-gray-50 border border-dashed border-gray-200 flex items-center justify-center mb-2">
+            <ShoppingBag className="w-5 h-5 text-gray-300" />
+          </div>
+          <h3 className="font-bold text-gray-700 text-xs mb-0.5">Seu carrinho está vazio</h3>
+          <p className="text-gray-400 text-[11px] max-w-[220px] mb-3">
+            Adicione itens do cardápio para fazer o seu pedido!
           </p>
+          <button
+            onClick={onClose}
+            className="lg:hidden bg-[#8b0000] text-white text-[11px] font-bold py-1.5 px-4 rounded-lg hover:bg-[#6b0000] transition-colors cursor-pointer"
+          >
+            Ver Cardápio
+          </button>
         </div>
       ) : (
         <>
-          <div className="flex-1 pr-2 min-h-0 overflow-y-auto overscroll-contain mb-4 custom-scrollbar">
-            <div className="space-y-4">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex flex-col gap-2 pb-4 border-b border-gray-100 last:border-0 last:pb-0"
-                >
-                  <div className="flex justify-between text-sm">
-                    <span className="font-bold flex-1 leading-snug">
-                      {item.quantity}x{" "}
-                      {item.isHalfAndHalf && item.halfAndHalfFlavor
-                        ? `1/2 ${item.menuItem.name} e 1/2 ${item.halfAndHalfFlavor.name}`
-                        : item.menuItem.name}{" "}
-                      {item.size && (
-                        <span className="text-gray-500 font-normal">
-                          ({item.size})
-                        </span>
-                      )}
-                    </span>
-                    <span className="font-bold text-[#8b0000] ml-2">
-                      € {(item.priceCalculated * item.quantity).toFixed(2)}
-                    </span>
-                  </div>
-                  {item.extras && item.extras.length > 0 && (
-                    <div className="text-xs text-gray-500 mt-1 flex flex-col gap-0.5">
-                      {item.extras.map((extra) => (
-                        <span key={extra.id}>+ {extra.name} (€ {extra.price.toFixed(2)})</span>
-                      ))}
-                    </div>
-                  )}
-                  {item.notes && (
-                    <div className="text-xs text-amber-800 bg-amber-50 px-2.5 py-1 rounded-md border border-amber-200 mt-1 font-medium">
-                      📝 Obs: {item.notes}
-                    </div>
-                  )}
-                  <div className="flex justify-between items-center mt-2">
-                    <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1">
-                      <button
-                        onClick={() => onUpdateQuantity(item.id, -1)}
-                        className="p-1 hover:text-[#8b0000] text-gray-500"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="text-sm font-bold w-4 text-center">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => onUpdateQuantity(item.id, 1)}
-                        className="p-1 hover:text-[#8b0000] text-gray-500"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <button
-                      onClick={() => onRemoveItem(item.id)}
-                      className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1"
-                    >
-                      Remover
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* PROGRESS BAR GANHE A ENTREGA */}
-            <div className="mb-4">
-              {subtotal >= freeDeliveryThreshold ? (
-                <div className="bg-[#4CAF50]/10 text-[#4CAF50] text-sm font-bold py-3 px-3 text-center rounded-xl border border-[#4CAF50]/30 shadow-sm flex flex-col items-center justify-center gap-1">
-                  <div className="flex items-center gap-2 text-lg">
-                    <span>🎉</span> Parabéns! <span>🎉</span>
-                  </div>
-                  <span className="flex items-center gap-1 justify-center">Ganhou a <strong>Entrega!</strong> <DeliveryScooter /></span>
-                </div>
-              ) : (
-                <div className="bg-white border border-gray-200 p-4 rounded-xl shadow-sm relative overflow-hidden">
-                  <div className="flex justify-between text-sm font-bold text-gray-800 mb-2 relative z-10">
-                    <span className="flex items-center gap-2">
-                      <DeliveryScooter /> Oferta da Entrega
-                    </span>
-                    <span className="text-[#8b0000]">
-                      Meta: €{freeDeliveryThreshold.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-100 rounded-full h-2 mb-3 overflow-hidden relative z-10">
+          {/* BODY AREA - COMPACT & NATURAL */}
+          <div className="p-3 space-y-2.5">
+            
+            {/* ======================================================== */}
+            {/* STEP 1: COMPACT ITEMS REVIEW */}
+            {/* ======================================================== */}
+            {currentStep === 'items' && (
+              <div className="space-y-2.5 animate-in fade-in duration-150">
+                {/* ITEMS LIST (MAX 380px, scrollable only if many items) */}
+                <div className="max-h-[300px] overflow-y-auto overscroll-contain pr-1 custom-scrollbar space-y-1.5 divide-y divide-gray-100">
+                  {items.map((item) => (
                     <div
-                      className="bg-[#8b0000] h-2 rounded-full transition-all duration-700 ease-out relative"
-                      style={{
-                        width: `${Math.min(100, (subtotal / freeDeliveryThreshold) * 100)}%`,
-                      }}
+                      key={item.id}
+                      className="pt-1.5 first:pt-0"
                     >
-                    </div>
-                  </div>
-                  <div className="text-center text-xs font-medium text-gray-600 relative z-10">
-                    Adicione{" "}
-                    <span className="text-[#8b0000] font-bold text-[13px] px-0.5">
-                      €{(freeDeliveryThreshold - subtotal).toFixed(2)}
-                    </span>{" "}
-                    e <span className="font-bold underline decoration-[#8b0000]/30 underline-offset-2">ganhe a entrega!</span> 🎯
-                  </div>
-                </div>
-              )}
-            </div>
+                      <div className="flex justify-between items-start gap-1.5 text-xs">
+                        <div className="flex-1 min-w-0">
+                          <span className="font-extrabold text-gray-800">
+                            {item.quantity}x{" "}
+                            {item.isHalfAndHalf && item.halfAndHalfFlavor
+                              ? `1/2 ${item.menuItem.name} + 1/2 ${item.halfAndHalfFlavor.name}`
+                              : item.menuItem.name}
+                          </span>
+                          {item.size && (
+                            <span className="ml-1 text-[10px] font-semibold text-gray-500 bg-gray-100 px-1 py-0.2 rounded">
+                              {item.size}
+                            </span>
+                          )}
 
-            <div className="mb-5 mt-2">
-              <h3 className="font-black text-gray-800 text-lg mb-3 border-b pb-2">📋 Dados do Pedido</h3>
-              <div className="flex gap-2 mb-4">
-                <button
-                  onClick={() => setOrderType("Delivery")}
-                  className={`flex-1 py-3 rounded-lg font-bold text-sm transition-colors border-2 flex items-center justify-center gap-2 ${orderType === "Delivery" ? "bg-[#8b0000] text-white border-[#8b0000]" : "bg-gray-50 text-gray-600 border-gray-200"}`}
-                >
-                  <DeliveryScooter />
-                  Entrega
-                </button>
-                <button
-                  onClick={() => setOrderType("Takeaway")}
-                  className={`flex-1 py-3 rounded-lg font-bold text-sm transition-colors border-2 flex items-center justify-center gap-2 ${orderType === "Takeaway" ? "bg-[#8b0000] text-white border-[#8b0000]" : "bg-gray-50 text-gray-600 border-gray-200"}`}
-                >
-                  <MapPin className="w-5 h-5" />
-                  Retirada
-                </button>
-              </div>
+                          {/* Extras */}
+                          {item.extras && item.extras.length > 0 && (
+                            <div className="text-[10px] text-gray-500 mt-0.5">
+                              {item.extras.map((ex) => `+ ${ex.name} (€${ex.price.toFixed(2)})`).join(', ')}
+                            </div>
+                          )}
 
-              <div className="text-center text-sm font-medium text-[#8b0000] bg-[#8b0000]/10 py-2.5 rounded-lg border border-[#8b0000]/20 mb-4">
-                {orderType === "Takeaway"
-                  ? `⏱️ Tempo estimado de preparação: ${pickupTimeEstimate}`
-                  : `🛵 Tempo estimado de entrega: ${deliveryTimeEstimate}`}
-              </div>
+                          {/* Notes */}
+                          {item.notes && (
+                            <div className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded mt-0.5 truncate max-w-[240px]">
+                              Obs: {item.notes}
+                            </div>
+                          )}
+                        </div>
 
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><span className="text-lg">👤</span> Nome</label>
-                  <input
-                    type="text"
-                    placeholder="Nome para o pedido"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><span className="text-lg">📞</span> Telemóvel</label>
-                  <input
-                    type="tel"
-                    placeholder="Telemóvel"
-                    value={telefone}
-                    onChange={(e) => setTelefone(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><span className="text-lg">📄</span> NIF</label>
-                  <input
-                    type="text"
-                    placeholder="NIF (Opcional)"
-                    value={nif}
-                    onChange={(e) => setNif(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000]"
-                  />
-                </div>
-
-                {orderType === "Delivery" && (
-                  <div className="mt-4 p-4 rounded-xl border-2 border-[#8b0000] bg-[#8b0000]/5 space-y-3">
-                    <h4 className="font-bold text-[#8b0000] mb-2 flex items-center gap-2">
-                      <DeliveryScooter /> Endereço de Entrega
-                    </h4>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><span className="text-lg">📍</span> Morada Completa</label>
-                      <input
-                        type="text"
-                        placeholder="Ex: Rua Direita, 123"
-                        value={morada}
-                        onChange={(e) => setMorada(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1"><span className="text-lg">🗺️</span> Zona / Freguesia</label>
-                      <select
-                        value={zona}
-                        onChange={(e) => setZona(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000] bg-white"
-                      >
-                        <option value="" disabled>Selecione a Zona / Freguesia</option>
-                        {Object.keys(zonesFees).map((z) => (
-                          <option key={z} value={z}>
-                            {z} ({zonesFees[z] === 0 ? "GANHE" : `€${zonesFees[z].toFixed(2)}`})
-                          </option>
-                        ))}
-                        <option value="disabled" disabled>Brejos de Azeitão (Não atendemos)</option>
-                        <option value="disabled-vendas" disabled>Vendas de Azeitão (Não atendemos)</option>
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-5">
-                <h3 className="font-black text-gray-800 text-lg mb-3 border-b pb-2 flex items-center gap-2">💳 Forma de Pagamento</h3>
-                <select
-                  value={pagamento}
-                  onChange={(e) => setPagamento(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg p-3 text-sm font-medium focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000] bg-white"
-                >
-                  <option value="MB Way">📱 MB Way</option>
-                  <option value="Numerário">💵 Numerário</option>
-                </select>
-                {pagamento === "Numerário" && (
-                  <div className="mt-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                    <label className="block text-sm font-bold text-gray-700 mb-1 flex items-center gap-1">
-                      <span>💰</span> Troco para quanto? (opcional)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Ex: 50"
-                      value={trocoPara}
-                      onChange={(e) => setTrocoPara(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-[#8b0000] focus:ring-2 focus:ring-[#8b0000]"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* UPSELL SECTION */}
-            {items.length > 0 &&
-              (() => {
-                const hasBebida = items.some(
-                  (i) => i.menuItem.category === "bebidas",
-                );
-                const hasDoce = items.some(
-                  (i) =>
-                    i.menuItem.category === "doces" ||
-                    i.menuItem.category === "esfihas-doces" ||
-                    i.menuItem.category === "bordas",
-                );
-
-                if (!hasBebida) {
-                  const sug = ALL_MENU_ITEMS.find((m) => m.id === "b-1"); // Coca Cola Lata
-                  if (sug)
-                    return (
-                      <div className="bg-gray-100 rounded-lg p-3 mb-4 flex items-center justify-between border border-gray-200">
-                        <span className="text-xs font-medium text-gray-700 w-2/3">
-                          🥤 Esqueceste-te da bebida? Adiciona uma Coca-Cola por
-                          apenas €_{(sug.priceSingle || 0).toFixed(2)}
+                        {/* Price */}
+                        <span className="font-black text-[#8b0000] shrink-0 text-xs">
+                          € {(item.priceCalculated * item.quantity).toFixed(2)}
                         </span>
+                      </div>
+
+                      {/* Stepper + Remover in one compact row */}
+                      <div className="flex justify-between items-center mt-1">
+                        <div className="flex items-center border border-gray-200 rounded-md bg-white overflow-hidden">
+                          <button
+                            onClick={() => onUpdateQuantity(item.id, -1)}
+                            className="px-1.5 py-0.5 text-gray-500 hover:text-[#8b0000] hover:bg-gray-50 transition-colors cursor-pointer"
+                          >
+                            <Minus className="w-2.5 h-2.5" />
+                          </button>
+                          <span className="text-[11px] font-bold px-1.5 text-gray-800 min-w-4 text-center">
+                            {item.quantity}
+                          </span>
+                          <button
+                            onClick={() => onUpdateQuantity(item.id, 1)}
+                            className="px-1.5 py-0.5 text-gray-500 hover:text-[#8b0000] hover:bg-gray-50 transition-colors cursor-pointer"
+                          >
+                            <Plus className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+
                         <button
-                          onClick={() =>
-                            onAddToCart({
-                              id: Date.now().toString(),
-                              menuItem: sug,
-                              quantity: 1,
-                              priceCalculated: sug.priceSingle || 0,
-                            })
-                          }
-                          className="bg-white border border-[#25a244] text-[#25a244] text-xs font-bold py-1.5 px-3 rounded-md hover:bg-gray-50 transition-colors"
+                          onClick={() => onRemoveItem(item.id)}
+                          className="text-[10px] text-gray-400 hover:text-red-600 transition-colors cursor-pointer"
                         >
-                          + Adicionar
+                          Remover
                         </button>
                       </div>
-                    );
-                }
-                if (!hasDoce) {
-                  const sug = ALL_MENU_ITEMS.find((m) => m.id === "p-46"); // Banana com Canela
-                  if (sug)
-                    return (
-                      <div className="bg-gray-100 rounded-lg p-3 mb-4 flex items-center justify-between border border-gray-200">
-                        <span className="text-xs font-medium text-gray-700 w-2/3">
-                          🍫 Que tal terminar com algo doce? Experimenta a Pizza
-                          Banana
-                        </span>
-                        <button
-                          onClick={() =>
-                            onAddToCart({
-                              id: Date.now().toString(),
-                              menuItem: sug,
-                              size: "P",
-                              quantity: 1,
-                              priceCalculated: sug.priceP || 0,
-                            })
-                          }
-                          className="bg-white border border-[#25a244] text-[#25a244] text-xs font-bold py-1.5 px-3 rounded-md hover:bg-gray-50 transition-colors"
-                        >
-                          + Adicionar
-                        </button>
-                      </div>
-                    );
-                }
-                return null;
-              })()}
-          </div>
-
-          <div className="pt-3 border-t border-gray-200 bg-white shrink-0">
-            <div className="flex flex-col gap-2 mb-5">
-              <div className="flex justify-between items-center text-gray-600">
-                <span className="font-medium text-sm">Subtotal</span>
-                <span className="font-bold text-sm">
-                  € {subtotal.toFixed(2)}
-                </span>
-              </div>
-              {orderType === "Delivery" && (
-                <div className="flex justify-between items-center text-gray-600">
-                  <span className="font-medium text-sm">
-                    Taxa de Entrega
-                  </span>
-                  <span className="font-bold text-sm">
-                    {deliveryFee === 0
-                      ? "GANHE"
-                      : `€ ${deliveryFee.toFixed(2)}`}
-                  </span>
+                    </div>
+                  ))}
                 </div>
-              )}
-              <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                <span className="text-gray-800 font-bold">Total</span>
-                <span className="text-xl font-black text-[#8b0000]">
-                  € {total.toFixed(2)}
-                </span>
-              </div>
-            </div>
 
-            {formError && (
-              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg text-sm font-medium whitespace-pre-line">
-                {formError}
+                {/* SLIM FREE DELIVERY PROGRESS BAR */}
+                <div className="pt-1">
+                  {subtotal >= freeDeliveryThreshold ? (
+                    <div className="bg-emerald-50 text-emerald-800 text-[11px] font-bold py-1.5 px-2.5 rounded-lg border border-emerald-200 flex items-center justify-center gap-1.5">
+                      <span>🎉</span>
+                      <span>Parabéns! <strong>Entrega Grátis Ganha!</strong></span>
+                    </div>
+                  ) : (
+                    <div className="bg-amber-50/60 border border-amber-200/70 p-2 rounded-lg space-y-1">
+                      <div className="flex justify-between text-[11px] font-semibold text-gray-700">
+                        <span>🛵 Entrega Grátis</span>
+                        <span className="text-[#8b0000] font-black">Meta: €{freeDeliveryThreshold.toFixed(2)}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-[#8b0000] h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${Math.min(100, (subtotal / freeDeliveryThreshold) * 100)}%` }}
+                        />
+                      </div>
+                      <div className="text-[10px] text-gray-500 text-center font-medium">
+                        Adicione <strong className="text-[#8b0000]">€{(freeDeliveryThreshold - subtotal).toFixed(2)}</strong> e ganhe a entrega!
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* DISCREET UPSELL CHIP */}
+                {(() => {
+                  const hasBebida = items.some((i) => i.menuItem.category === "bebidas");
+                  if (!hasBebida) {
+                    const sug = ALL_MENU_ITEMS.find((m) => m.id === "b-1");
+                    if (sug) {
+                      return (
+                        <div className="bg-gray-50 border border-gray-200/80 rounded-lg px-2 py-1.5 flex items-center justify-between text-[11px]">
+                          <span className="text-gray-600 truncate">
+                            🥤 Coca-Cola por <strong>€{(sug.priceSingle || 0).toFixed(2)}</strong>?
+                          </span>
+                          <button
+                            onClick={() =>
+                              onAddToCart({
+                                id: Date.now().toString(),
+                                menuItem: sug,
+                                quantity: 1,
+                                priceCalculated: sug.priceSingle || 0,
+                              })
+                            }
+                            className="text-[10px] bg-white border border-emerald-500 text-emerald-700 font-bold px-2 py-0.5 rounded hover:bg-emerald-50 transition-colors shrink-0 ml-1.5 cursor-pointer"
+                          >
+                            + Adicionar
+                          </button>
+                        </div>
+                      );
+                    }
+                  }
+                  return null;
+                })()}
+
+                {/* STEP 1 FOOTER & CTA */}
+                <div className="pt-2 border-t border-gray-100 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500 font-medium">Subtotal dos itens:</span>
+                    <span className="font-black text-[#8b0000] text-sm">€ {subtotal.toFixed(2)}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormError(null);
+                      setCurrentStep('checkout');
+                    }}
+                    disabled={!businessStatus.isOpen}
+                    className={`w-full font-bold py-2.5 px-3 rounded-xl transition-all flex justify-center items-center gap-1.5 text-xs shadow-xs cursor-pointer ${
+                      !businessStatus.isOpen
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-[#8b0000] hover:bg-[#6b0000] active:scale-[0.99] text-white'
+                    }`}
+                  >
+                    {!businessStatus.isOpen ? (
+                      <>
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Loja Fechada no Momento</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Avançar para Entrega</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
             )}
 
-            <button
-              onClick={handleCheckout}
-              disabled={isSubmitting || !businessStatus.isOpen}
-              className={`w-full font-bold py-3 rounded-xl transition-colors flex justify-center items-center gap-2 shadow-sm mb-2 text-sm ${isSubmitting || !businessStatus.isOpen ? 'bg-gray-400 text-white cursor-not-allowed' : 'bg-[#8b0000] hover:bg-[#660000] text-white'}`}
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Processando Pedido...
-                </>
-              ) : !businessStatus.isOpen ? (
-                "Loja Fechada no Momento"
-              ) : (
-                "Finalizar Pedido e Enviar 📱"
-              )}
-            </button>
+            {/* ======================================================== */}
+            {/* STEP 2: ULTRA-COMPACT CHECKOUT FORM */}
+            {/* ======================================================== */}
+            {currentStep === 'checkout' && (
+              <div className="space-y-2.5 animate-in fade-in duration-150">
+                
+                {/* BACK LINK + RESUMO EM 1 LINHA */}
+                <div className="flex items-center justify-between text-[11px] pb-1 border-b border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep('items')}
+                    className="font-bold text-[#8b0000] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <ArrowLeft className="w-3 h-3" />
+                    <span>Editar itens</span>
+                  </button>
+                  <span className="text-gray-500 font-medium">
+                    {totalItemCount} {totalItemCount === 1 ? 'item' : 'itens'} • Subtotal: €{subtotal.toFixed(2)}
+                  </span>
+                </div>
 
-            <button
-              onClick={onClose}
-              className="w-full lg:hidden bg-white hover:bg-gray-50 border-2 border-[#8b0000] text-[#8b0000] font-bold py-3 rounded-xl transition-colors flex justify-center items-center gap-2 text-sm"
-            >
-              <Plus className="w-5 h-5" />
-              Adicionar mais itens
-            </button>
+                {/* ENTREGA VS RETIRADA (COMPACT 28px ROW) */}
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderType("Delivery");
+                      saveCustomerData({ orderType: "Delivery" });
+                    }}
+                    className={`py-1.5 px-2 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1 border cursor-pointer ${
+                      orderType === "Delivery"
+                        ? "bg-[#8b0000] text-white border-[#8b0000] shadow-xs"
+                        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span>🛵 Entrega ({deliveryTimeEstimate})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOrderType("Takeaway");
+                      saveCustomerData({ orderType: "Takeaway" });
+                    }}
+                    className={`py-1.5 px-2 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1 border cursor-pointer ${
+                      orderType === "Takeaway"
+                        ? "bg-[#8b0000] text-white border-[#8b0000] shadow-xs"
+                        : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    <span>🛍️ Retirada ({pickupTimeEstimate})</span>
+                  </button>
+                </div>
+
+                {/* FORM FIELDS */}
+                <div className="space-y-2">
+                  {/* Nome & Telemóvel em 2 colunas compactas */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-600 mb-0.5 flex items-center gap-0.5 uppercase">
+                        <User className="w-2.5 h-2.5 text-[#8b0000]" />
+                        <span>Nome *</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Seu nome"
+                        value={name}
+                        onChange={(e) => {
+                          setName(e.target.value);
+                          saveCustomerData({ name: e.target.value });
+                        }}
+                        className="w-full h-8 bg-gray-50/50 focus:bg-white border border-gray-200 focus:border-[#8b0000] rounded-lg px-2 text-xs outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-gray-600 mb-0.5 flex items-center gap-0.5 uppercase">
+                        <Phone className="w-2.5 h-2.5 text-[#8b0000]" />
+                        <span>Telemóvel *</span>
+                      </label>
+                      <input
+                        type="tel"
+                        placeholder="9xx xxx xxx"
+                        value={telefone}
+                        onChange={(e) => {
+                          setTelefone(e.target.value);
+                          saveCustomerData({ telefone: e.target.value });
+                        }}
+                        className="w-full h-8 bg-gray-50/50 focus:bg-white border border-gray-200 focus:border-[#8b0000] rounded-lg px-2 text-xs outline-none transition-colors"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Se Entrega: Morada & Zona */}
+                  {orderType === "Delivery" && (
+                    <div className="space-y-1.5 bg-red-50/30 p-2 rounded-lg border border-red-100">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5 flex items-center gap-0.5 uppercase">
+                          <MapPin className="w-2.5 h-2.5 text-[#8b0000]" />
+                          <span>Morada Completa *</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Rua, número, andar / apto"
+                          value={morada}
+                          onChange={(e) => {
+                            setMorada(e.target.value);
+                            saveCustomerData({ morada: e.target.value });
+                          }}
+                          className="w-full h-8 bg-white border border-gray-200 focus:border-[#8b0000] rounded-lg px-2 text-xs outline-none transition-colors"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-600 mb-0.5 uppercase">
+                          Zona / Freguesia *
+                        </label>
+                        <select
+                          value={zona}
+                          onChange={(e) => {
+                            setZona(e.target.value);
+                            saveCustomerData({ zona: e.target.value });
+                          }}
+                          className="w-full h-8 bg-white border border-gray-200 focus:border-[#8b0000] rounded-lg px-2 text-xs outline-none font-medium transition-colors"
+                        >
+                          <option value="">Selecione a freguesia...</option>
+                          {Object.keys(zonesFees).map((z) => (
+                            <option key={z} value={z}>
+                              {z} ({zonesFees[z] === 0 || subtotal >= freeDeliveryThreshold ? "Grátis" : `+€${zonesFees[z].toFixed(2)}`})
+                            </option>
+                          ))}
+                          <option value="disabled" disabled>Brejos de Azeitão (Fora da área)</option>
+                          <option value="disabled-vendas" disabled>Vendas de Azeitão (Fora da área)</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pagamento em botões diretos de 26px */}
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-600 mb-1 uppercase">
+                      Pagamento
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPagamento("MB Way");
+                          saveCustomerData({ pagamento: "MB Way" });
+                        }}
+                        className={`h-7 px-2 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1 border cursor-pointer ${
+                          pagamento === "MB Way"
+                            ? "bg-gray-900 text-white border-gray-900 shadow-2xs"
+                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span>📱 MB Way</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPagamento("Numerário");
+                          saveCustomerData({ pagamento: "Numerário" });
+                        }}
+                        className={`h-7 px-2 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1 border cursor-pointer ${
+                          pagamento === "Numerário"
+                            ? "bg-gray-900 text-white border-gray-900 shadow-2xs"
+                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span>💵 Dinheiro</span>
+                      </button>
+                    </div>
+
+                    {pagamento === "Numerário" && (
+                      <div className="mt-1.5 flex items-center gap-1.5">
+                        <span className="text-[10px] font-semibold text-gray-600">Troco para quanto?</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="Ex: 50"
+                          value={trocoPara}
+                          onChange={(e) => setTrocoPara(e.target.value)}
+                          className="h-7 w-24 bg-white border border-gray-200 focus:border-[#8b0000] rounded-lg px-2 text-xs outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* NIF opcional (expansível para economizar espaço) */}
+                  <div className="pt-0.5">
+                    {!showNifInput && !nif ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowNifInput(true)}
+                        className="text-[10px] text-gray-400 hover:text-gray-700 flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <FileText className="w-2.5 h-2.5" />
+                        <span>+ Adicionar NIF no recibo (opcional)</span>
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="text"
+                          placeholder="NIF no recibo (opcional)"
+                          value={nif}
+                          onChange={(e) => {
+                            setNif(e.target.value);
+                            saveCustomerData({ nif: e.target.value });
+                          }}
+                          className="h-7 w-full bg-white border border-gray-200 focus:border-[#8b0000] rounded-lg px-2 text-xs outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setNif("");
+                            setShowNifInput(false);
+                            saveCustomerData({ nif: "" });
+                          }}
+                          className="text-gray-400 hover:text-gray-600 text-xs p-1"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* STEP 2 FOOTER & FINAL CTA */}
+                <div className="pt-2 border-t border-gray-100 space-y-2">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-gray-500">
+                      {orderType === "Delivery" ? (
+                        <>Taxa entrega: <strong className="text-emerald-600">{deliveryFee === 0 ? 'GRÁTIS' : `€${deliveryFee.toFixed(2)}`}</strong></>
+                      ) : (
+                        'Retirada no balcão'
+                      )}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-500 font-medium">Total:</span>
+                      <span className="font-black text-[#8b0000] text-base">€ {total.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                  {formError && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 p-2 rounded-lg text-[11px] font-semibold whitespace-pre-line flex items-center gap-1.5">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+                      <div>{formError}</div>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleCheckout}
+                    disabled={isSubmitting || !businessStatus.isOpen}
+                    className={`w-full font-black py-2.5 px-3 rounded-xl transition-all flex justify-center items-center gap-1.5 text-xs shadow-xs cursor-pointer ${
+                      isSubmitting || !businessStatus.isOpen
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-[#25D366] hover:bg-[#1EBE5D] active:scale-[0.99] text-white shadow-emerald-700/20'
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Enviando pedido...</span>
+                      </>
+                    ) : !businessStatus.isOpen ? (
+                      <>
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Loja Fechada no Momento</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Confirmar e Enviar Pedido</span>
+                        <span>📱</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
@@ -834,10 +1060,10 @@ export default function Cart({
       {isOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+            className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
             onClick={onClose}
           />
-          <div className="relative bg-white w-full h-[85vh] rounded-t-3xl overflow-hidden shadow-2xl flex flex-col">
+          <div className="relative bg-white w-full max-h-[85vh] rounded-t-3xl overflow-y-auto shadow-2xl flex flex-col p-2">
             {CartContent}
           </div>
         </div>

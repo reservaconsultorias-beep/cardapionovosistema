@@ -448,7 +448,7 @@ function App() {
 
       <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
         {/* Left Column - Main Content */}
-        <div className="w-full lg:w-[65%]">
+        <div className="w-full lg:flex-1 min-w-0">
           {/* Search Bar */}
           <div className="relative mb-8 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -528,7 +528,7 @@ function App() {
         </div>
 
         {/* Right Column - Desktop Cart integration */}
-        <div className="w-full lg:w-[35%] relative">
+        <div className="w-full lg:w-[380px] xl:w-[400px] lg:shrink-0 relative">
           <Cart
             items={cart}
             onUpdateQuantity={(id, delta) => {
