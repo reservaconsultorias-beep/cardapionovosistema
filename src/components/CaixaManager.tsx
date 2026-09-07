@@ -12,7 +12,8 @@ interface CaixaManagerProps {
 export default function CaixaManager({ refreshSignal }: CaixaManagerProps = {}) {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [openingAmount, setOpeningAmount] = useState('');
+  const [openingAmount, setOpeningAmount] = useState('0.00');
+  const [isOpening, setIsOpening] = useState(false);
   const [closingAmount, setClosingAmount] = useState('');
   const [summary, setSummary] = useState({ numerario: 0, mbway: 0, cartao: 0, outros: 0, total: 0, count: 0 });
   const [history, setHistory] = useState<any[]>([]);
@@ -253,27 +254,35 @@ export default function CaixaManager({ refreshSignal }: CaixaManagerProps = {}) 
   }, [session?.id, loadSummary, loadMovements]);
 
   const handleOpen = async () => {
-    const amount = parseFloat(openingAmount) || 0;
-    const { data: userData } = await supabase.auth.getUser();
-    const { data, error } = await supabase.from('cash_sessions').insert([{
-      opening_amount: amount,
-      opened_by: userData.user?.id,
-      status: 'aberto'
-    }]).select().single();
-    if (!error && data) {
-      // Ao abrir o caixa, também abre a loja automaticamente
-      try {
-        await supabase.from('settings').upsert([
-          { key: 'store_status', value: 'open', updated_at: new Date().toISOString() },
-          { key: 'manual_store_closed', value: false, updated_at: new Date().toISOString() },
-          { key: 'paused_until', value: '', updated_at: new Date().toISOString() },
-        ], { onConflict: 'key' });
-      } catch (e) {
-        console.error("Erro ao atualizar status da loja:", e);
+    setIsOpening(true);
+    try {
+      const amount = parseFloat(openingAmount) || 0;
+      const { data: userData } = await supabase.auth.getUser();
+      const { data, error } = await supabase.from('cash_sessions').insert([{
+        opening_amount: amount,
+        opened_by: userData.user?.id,
+        status: 'aberto'
+      }]).select().single();
+      if (!error && data) {
+        // Ao abrir o caixa, também abre a loja automaticamente
+        try {
+          await supabase.from('settings').upsert([
+            { key: 'store_status', value: 'open', updated_at: new Date().toISOString() },
+            { key: 'manual_store_closed', value: false, updated_at: new Date().toISOString() },
+            { key: 'paused_until', value: '', updated_at: new Date().toISOString() },
+          ], { onConflict: 'key' });
+        } catch (e) {
+          console.error("Erro ao atualizar status da loja:", e);
+        }
+        setSession(data);
+        setOpeningAmount('0.00');
+        setClosedResult(null);
+      } else if (error) {
+        console.error("Erro ao abrir caixa:", error);
+        alert("Erro ao abrir caixa: " + error.message);
       }
-      setSession(data);
-      setOpeningAmount('');
-      setClosedResult(null);
+    } finally {
+      setIsOpening(false);
     }
   };
 
@@ -521,19 +530,30 @@ export default function CaixaManager({ refreshSignal }: CaixaManagerProps = {}) 
                 <input
                   type="number"
                   step="0.01"
+                  min="0"
                   value={openingAmount}
                   onChange={(e) => setOpeningAmount(e.target.value)}
+                  onFocus={(e) => e.target.select()}
                   placeholder="0.00"
-                  className="pl-6 pr-2.5 py-1.5 bg-stone-800 border border-stone-700 rounded-lg text-xs font-mono tabular-nums text-white font-bold focus:outline-none focus:border-[#fdde58] focus:ring-1 focus:ring-[#fdde58]/30 w-full placeholder-stone-500"
+                  className="pl-6 pr-2.5 py-1.5 bg-stone-800 border border-stone-600 rounded-lg text-xs font-mono tabular-nums text-white font-bold focus:outline-none focus:border-[#fdde58] focus:ring-1 focus:ring-[#fdde58]/40 w-full placeholder-stone-400"
                 />
               </div>
               <button
                 onClick={handleOpen}
-                disabled={!openingAmount || parseFloat(openingAmount) < 0}
-                className="bg-[#fdde58] hover:bg-[#e2c23f] disabled:opacity-50 disabled:cursor-not-allowed text-stone-950 font-bold px-3.5 py-1.5 rounded-lg text-xs font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0 border border-[#d8ba39] shadow-xs"
+                disabled={isOpening || (openingAmount !== '' && parseFloat(openingAmount) < 0)}
+                className="bg-[#fdde58] hover:bg-[#f3ce37] active:scale-[0.98] text-stone-950 font-black px-4 py-2 rounded-lg text-xs font-mono uppercase tracking-wider transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0 border border-[#d8ba39] shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Unlock className="w-3.5 h-3.5" />
-                Abrir Caixa
+                {isOpening ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-stone-950 border-t-transparent rounded-full animate-spin" />
+                    <span>Abrindo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="w-3.5 h-3.5 text-stone-950" />
+                    <span>Abrir Caixa</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
