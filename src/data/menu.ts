@@ -110,7 +110,7 @@ export const menuData: MenuItem[] = [
 ];
 
 export const RESTAURANT_WHATSAPP_PHONE = "351938360931";
-export const FREE_DELIVERY_THRESHOLD = 20;
+export const FREE_DELIVERY_THRESHOLD = 35;
 
 export const NEIGHBORHOOD_DELIVERY_FEES: Record<string, number> = {
   "Cotovia": 0,

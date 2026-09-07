@@ -70,10 +70,10 @@ export default function Cart({
   const [savedTrackingCode, setSavedTrackingCode] = useState<string | null>(null);
 
   const [zonesFees, setZonesFees] = useState<Record<string, number>>({});
-  const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState(20);
+  const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState(35);
   const [minDeliveryOrder, setMinDeliveryOrder] = useState(10);
-  const [deliveryTimeEstimate, setDeliveryTimeEstimate] = useState('40 a 50 min');
-  const [pickupTimeEstimate, setPickupTimeEstimate] = useState('25 a 35 min');
+  const [deliveryTimeEstimate, setDeliveryTimeEstimate] = useState('70 a 80 min');
+  const [pickupTimeEstimate, setPickupTimeEstimate] = useState('35 a 40 min');
 
   // Load saved customer checkout details from localStorage (Memory for fast re-orders)
   useEffect(() => {
