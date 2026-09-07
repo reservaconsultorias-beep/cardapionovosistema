@@ -1201,16 +1201,6 @@ export default function AdminDashboard() {
                   Pedidos
                 </button>
                 <button 
-                  onClick={() => { setShowPDVModal(true); setIsMobileMenuOpen(false); }} 
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-semibold transition-colors bg-amber-500/15 hover:bg-amber-500/25 text-[#fdde58] border border-[#fdde58]/30 cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Store size={15} className="text-[#fdde58]" />
-                    <span>Terminal PDV</span>
-                  </div>
-                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-[#fdde58]/20 text-[#fdde58]">ABRIR</span>
-                </button>
-                <button 
                   onClick={() => { setActiveTab("caixa"); setIsMobileMenuOpen(false); }} 
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-semibold transition-colors ${activeTab === 'caixa' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs' : 'text-stone-300 hover:text-white hover:bg-stone-900'}`}
                 >
@@ -1402,19 +1392,6 @@ export default function AdminDashboard() {
             >
               <ShoppingBag size={12} className={activeTab === 'pedidos' ? 'text-stone-950' : 'text-stone-400'} />
               Pedidos
-            </button>
-          )}
-          {hasPermission('ver_pedidos') && (
-            <button 
-              onClick={() => setShowPDVModal(true)} 
-              className="w-full flex items-center justify-between px-2 py-[3.5px] rounded font-medium transition-colors cursor-pointer bg-amber-500/10 hover:bg-amber-500/20 text-[#fdde58] border border-[#fdde58]/30 shadow-2xs group"
-              title="Abrir Terminal PDV"
-            >
-              <div className="flex items-center gap-1.5">
-                <Store size={12} className="text-[#fdde58]" />
-                <span className="font-bold tracking-tight">Terminal PDV</span>
-              </div>
-              <span className="text-[7.5px] font-mono font-bold px-1 py-0.2 rounded bg-[#fdde58]/20 text-[#fdde58] leading-none">ABRIR</span>
             </button>
           )}
           {hasPermission('gerenciar_caixa') && (
