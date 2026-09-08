@@ -7,7 +7,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SERVICE_KEY);
 
 async function main() {
   // Test listing orders with admin client
-  const { data, error } = await supabaseAdmin.from('orders').select('id, customer_name').limit(5);
+  const { data, error } = await supabaseAdmin.from('orders').select('id, customer_name, status, total_amount, created_at').order('created_at', { ascending: false }).limit(5);
   console.log('Orders with service_role:', data, error);
 }
 

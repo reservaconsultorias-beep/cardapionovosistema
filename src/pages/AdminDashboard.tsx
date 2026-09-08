@@ -3540,6 +3540,8 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   
   const [selectedProductSearch, setSelectedProductSearch] = useState('');
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [selectedSecondProductSearch, setSelectedSecondProductSearch] = useState('');
+  const [selectedSecondProductId, setSelectedSecondProductId] = useState('');
   const [selectedSize, setSelectedSize] = useState('priceSingle');
   const [saving, setSaving] = useState(false);
 
@@ -3566,15 +3568,31 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     const menuItem = menuItems.find(m => m.id === selectedProductId);
     if (!menuItem) return;
 
+    const secondMenuItem = selectedSize === 'priceG' && selectedSecondProductId
+      ? menuItems.find(m => m.id === selectedSecondProductId)
+      : null;
+
     let price = menuItem.priceSingle || menuItem.priceP || menuItem.priceM || menuItem.priceG || 0;
     let sizeName = 'Único';
     if (selectedSize === 'priceP' && menuItem.priceP) { price = menuItem.priceP; sizeName = 'Pequena (P)'; }
     else if (selectedSize === 'priceM' && menuItem.priceM) { price = menuItem.priceM; sizeName = 'Média (M)'; }
-    else if (selectedSize === 'priceG' && menuItem.priceG) { price = menuItem.priceG; sizeName = 'Grande (G)'; }
+    else if (selectedSize === 'priceG') { 
+      price = menuItem.priceG || price; 
+      if (secondMenuItem) {
+        const price2 = secondMenuItem.priceG || secondMenuItem.priceSingle || 0;
+        price = Math.max(price, price2);
+      }
+      sizeName = 'Grande (G)'; 
+    }
+
+    let itemName = menuItem.name;
+    if (secondMenuItem) {
+      itemName = `1/2 ${menuItem.id.split('-').pop()} - ${menuItem.name} + 1/2 ${secondMenuItem.id.split('-').pop()} - ${secondMenuItem.name}`;
+    }
 
     const newItem = {
       menuItem: menuItem,
-      name: menuItem.name,
+      name: itemName,
       quantity: 1,
       size: sizeName,
       priceCalculated: price,
@@ -3583,6 +3601,8 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     setItems(prev => [...prev, newItem]);
     setSelectedProductId('');
     setSelectedProductSearch('');
+    setSelectedSecondProductId('');
+    setSelectedSecondProductSearch('');
   };
 
   const handleUpdateQty = (index: number, delta: number) => {
@@ -3795,29 +3815,60 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                 <Plus size={14} className="text-stone-500" /> Adicionar Produto ao Pedido
               </h5>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2 relative">
-                  <input
-                    type="text"
-                    value={selectedProductSearch}
-                    onChange={(e) => setSelectedProductSearch(e.target.value)}
-                    placeholder="Pesquisar produto pelo nome..."
-                    className="w-full px-3 py-2.5 bg-white rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
-                  />
-                  {selectedProductSearch && (
-                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded-md shadow-lg z-20 max-h-48 overflow-y-auto">
-                      {filteredMenuItems.map(m => (
-                        <div
-                          key={m.id}
-                          onClick={() => {
-                            setSelectedProductId(m.id);
-                            setSelectedProductSearch(m.name);
-                          }}
-                          className={`p-2.5 text-sm font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 ${selectedProductId === m.id ? 'bg-stone-900 text-white' : 'text-stone-800 hover:bg-stone-50'}`}
-                        >
-                          <span>{m.name}</span>
-                          <span className={selectedProductId === m.id ? 'text-stone-300' : 'text-stone-500'}>€ {(m.priceSingle || m.priceP || m.priceM || 0).toFixed(2)}</span>
+                <div className="sm:col-span-2 relative space-y-2">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={selectedProductSearch}
+                      onChange={(e) => setSelectedProductSearch(e.target.value)}
+                      placeholder="Pesquisar 1º sabor / produto..."
+                      className="w-full px-3 py-2.5 bg-white rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
+                    />
+                    {selectedProductSearch && (
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded-md shadow-lg z-20 max-h-48 overflow-y-auto">
+                        {filteredMenuItems.map(m => (
+                          <div
+                            key={m.id}
+                            onClick={() => {
+                              setSelectedProductId(m.id);
+                              setSelectedProductSearch(m.name);
+                            }}
+                            className={`p-2.5 text-sm font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 ${selectedProductId === m.id ? 'bg-stone-900 text-white' : 'text-stone-800 hover:bg-stone-50'}`}
+                          >
+                            <span>{m.name}</span>
+                            <span className={selectedProductId === m.id ? 'text-stone-300' : 'text-stone-500'}>€ {(m.priceSingle || m.priceP || m.priceM || 0).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedSize === 'priceG' && (
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={selectedSecondProductSearch}
+                        onChange={(e) => setSelectedSecondProductSearch(e.target.value)}
+                        placeholder="Pesquisar 2º sabor (opcional)..."
+                        className="w-full px-3 py-2.5 bg-white rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
+                      />
+                      {selectedSecondProductSearch && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded-md shadow-lg z-20 max-h-48 overflow-y-auto">
+                          {menuItems.filter(i => i.name.toLowerCase().includes(selectedSecondProductSearch.toLowerCase()) && i.categoryId === menuItems.find(m => m.id === selectedProductId)?.categoryId).map(m => (
+                            <div
+                              key={`second-${m.id}`}
+                              onClick={() => {
+                                setSelectedSecondProductId(m.id);
+                                setSelectedSecondProductSearch(m.name);
+                              }}
+                              className={`p-2.5 text-sm font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 ${selectedSecondProductId === m.id ? 'bg-stone-900 text-white' : 'text-stone-800 hover:bg-stone-50'}`}
+                            >
+                              <span>{m.name}</span>
+                              <span className={selectedSecondProductId === m.id ? 'text-stone-300' : 'text-stone-500'}>€ {(m.priceG || 0).toFixed(2)}</span>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
                     </div>
                   )}
                 </div>

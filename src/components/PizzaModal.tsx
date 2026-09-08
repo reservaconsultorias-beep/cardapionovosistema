@@ -62,6 +62,8 @@ export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initial
   const isTuesdayPromoEsfirra = item.id === 'md-2-esfirra';
   const tradEsfihas = allMenuItems.filter(i => i.category === 'esfihas-salgadas-tradicionais');
   const doceEsfihas = allMenuItems.filter(i => i.category === 'esfihas-doces');
+  
+  const isPromoPizza = (item.category === 'promocoes' || (item as any).groupOverride === 'promocoes') && item.name.toLowerCase().includes('pizza');
 
   const hasSizes = item.priceM !== undefined && item.priceG !== undefined;
   const calculatedPriceP = item.priceP || (item.priceM ? Math.max(item.priceM - 2, 0) : undefined);
@@ -362,7 +364,7 @@ export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initial
            )}
 
            {/* Borda Selection */}
-           {(hasSizes || isMondayPromoPizza || isTuesdayPromoPizza) && (
+           {(hasSizes || isMondayPromoPizza || isTuesdayPromoPizza || isPromoPizza) && (
              <div className="mb-6">
                <h4 className="font-bold mb-3 text-sm uppercase tracking-wide text-gray-800">Borda Recheada (Opcional):</h4>
                <div className="flex flex-col gap-2">
