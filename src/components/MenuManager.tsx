@@ -10,6 +10,7 @@ export default function MenuManager() {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState('');
   const [feedback, setFeedback] = useState("");
   const [pausedItems, setPausedItems] = useState<string[]>([]);
 
@@ -43,6 +44,14 @@ export default function MenuManager() {
   };
 
   useEffect(() => {
+    // Check and create 'mais-pedidos' category if missing
+    supabase.from('categories').select('id').eq('id', 'mais-pedidos').then(({data}) => {
+      if (!data || data.length === 0) {
+        supabase.from('categories').insert({id: 'mais-pedidos', name: 'OS MAIS PEDIDOS 🔥', order_index: 2}).then(() => {
+          loadData();
+        });
+      }
+    });
     loadData();
   }, []);
 
@@ -52,12 +61,13 @@ export default function MenuManager() {
     // Insert categories first
     const predefinedCategories = [
       { id: 'promocoes', name: 'PROMOÇÃO DO DIA', order_index: 1 },
-      { id: 'pizzas', name: 'Pizzas', order_index: 2 },
-      { id: 'esfihas-salgadas-tradicionais', name: 'Esfihas Salgadas Tradicionais', order_index: 3 },
-      { id: 'esfihas-salgadas-especiais', name: 'Esfihas Salgadas Especiais', order_index: 4 },
-      { id: 'esfihas-doces', name: 'Esfihas Doces', order_index: 5 },
-      { id: 'bebidas', name: 'Bebidas', order_index: 6 },
-      { id: 'bordas', name: 'Bordas', order_index: 7 }
+      { id: 'mais-pedidos', name: 'OS MAIS PEDIDOS 🔥', order_index: 2 },
+      { id: 'pizzas', name: 'Pizzas', order_index: 3 },
+      { id: 'esfihas-salgadas-tradicionais', name: 'Esfihas Salgadas Tradicionais', order_index: 4 },
+      { id: 'esfihas-salgadas-especiais', name: 'Esfihas Salgadas Especiais', order_index: 5 },
+      { id: 'esfihas-doces', name: 'Esfihas Doces', order_index: 6 },
+      { id: 'bebidas', name: 'Bebidas', order_index: 7 },
+      { id: 'bordas', name: 'Bordas', order_index: 8 }
     ];
 
     for (const cat of predefinedCategories) {
@@ -232,7 +242,8 @@ export default function MenuManager() {
 
   if (loading) return <div className="p-8 text-center">Carregando dados do banco...</div>;
 
-  const filteredItems = activeCategory === 'all' ? items : items.filter(i => i.category === activeCategory);
+  const filteredItems = (activeCategory === 'all' ? items : items.filter(i => i.category === activeCategory))
+    .filter(i => i.name.toLowerCase().includes(searchTerm.toLowerCase()) || (i.ingredients && i.ingredients.toLowerCase().includes(searchTerm.toLowerCase())));
 
   return (
     <div className="bg-white rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] p-6">
@@ -260,22 +271,33 @@ export default function MenuManager() {
       )}
 
       {/* Category Filter */}
-      <div className="flex overflow-x-auto gap-2 pb-4 mb-6">
-        <button 
-          onClick={() => setActiveCategory('all')}
-          className={`px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === 'all' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md' : 'bg-[#FAFAF9] text-[#78716C] border border-[#E7E5E1] hover:bg-gray-100'}`}
-        >
-          Todos os Produtos
-        </button>
-        {categories.map(cat => (
+      <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide flex-1">
           <button 
-            key={cat.id}
-            onClick={() => setActiveCategory(cat.id)}
-            className={`px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === cat.id ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md' : 'bg-[#FAFAF9] text-[#78716C] border border-[#E7E5E1] hover:bg-gray-100'}`}
+            onClick={() => setActiveCategory('all')}
+            className={`px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === 'all' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md' : 'bg-[#FAFAF9] text-[#78716C] border border-[#E7E5E1] hover:bg-gray-100'}`}
           >
-            {cat.name}
+            Todos os Produtos
           </button>
-        ))}
+          {categories.map(cat => (
+            <button 
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={`px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === cat.id ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md' : 'bg-[#FAFAF9] text-[#78716C] border border-[#E7E5E1] hover:bg-gray-100'}`}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+        <div className="w-full sm:w-64 flex-shrink-0">
+          <input
+            type="text"
+            placeholder="Buscar por produto ou ingrediente..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full px-4 py-2.5 rounded-xl border border-[#E7E5E1] text-sm focus:outline-none focus:ring-2 focus:ring-[#fdde58] transition-all bg-[#FAFAF9]"
+          />
+        </div>
       </div>
 
       {/* Items Table (Quick Edit) */}

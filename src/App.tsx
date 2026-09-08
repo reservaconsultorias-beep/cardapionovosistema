@@ -268,7 +268,7 @@ function App() {
     const dbTabs = Object.values(tabsMap);
 
     const hasBestsellers = menuItems.some((item: any) => item.isBestseller);
-    const allTabs = hasBestsellers
+    const allTabs = hasBestsellers && !tabsMap['mais-pedidos']
       ? [...dbTabs, { id: "mais-pedidos", label: "OS MAIS PEDIDOS 🔥", sub: "Os queridinhos dos nossos clientes", group: ["mais-pedidos"], order: 2 }]
       : dbTabs;
 
