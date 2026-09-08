@@ -58,6 +58,7 @@ import { motion } from 'framer-motion';
 import MenuManager from '../components/MenuManager';
 import CategoryManager from '../components/CategoryManager';
 import { SalesFunnelManager } from '../components/SalesFunnelManager';
+import CashSessionDetailsModal from '../components/reports/CashSessionDetailsModal';
 import PeriodFilterCompact from '../components/PeriodFilterCompact';
 import ExpensesManager from '../components/ExpensesManager';
 import PDVModal from '../components/PDVModal';
@@ -100,7 +101,7 @@ const safeParseItems = (items: any): any[] => {
   return [];
 };
 
-const CHART_COLORS = ["#0f172a", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1"];
+const CHART_COLORS = ["#18181b", "#fdde58", "#3b82f6", "#10b981", "#f97316", "#a855f7"];
 
 
 const playNotificationSound = () => {
@@ -185,6 +186,9 @@ export default function AdminDashboard() {
   const [filteredOrders, setFilteredOrders] = useState<any[]>([]);
   const [ticketMedioTab, setTicketMedioTab] = useState<'todos' | 'mesa' | 'retirada' | 'entrega'>('todos');
   const [reportModal, setReportModal] = useState<{isOpen: boolean, type: string, title: string}>({isOpen: false, type: '', title: ''});
+  const [allCashSessions, setAllCashSessions] = useState<any[]>([]);
+  const [filteredCashSessions, setFilteredCashSessions] = useState<any[]>([]);
+  const [selectedSessionForDetails, setSelectedSessionForDetails] = useState<any>(null);
   const [pausedItems, setPausedItems] = useState<string[]>([]);
   const [printOrder, setPrintOrder] = useState<any>(null);
   const [showPrintPreview, setShowPrintPreview] = useState(false);
@@ -250,9 +254,9 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchDashboardData = async (isBackground = false) => {
+  const fetchDashboardData = async (isBackground = false, overrideFilter?: string) => {
     try {
-      const filter = dateFilterRef.current || 'hoje';
+      const filter = overrideFilter || dateFilterRef.current || 'hoje';
       const { data: activeSessionData } = await supabase.from('cash_sessions').select('id').eq('status', 'aberto').limit(1).maybeSingle();
       const activeSessionId = activeSessionData?.id || null;
       
@@ -302,12 +306,27 @@ export default function AdminDashboard() {
           if (!d) return false;
           return d.toISOString().split('T')[0] === todayStr;
         });
+      } else if (filter === 'ontem') {
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        allOrdersAgg = allDbOrders.filter(o => {
+          const d = safeGetTime(o.createdAt);
+          if (!d) return false;
+          return d.toISOString().split('T')[0] === yesterdayStr;
+        });
       } else if (filter === '7dias') {
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
         allOrdersAgg = allDbOrders.filter(o => {
           const d = safeGetTime(o.createdAt);
           if (!d) return false;
           return d >= sevenDaysAgo;
+        });
+      } else if (filter === '30dias') {
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        allOrdersAgg = allDbOrders.filter(o => {
+          const d = safeGetTime(o.createdAt);
+          if (!d) return false;
+          return d >= thirtyDaysAgo;
         });
       } else if (filter === 'mes') {
         const currentMonth = now.getMonth();
@@ -317,6 +336,17 @@ export default function AdminDashboard() {
           if (!d) return false;
           return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
         });
+      } else if (filter === 'mes_passado') {
+        const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const prevMonth = prevMonthDate.getMonth();
+        const prevYear = prevMonthDate.getFullYear();
+        allOrdersAgg = allDbOrders.filter(o => {
+          const d = safeGetTime(o.createdAt);
+          if (!d) return false;
+          return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
+        });
+      } else if (filter === 'todos') {
+        allOrdersAgg = allDbOrders;
       } else if (filter === 'customizado') {
         const startStr = customStartDateRef.current;
         const endStr = customEndDateRef.current;
@@ -330,6 +360,81 @@ export default function AdminDashboard() {
           });
         }
       }
+
+      setFilteredOrders(allOrdersAgg);
+
+      // Fetch and enrich Cash Sessions
+      const { data: dbCashSessions, error: cashSessionsError } = await supabase.from('cash_sessions').select('*').order('closed_at', { ascending: false });
+      if (cashSessionsError) console.error(cashSessionsError);
+      
+      const allCashAgg = dbCashSessions || [];
+      const enrichedCashSessions = allCashAgg.map(session => {
+        let total_faturado = 0;
+        const sessionOpenedAt = session.opened_at ? new Date(session.opened_at).getTime() : null;
+        const sessionClosedAt = session.closed_at ? new Date(session.closed_at).getTime() : Date.now();
+        allDbOrders?.forEach(o => {
+          if (o.status === 'Cancelado' || o.status === 'cancelado') return;
+          // Match by cashSessionId first, then fall back to date range
+          const matchById = o.cashSessionId && o.cashSessionId === session.id;
+          const orderTime = o.createdAt ? new Date(o.createdAt).getTime() : null;
+          const matchByDate = !matchById && sessionOpenedAt && orderTime && orderTime >= sessionOpenedAt && orderTime <= sessionClosedAt;
+          if (matchById || matchByDate) {
+            total_faturado += Number(o.totalAmount || 0);
+          }
+        });
+        return {
+          ...session,
+          total_faturado
+        };
+      });
+      setAllCashSessions(enrichedCashSessions);
+
+      // Filter Cash Sessions
+      let filteredCashAgg = enrichedCashSessions;
+      if (filter === 'hoje') {
+        const todayStr = now.toISOString().split('T')[0];
+        filteredCashAgg = enrichedCashSessions.filter(s => s.closed_at && s.closed_at.split('T')[0] === todayStr);
+      } else if (filter === 'ontem') {
+        const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        filteredCashAgg = enrichedCashSessions.filter(s => s.closed_at && s.closed_at.split('T')[0] === yesterdayStr);
+      } else if (filter === '7dias') {
+        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filteredCashAgg = enrichedCashSessions.filter(s => s.closed_at && new Date(s.closed_at) >= sevenDaysAgo);
+      } else if (filter === '30dias') {
+        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        filteredCashAgg = enrichedCashSessions.filter(s => s.closed_at && new Date(s.closed_at) >= thirtyDaysAgo);
+      } else if (filter === 'mes') {
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        filteredCashAgg = enrichedCashSessions.filter(s => {
+          if (!s.closed_at) return false;
+          const d = new Date(s.closed_at);
+          return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+        });
+      } else if (filter === 'mes_passado') {
+        const prevMonthDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const prevMonth = prevMonthDate.getMonth();
+        const prevYear = prevMonthDate.getFullYear();
+        filteredCashAgg = enrichedCashSessions.filter(s => {
+          if (!s.closed_at) return false;
+          const d = new Date(s.closed_at);
+          return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
+        });
+      } else if (filter === 'customizado') {
+        const startStr = customStartDateRef.current;
+        const endStr = customEndDateRef.current;
+        if (startStr && endStr) {
+          const start = new Date(`${startStr}T00:00:00`);
+          const end = new Date(`${endStr}T23:59:59`);
+          filteredCashAgg = enrichedCashSessions.filter(s => {
+            if (!s.closed_at) return false;
+            const d = new Date(s.closed_at);
+            return d >= start && d <= end;
+          });
+        }
+      }
+      setFilteredCashSessions(filteredCashAgg);
 
       let faturamentoBruto = 0;
       let totalPedidos = allOrdersAgg.length;
@@ -438,6 +543,8 @@ export default function AdminDashboard() {
         activeSessionId,
         totalOrders: totalPedidos,
         totalRevenue: faturamentoBruto,
+        faturamento: faturamentoBruto,
+        faturamentoBruto: faturamentoBruto,
         ticketMedio,
         uniqueCustomers,
         paymentMethodsData,
@@ -1016,6 +1123,7 @@ export default function AdminDashboard() {
                     endDate={customEndDate}
                     onChange={(res) => {
                       setDateFilter(res.period);
+                      dateFilterRef.current = res.period;
                       if (res.startDate) {
                         setCustomStartDate(res.startDate);
                         customStartDateRef.current = res.startDate;
@@ -1024,7 +1132,7 @@ export default function AdminDashboard() {
                         setCustomEndDate(res.endDate);
                         customEndDateRef.current = res.endDate;
                       }
-                      fetchDashboardData();
+                      fetchDashboardData(false, res.period);
                     }}
                     align="right"
                   />
@@ -1514,38 +1622,67 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 px-4 md:px-8 pt-2 md:pt-4 pb-8 h-screen overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-4">
-
-          {/* Header Section */}
-        <div className={`flex flex-col md:flex-row md:items-center justify-between gap-2.5 pb-2.5 ${['despesas', 'relatorios', 'caixa', 'funil'].includes(activeTab) ? 'border-b border-transparent mb-0' : 'border-b border-stone-200/80 mb-4'}`}>
-          {!['despesas', 'relatorios', 'caixa', 'funil'].includes(activeTab) ? (
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-stone-900">
-                {PAGE_TITLES[activeTab]?.title || 'Painel'}
-              </h1>
-              <p className="text-xs text-stone-500 font-mono mt-0.5">
-                {PAGE_TITLES[activeTab]?.subtitle || ''}
-              </p>
-            </div>
-          ) : <div />}
-          <div className="flex items-center gap-2 self-end md:self-auto">
+      <main className={`flex-1 min-w-0 px-4 md:px-8 min-h-[100dvh] relative overflow-y-auto ${
+        ['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) 
+          ? 'pt-4 pb-4 flex flex-col' 
+          : 'pt-2 md:pt-4 pb-8'
+      }`}>
+        
+        {/* Absolute Logout for Cockpit Views */}
+        {['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) && (
+          <div className="absolute top-4 right-4 md:right-8 z-50 flex items-center gap-2">
             {adminLogoUrl && (
               <>
-                <img src={adminLogoUrl} alt="Logo do restaurante" className="h-7 object-contain" />
-                <div className="w-px h-5 bg-stone-200" />
+                <img src={adminLogoUrl} alt="Logo do restaurante" className="h-6 object-contain" />
+                <div className="w-px h-4 bg-stone-200" />
               </>
             )}
             <button 
               onClick={handleLogout} 
-              className="h-8 px-2.5 rounded-lg border border-stone-200 bg-white text-stone-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors cursor-pointer text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
+              className="w-8 h-8 flex items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors shadow-2xs"
               title="Sair do Sistema"
             >
-              <LogOut size={13} />
-              <span className="hidden sm:inline text-[11px]">Sair</span>
+              <LogOut size={14} />
             </button>
           </div>
-        </div>
+        )}
+
+        <div className={`max-w-7xl mx-auto w-full ${
+          ['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) 
+            ? 'flex-1 flex flex-col min-h-0' 
+            : 'space-y-4'
+        }`}>
+
+          {/* Header Section (Only for Non-Cockpit Views) */}
+          {!['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) && (
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pb-2.5 border-b border-stone-200/80 mb-4">
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-stone-900">
+                  {PAGE_TITLES[activeTab]?.title || 'Painel'}
+                </h1>
+                <p className="text-xs text-stone-500 font-mono mt-0.5">
+                  {PAGE_TITLES[activeTab]?.subtitle || ''}
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-2 self-end md:self-auto">
+                {adminLogoUrl && (
+                  <>
+                    <img src={adminLogoUrl} alt="Logo do restaurante" className="h-7 object-contain" />
+                    <div className="w-px h-5 bg-stone-200" />
+                  </>
+                )}
+                <button 
+                  onClick={handleLogout} 
+                  className="h-8 px-2.5 rounded-lg border border-stone-200 bg-white text-stone-600 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors cursor-pointer text-xs font-semibold flex items-center gap-1.5 shadow-2xs"
+                  title="Sair do Sistema"
+                >
+                  <LogOut size={13} />
+                  <span className="hidden sm:inline text-[11px]">Sair</span>
+                </button>
+              </div>
+            </div>
+          )}
 
         {autoPrint && (
           <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-xl p-4 text-sm flex items-start gap-3">
@@ -1637,22 +1774,72 @@ export default function AdminDashboard() {
         {/* Visão Geral Tab */}
         {activeTab === "visao-geral" && (
           <div className="space-y-3 mt-1 sm:mt-2">
-            {Boolean(dashboardData?.pendingOrders && dashboardData.pendingOrders > 0) && (
-              <div 
-                onClick={() => setActiveTab('pedidos')}
-                className="bg-amber-400/15 border border-amber-400/50 hover:border-amber-400 py-1.5 px-3 rounded-lg flex items-center justify-between cursor-pointer transition-all shadow-2xs group"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping shrink-0" />
-                  <span className="text-xs font-mono font-bold text-amber-950">
-                    Atenção: Há {dashboardData.pendingOrders} pedido(s) pendente(s) aguardando preparo ou despacho!
-                  </span>
-                </div>
-                <span className="text-xs font-mono font-bold text-amber-900 group-hover:underline flex items-center gap-1 shrink-0">
-                  Ver Pedidos →
+
+            {/* Filtro de Período - Visão Geral */}
+            <div className="flex items-center justify-between bg-white rounded-xl border border-stone-200 px-3 py-2 shadow-2xs gap-2 flex-wrap">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="text-[11px] font-mono font-bold text-stone-700 uppercase tracking-wider">
+                  Visão Geral
                 </span>
               </div>
-            )}
+              <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+                {/* Toggle cockpit / grade */}
+                <div className="flex items-center bg-stone-100 rounded-lg p-0.5 border border-stone-200">
+                  <button
+                    onClick={() => setOverviewViewMode('cockpit')}
+                    title="Modo Cockpit"
+                    className={`h-6 px-2 rounded-md text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      overviewViewMode === 'cockpit'
+                        ? 'bg-[#fdde58] text-stone-950 shadow-xs border border-[#d8ba39]'
+                        : 'text-stone-500 hover:text-stone-800'
+                    }`}
+                  >
+                    <Layers size={10} />
+                    Cockpit
+                  </button>
+                  <button
+                    onClick={() => setOverviewViewMode('grid')}
+                    title="Modo Grade"
+                    className={`h-6 px-2 rounded-md text-[10px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      overviewViewMode === 'grid'
+                        ? 'bg-[#fdde58] text-stone-950 shadow-xs border border-[#d8ba39]'
+                        : 'text-stone-500 hover:text-stone-800'
+                    }`}
+                  >
+                    <BarChart3 size={10} />
+                    Grade
+                  </button>
+                </div>
+                <PeriodFilterCompact
+                  value={dateFilter as any}
+                  startDate={customStartDate}
+                  endDate={customEndDate}
+                  onChange={(res) => {
+                    setDateFilter(res.period);
+                    dateFilterRef.current = res.period;
+                    if (res.startDate) {
+                      setCustomStartDate(res.startDate);
+                      customStartDateRef.current = res.startDate;
+                    }
+                    if (res.endDate) {
+                      setCustomEndDate(res.endDate);
+                      customEndDateRef.current = res.endDate;
+                    }
+                    fetchDashboardData(false, res.period);
+                  }}
+                  align="right"
+                />
+                <button
+                  onClick={() => fetchDashboardData()}
+                  className="h-7 px-2 rounded-lg border border-stone-200 bg-white text-stone-600 hover:text-stone-950 hover:bg-stone-50 transition-colors cursor-pointer shadow-2xs flex items-center gap-1 text-[11px] font-mono font-medium"
+                  title="Atualizar dados"
+                >
+                  <RefreshCw size={11} className={isLoading ? 'animate-spin text-rose-600' : 'text-stone-400'} />
+                  Atualizar
+                </button>
+              </div>
+            </div>
 
             {/* KPIs Grid - Compacto em 1 linha */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
@@ -2293,9 +2480,19 @@ export default function AdminDashboard() {
 
         {/* Relatórios Tab */}
         {activeTab === "relatorios" && (
-          <div className="mt-1 space-y-2.5 pb-12">
+          <motion.div 
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: [0.2, 0, 0, 1] }}
+            className="mt-1 space-y-2.5 pb-12"
+          >
             {/* Filtro de Tempo Compacto Padronizado */}
-            <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs px-3 py-1.5">
+            <motion.div 
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, ease: [0.2, 0, 0, 1] }}
+              className="bg-white rounded-xl border border-stone-200/90 shadow-2xs px-3 py-1.5"
+            >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-600 shrink-0" />
@@ -2311,6 +2508,7 @@ export default function AdminDashboard() {
                     endDate={customEndDate}
                     onChange={(res) => {
                       setDateFilter(res.period);
+                      dateFilterRef.current = res.period;
                       if (res.startDate) {
                         setCustomStartDate(res.startDate);
                         customStartDateRef.current = res.startDate;
@@ -2319,7 +2517,7 @@ export default function AdminDashboard() {
                         setCustomEndDate(res.endDate);
                         customEndDateRef.current = res.endDate;
                       }
-                      fetchDashboardData();
+                      fetchDashboardData(false, res.period);
                     }}
                     align="right"
                   />
@@ -2333,22 +2531,29 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Relatórios Financeiros & Faturamento */}
             <div>
-              <h2 className="text-[10.5px] font-mono font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5 mb-1.5">
+              <motion.h2 
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.25, delay: 0.04, ease: [0.2, 0, 0, 1] }}
+                className="text-[10.5px] font-mono font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5 mb-1.5"
+              >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Relatórios Financeiros & Faturamento
-              </h2>
+              </motion.h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
                 <ReportCard
+                  customDelay={0.06}
                   title="Faturamento Bruto"
-                  value={formatCurrency(dashboardData.faturamento)}
+                  value={formatCurrency(dashboardData?.totalRevenue ?? dashboardData?.faturamento ?? dashboardData?.faturamentoBruto ?? 0)}
                   icon={<DollarSign size={14} strokeWidth={1.5} className="text-emerald-950" />}
                   onClick={() => setReportModal({isOpen: true, type: 'faturamento', title: 'Composição do Faturamento'})}
                   subtitle="Total em vendas"
                 />
                 <ReportCard
+                  customDelay={0.10}
                   title="Ticket Médio"
                   value={formatCurrency(dashboardData.ticketMedio)}
                   icon={<TrendingUp size={14} strokeWidth={1.5} className="text-emerald-950" />}
@@ -2360,11 +2565,17 @@ export default function AdminDashboard() {
 
             {/* Vendas por Canal, Produtos & Operação */}
             <div>
-              <h2 className="text-[10.5px] font-mono font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5 mb-1.5">
+              <motion.h2 
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.25, delay: 0.12, ease: [0.2, 0, 0, 1] }}
+                className="text-[10.5px] font-mono font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5 mb-1.5"
+              >
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Vendas por Canal, Produtos & Operação
-              </h2>
+              </motion.h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
                 <ReportCard
+                  customDelay={0.14}
                   title="Vendas de produtos"
                   value=""
                   icon={<Package size={14} strokeWidth={1.5} className="text-amber-950" />}
@@ -2372,6 +2583,7 @@ export default function AdminDashboard() {
                   subtitle="Detalhamento por item"
                 />
                 <ReportCard
+                  customDelay={0.18}
                   title="Vendas de complementos"
                   value=""
                   icon={<UtensilsCrossed size={14} strokeWidth={1.5} className="text-amber-950" />}
@@ -2379,6 +2591,7 @@ export default function AdminDashboard() {
                   subtitle="Bordas e extras"
                 />
                 <ReportCard
+                  customDelay={0.22}
                   title="Formas de Pagamento"
                   value=""
                   icon={<CreditCard size={14} strokeWidth={1.5} className="text-amber-950" />}
@@ -2386,6 +2599,7 @@ export default function AdminDashboard() {
                   subtitle="Distribuição"
                 />
                 <ReportCard
+                  customDelay={0.26}
                   title="Cancelamentos"
                   value=""
                   icon={<AlertCircle size={14} strokeWidth={1.5} className="text-amber-950" />}
@@ -2394,7 +2608,7 @@ export default function AdminDashboard() {
                 />
               </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
         {activeTab === "cardapio-digital" && (
@@ -2646,7 +2860,7 @@ export default function AdminDashboard() {
 
             <div className="p-6 overflow-y-auto space-y-4 flex-1">
               {(() => {
-                let filteredReportOrders = allOrders;
+                let filteredReportOrders = filteredOrders && filteredOrders.length > 0 ? filteredOrders : (allOrders.length > 0 && dateFilter === 'todos' ? allOrders : (filteredOrders || []));
                 if (reportModal.type === 'vendas_mes') {
                   filteredReportOrders = allOrders.filter(o => {
                     const d = safeGetDate(o.createdAt);
@@ -2664,9 +2878,69 @@ export default function AdminDashboard() {
                     return d ? (d.toISOString().split('T')[0] === todayStr) : false;
                   });
                 } else if (reportModal.type === 'cancelamentos') {
-                  filteredReportOrders = allOrders.filter(o => o.status === 'Cancelado' || o.status === 'cancelado');
+                  filteredReportOrders = (filteredOrders || allOrders).filter(o => o.status === 'Cancelado' || o.status === 'cancelado');
                 }
                 
+                if (reportModal.type === 'faturamento') {
+                  const formatCurrency = (val: any) => new Intl.NumberFormat('pt-PT', { style: 'currency', currency: 'EUR' }).format(Number(val) || 0);
+                  const formatDateTime = (val: any) => {
+                    if (!val) return 'Ativo';
+                    const d = new Date(val);
+                    return `${d.toLocaleDateString('pt-BR')} às ${d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
+                  };
+
+                  return (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center bg-stone-50 p-4 rounded-xl border border-stone-200">
+                        <span className="font-bold text-stone-700 text-sm">Faturamento Acumulado (Período):</span>
+                        <span className="font-black text-xl font-mono text-emerald-700">
+                          {formatCurrency(dashboardData?.faturamentoBruto ?? 0)}
+                        </span>
+                      </div>
+                      <div className="border border-stone-200 rounded-xl overflow-hidden shadow-xs">
+                        <table className="w-full text-left border-collapse">
+                          <thead>
+                            <tr className="bg-stone-100 border-b border-stone-200 text-xs font-mono font-bold text-stone-700 uppercase">
+                              <th className="py-3 px-4">Sessão (Abertura)</th>
+                              <th className="py-3 px-4">Fechamento</th>
+                              <th className="py-3 px-4 text-center">Status</th>
+                              <th className="py-3 px-4 text-right">Faturamento</th>
+                              <th className="py-3 px-4 text-right">Ação</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-stone-100 text-sm">
+                            {filteredCashSessions.map((sess, idx) => (
+                              <tr key={idx} className="hover:bg-stone-50/80 transition-colors">
+                                <td className="py-3 px-4 text-stone-900">{formatDateTime(sess.opened_at)}</td>
+                                <td className="py-3 px-4 text-stone-600">{formatDateTime(sess.closed_at)}</td>
+                                <td className="py-3 px-4 text-center">
+                                  <span className={`inline-block px-2 py-0.5 rounded text-xs font-bold ${sess.status === 'aberto' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-800'}`}>
+                                    {sess.status === 'aberto' ? 'Aberto' : 'Fechado'}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4 text-right font-mono font-bold text-emerald-700">
+                                  {formatCurrency(sess.total_faturado)}
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <button
+                                    onClick={() => setSelectedSessionForDetails(sess)}
+                                    className="px-3 py-1.5 bg-stone-900 text-white hover:bg-stone-800 rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-sm"
+                                  >
+                                    Ver Detalhes
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                            {filteredCashSessions.length === 0 && (
+                              <tr><td colSpan={5} className="py-8 text-center text-stone-400 font-medium">Nenhum fechamento de caixa encontrado no período.</td></tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                }
+
                 if (reportModal.type === 'produtos' || reportModal.type === 'complementos') {
                   const counts: Record<string, { qty: number, rev: number }> = {};
                   filteredReportOrders.forEach(o => {
@@ -3243,6 +3517,12 @@ export default function AdminDashboard() {
         onSave={handleSaveOrderEdit}
       />
     )}
+    {selectedSessionForDetails && (
+      <CashSessionDetailsModal
+        session={selectedSessionForDetails}
+        onClose={() => setSelectedSessionForDetails(null)}
+      />
+    )}
     </>
   );
 }
@@ -3737,15 +4017,22 @@ function KpiCard({
   sparklineColor?: string;
 }) {
   return (
-    <div className="bg-white p-5 rounded-lg border border-stone-200 transition-colors">
-      <div className="flex justify-between items-start mb-4">
-        <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-stone-500">{title}</span>
-        <div className="p-1.5 bg-stone-50 rounded border border-stone-200 text-stone-600">
+    <div className="bg-white p-4 rounded-xl border border-stone-200 hover:border-stone-300 hover:shadow-md transition-all duration-200 group">
+      <div className="flex justify-between items-start mb-2">
+        <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-stone-400">{title}</span>
+        <div className="p-1.5 bg-stone-50 rounded-lg border border-stone-200 text-stone-500 group-hover:border-stone-300 transition-colors">
           {icon}
         </div>
       </div>
-      <div>
-        <p className="text-2xl sm:text-3xl font-bold font-mono tabular-nums text-stone-900 tracking-tight">{value}</p>
+      <p className="text-2xl sm:text-[1.6rem] font-black font-mono tabular-nums text-stone-900 tracking-tight leading-none mb-2">{value}</p>
+      <div className="flex items-center gap-1.5">
+        <span className={`text-[10px] font-mono font-bold flex items-center gap-0.5 ${
+          trendUp ? 'text-emerald-600' : 'text-rose-500'
+        }`}>
+          {trendUp ? <ArrowUpRight size={11} strokeWidth={2.5} /> : <ArrowDownRight size={11} strokeWidth={2.5} />}
+          {trend}
+        </span>
+        <span className="text-[10px] font-mono text-stone-400">{description}</span>
       </div>
     </div>
   );
@@ -3777,8 +4064,8 @@ function ReportCard({
         delay: customDelay, 
         ease: [0.2, 0, 0, 1] 
       }}
-      whileHover={{ scale: 0.98, transition: { duration: 0.1 } }}
-      whileTap={{ scale: 0.95, transition: { duration: 0.1 } }}
+      whileHover={{ y: -1.5, transition: { duration: 0.15, ease: [0.2, 0, 0, 1] } }}
+      whileTap={{ scale: 0.98, transition: { duration: 0.08 } }}
       onClick={onClick}
       className="bg-white px-3 py-2 rounded-xl border border-stone-200/90 hover:border-amber-400/80 hover:bg-amber-50/15 transition-all cursor-pointer flex items-center justify-between text-left w-full group shadow-2xs hover:shadow-xs relative h-[52px]"
     >

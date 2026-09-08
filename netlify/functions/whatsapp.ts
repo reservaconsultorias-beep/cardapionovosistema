@@ -32,8 +32,18 @@ export default async (req, context) => {
   try {
     const payload = await req.json();
 
+    // Buscar sessão de caixa ativa se houver
+    const { data: activeSession } = await supabase
+      .from('cash_sessions')
+      .select('id')
+      .eq('status', 'aberto')
+      .order('opened_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
     // Inserção Direta: Isolada do resto do sistema
     const { data, error } = await supabase.from('orders').insert([{
+      cash_session_id: activeSession ? activeSession.id : null,
       customer_name: payload.customer_name,
       customer_phone: payload.customer_phone,
       order_type: payload.order_type,

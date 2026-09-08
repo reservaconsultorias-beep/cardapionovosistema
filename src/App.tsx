@@ -408,9 +408,22 @@ function App() {
       </div>
 
       {/* Categories Bar Sticky */}
-      <div className="bg-white border-b border-gray-200 sticky top-16 z-30 shadow-sm relative">
-        <div className="max-w-7xl mx-auto flex overflow-x-auto hide-scrollbar gap-2 p-3 items-center">
+      <div className="bg-white border-b border-gray-200 sticky top-16 z-30 shadow-xs relative">
+        <div 
+          onWheel={(e) => {
+            if (e.deltaY !== 0) {
+              e.currentTarget.scrollLeft += e.deltaY;
+            }
+          }}
+          className="max-w-7xl mx-auto flex overflow-x-auto custom-scrollbar gap-1 px-2.5 py-1.5 items-center"
+        >
           {currentCategoriesUI.map((cat) => {
+            const shortLabel = cat.label
+              .replace(/^OS\s+MAIS\s+PEDIDOS/i, 'MAIS PEDIDOS')
+              .replace(/^PIZZAS\s+/i, '')
+              .replace(/^ESFIHAS\s+SALGADAS\s+/i, 'ESF. ')
+              .replace(/^ESFIHAS\s+/i, 'ESF. ');
+
             return (
             <a
               key={cat.id}
@@ -433,13 +446,14 @@ function App() {
                   window.scrollTo({ top: y, behavior: "smooth" });
                 }
               }}
-              className={`py-1.5 px-3 md:px-4 rounded-full text-[12px] md:text-[13px] whitespace-nowrap font-bold transition-all duration-150 active:scale-95 active:opacity-70 cursor-pointer border ${
+              className={`py-0.5 md:py-1 px-2 md:px-2.5 rounded-full text-[10px] md:text-[11px] whitespace-nowrap font-bold tracking-tight transition-all duration-150 active:scale-95 active:opacity-70 cursor-pointer border ${
                 activeCategory === cat.id
-                  ? "bg-[#8b0000] text-white border-[#8b0000]"
-                  : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                  ? "bg-[#8b0000] text-white border-[#8b0000] shadow-2xs"
+                  : "bg-white text-stone-600 border-stone-200 hover:bg-stone-50 hover:text-stone-900"
               } ${cat.id === "promocoes" && activeCategory !== cat.id ? "animate-pulse text-[#8b0000] border-[#8b0000]" : ""}`}
+              title={cat.label}
             >
-              {cat.label}
+              {shortLabel}
             </a>
             );
           })}

@@ -33,6 +33,53 @@ export interface PDVCartItem {
   totalPrice: number;
 }
 
+// Componente para resolver imagens do PDV com tentativa de extensões
+const PDVProductImage = ({ product, className }: { product: MenuItem, className?: string }) => {
+  const [imgAttempt, setImgAttempt] = useState(0);
+  const [failed, setFailed] = useState(false);
+  const exts = ['.png', '.jpg', '.jpeg', '.webp'];
+
+  let photoSrc = product.imageUrl ? product.imageUrl.replace(/^\//, '') : "";
+  if (photoSrc === 'none') {
+    photoSrc = "";
+  } else if (!photoSrc) {
+    const autoImage = findImageForProduct(product);
+    if (autoImage) photoSrc = autoImage.replace(/^\//, '');
+  }
+
+  const getDisplaySrc = () => {
+    if (!photoSrc) return "";
+    if (photoSrc.startsWith('http') || photoSrc.startsWith('data:')) return imgAttempt > 0 ? '' : photoSrc;
+    let base = photoSrc;
+    if (imgAttempt > 0) {
+      base = base.replace(/\.(png|jpe?g|webp)$/i, '');
+      return `/${base}${exts[imgAttempt - 1]}`;
+    }
+    return `/${base}`;
+  };
+
+  const currentSrc = getDisplaySrc();
+
+  if (!currentSrc || failed) {
+    return <Utensils size={22} className="text-gray-300 drop-shadow-2xs" />;
+  }
+
+  return (
+    <img
+      src={currentSrc}
+      alt={product.name}
+      className={className}
+      onError={() => {
+        if (imgAttempt < exts.length) {
+          setImgAttempt(prev => prev + 1);
+        } else {
+          setFailed(true);
+        }
+      }}
+    />
+  );
+};
+
 export default function PDVModal({
   isOpen,
   onClose,
@@ -665,7 +712,6 @@ export default function PDVModal({
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2 sm:gap-2.5">
               {filteredProducts.map(product => {
                 const hasSizes = Boolean(product.priceP || product.priceM || product.priceG);
-                const baseImg = findImageForProduct(product);
                 const displayPrice = product.priceG || product.priceM || product.priceSingle || product.priceP || 0;
                 const isPromoItem = 
                   product.category === 'promocoes' || 
@@ -685,18 +731,10 @@ export default function PDVModal({
                   >
                     {/* Image / Thumbnail (4:5 para Promoção do Dia, 1:1 Quadrado para os demais itens) */}
                     <div className={`w-full ${isPromoItem ? 'aspect-[4/5]' : 'aspect-square'} bg-stone-50 rounded-lg mb-1.5 overflow-hidden flex items-center justify-center relative shadow-inner border border-stone-200/50`}>
-                      {baseImg ? (
-                        <img
-                          src={baseImg}
-                          alt={product.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          onError={(e) => {
-                            (e.target as HTMLElement).style.display = 'none';
-                          }}
-                        />
-                      ) : (
-                        <Utensils size={22} className="text-gray-300 drop-shadow-2xs" />
-                      )}
+                      <PDVProductImage 
+                        product={product} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
                       
                       {/* Multiple sizes badge */}
                       {hasSizes && (
