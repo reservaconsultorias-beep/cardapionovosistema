@@ -1,0 +1,209 @@
+Created At: 2026-09-06T11:58:05-03:00
+Completed At: 2026-09-06T11:58:05-03:00
+File Path: `file:///c:/Users/herek/OneDrive/%C3%81rea%20de%20Trabalho/cardapio%20digital/pizzaria-&-esfiharia-delivery%20%286%29/src/pages/AdminDashboard.tsx`
+Total Lines: 4403
+Total Bytes: 238701
+Showing lines 2000 to 2200
+The following code has been modified to include a line number before every line, in the format: <line_number>: <original_line>. Please note that any changes targeting the original code should remove the line number, colon, and leading space.
+2000:           </div>
+2001:         )}
+2002: 
+2003:         {activeTab === "banner-promocional" && (
+2004:           <div className="mt-6">
+2005:             <BannerManager />
+2006:           </div>
+2007:         )}
+2008: 
+2009:         {/* Agente IA Tab */}
+2010:         {activeTab === "agente-ia" && hasPermission('gerenciar_configuracoes') && (
+2011:           <div className="mt-6">
+2012:             <AgentManager />
+2013:           </div>
+2014:         )}
+2015:   
+2016:         {/* Visão Geral Tab */}
+2017:         {activeTab === "visao-geral" && (
+2018:           <div className="space-y-3 mt-1 sm:mt-2">
+2019:             {Boolean(dashboardData?.pendingOrders && dashboardData.pendingOrders > 0) && (
+2020:               <div 
+2021:                 onClick={() => setActiveTab('pedidos')}
+2022:                 className="bg-amber-400/15 border border-amber-400/50 hover:border-amber-400 py-2 px-3 rounded-lg flex items-center justify-between cursor-pointer transition-all shadow-2xs group"
+2023:               >
+2024:                 <div className="flex items-center gap-2.5">
+2025:                   <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping shrink-0" />
+2026:                   <span className="text-xs font-mono font-bold text-amber-950">
+2027:                     Atenção: Há {dashboardData.pendingOrders} pedido(s) pendente(s) aguardando preparo ou despacho!
+2028:                   </span>
+2029:                 </div>
+2030:                 <span className="text-xs font-mono font-bold text-amber-900 group-hover:underline flex items-center gap-1 shrink-0">
+2031:                   Ver Pedidos →
+2032:                 </span>
+2033:               </div>
+2034:             )}
+2035: 
+2036:             {/* KPIs Grid - Ultracompacto e Elegante em 1 linha */}
+2037:             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+2038:               <KpiCard
+2039:                 title="Faturamento Bruto"
+2040:                 value={`€ ${faturamentoBruto.toFixed(2)}`}
+2041:                 icon={<DollarSign size={13} strokeWidth={1.5} className="text-emerald-600" />}
+2042:                 trend={(dashboardData?.revenueChangePercent ?? 0) >= 0 ? `+${(dashboardData?.revenueChangePercent ?? 0).toFixed(1)}%` : `${(dashboardData?.revenueChangePercent ?? 0).toFixed(1)}%`}
+2043:                 trendUp={(dashboardData?.revenueChangePercent ?? 0) >= 0}
+2044:                 description="vs período anterior"
+2045:                 sparklineData={chartData?.orderVolumeData?.map((d: any) => d.revenue) || []}
+2046:                 sparklineColor="#15803D"
+2047:               />
+2048:               <KpiCard
+2049:                 title="Ticket Médio"
+2050:                 value={`€ ${ticketMedio.toFixed(2)}`}
+2051:                 icon={<CreditCard size={13} strokeWidth={1.5} className="text-stone-700" />}
+2052:                 trend="+0%"
+2053:                 trendUp={true}
+2054:                 description="Hoje"
+2055:                 sparklineData={chartData?.orderVolumeData?.map((d: any) => d.orders) || []}
+2056:                 sparklineColor="#1D4ED8"
+2057:               />
+2058:               <KpiCard
+2059:                 title="Total de Pedidos"
+2060:                 value={totalPedidos.toString()}
+2061:                 icon={<ShoppingBag size={13} strokeWidth={1.5} className="text-purple-600" />}
+2062:                 trend={(dashboardData?.ordersChangePercent ?? 0) >= 0 ? `+${(dashboardData?.ordersChangePercent ?? 0).toFixed(1)}%` : `${(dashboardData?.ordersChangePercent ?? 0).toFixed(1)}%`}
+2063:                 trendUp={(dashboardData?.ordersChangePercent ?? 0) >= 0}
+2064:                 description="vs período anterior"
+2065:                 sparklineData={chartData?.orderVolumeData?.map((d: any) => d.orders) || []}
+2066:                 sparklineColor="#7C3AED"
+2067:               />
+2068:               <KpiCard
+2069:                 title="Novos Clientes"
+2070:                 value={uniqueCustomers.toString()}
+2071:                 icon={<Users size={13} strokeWidth={1.5} className="text-orange-600" />}
+2072:                 trend="0%"
+2073:                 trendUp={true}
+2074:                 description="No período"
+2075:                 sparklineData={chartData?.orderVolumeData?.map((d: any) => d.orders) || []}
+2076:                 sparklineColor="#B45309"
+2077:               />
+2078:             </div>
+2079: 
+2080:             {/* MODO COCKPIT (PRIMEIRO PLANO - SEM SCROLL) */}
+2081:             {overviewViewMode === 'cockpit' ? (
+2082:               <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 items-stretch">
+2083:                 {/* Coluna Principal: Gráfico Interativo com Abas de Métricas */}
+2084:                 <div className="lg:col-span-2 bg-white p-3.5 sm:p-4 rounded-xl border border-stone-200 shadow-2xs flex flex-col justify-between">
+2085:                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-2 pb-2.5 border-b border-stone-100">
+2086:                     <div className="flex items-center gap-2">
+2087:                       <div className="w-6 h-6 rounded-md bg-[#fdde58]/20 border border-[#fdde58] flex items-center justify-center text-stone-900 shrink-0">
+2088:                         <Activity size={14} className="text-stone-900" />
+2089:                       </div>
+2090:                       <div>
+2091:                         <h2 className="text-xs sm:text-sm font-bold text-stone-900 leading-tight">
+2092:                           {overviewChartTab === 'faturamento' && 'Evolução do Faturamento'}
+2093:                           {overviewChartTab === 'categorias' && 'Vendas por Categoria'}
+2094:                           {overviewChartTab === 'produtos' && 'Top 5 Produtos Mais Vendidos'}
+2095:                           {overviewChartTab === 'pagamentos' && 'Distribuição por Método de Pagamento'}
+2096:                         </h2>
+2097:                         <p className="text-[10px] text-stone-500 font-mono">
+2098:                           {overviewChartTab === 'faturamento' && 'Volume de receita ao longo da semana'}
+2099:                           {overviewChartTab === 'categorias' && 'Distribuição de receita por linha de produtos'}
+2100:                           {overviewChartTab === 'produtos' && 'Ranking dos itens com maior saída'}
+2101:                           {overviewChartTab === 'pagamentos' && 'Valores totais agrupados por forma de pagamento'}
+2102:                         </p>
+2103:                       </div>
+2104:                     </div>
+2105: 
+2106:                     {/* Seletor Compacto do Gráfico no estilo Foto 2 (sem scrollbar) */}
+2107:                     <div className="relative shrink-0" ref={overviewChartDropdownRef}>
+2108:                       <button
+2109:                         type="button"
+2110:                         onClick={() => setIsOverviewChartDropdownOpen(!isOverviewChartDropdownOpen)}
+2111:                         className="h-8 sm:h-9 px-3.5 bg-white border border-stone-200 hover:border-stone-300 rounded-full text-xs font-semibold text-stone-800 flex items-center gap-2 shadow-2xs transition-all cursor-pointer select-none active:scale-[0.98]"
+2112:                       >
+2113:                         <span className="text-xs shrink-0">
+2114:                           {overviewChartTab === 'faturamento' && '📈'}
+2115:                           {overviewChartTab === 'categorias' && '🏷️'}
+2116:                           {overviewChartTab === 'produtos' && '🏆'}
+2117:                           {overviewChartTab === 'pagamentos' && '💳'}
+2118:                         </span>
+2119:                         <span className="font-sans text-xs font-bold text-stone-900 truncate">
+2120:                           {overviewChartTab === 'faturamento' && 'Evolução do Faturamento'}
+2121:                           {overviewChartTab === 'categorias' && 'Vendas por Categoria'}
+2122:                           {overviewChartTab === 'produtos' && 'Top 5 Produtos'}
+2123:                           {overviewChartTab === 'pagamentos' && 'Formas de Pagamento'}
+2124:                         </span>
+2125:                         <ChevronDown size={14} className={`text-stone-400 transition-transform duration-200 shrink-0 ${isOverviewChartDropdownOpen ? 'rotate-180' : ''}`} />
+2126:                       </button>
+2127: 
+2128:                       {isOverviewChartDropdownOpen && (
+2129:                         <div className="absolute right-0 mt-1.5 w-64 bg-white rounded-2xl border border-stone-200 shadow-xl z-50 p-1.5 space-y-1 animate-in fade-in zoom-in-95 duration-150">
+2130:                           <div className="px-2.5 py-1 text-[10px] font-mono font-bold text-stone-400 uppercase tracking-wider border-b border-stone-100 mb-1">
+2131:                             Métricas do Gráfico
+2132:                           </div>
+2133:                           <button
+2134:                             type="button"
+2135:                             onClick={() => { setOverviewChartTab('faturamento'); setIsOverviewChartDropdownOpen(false); }}
+2136:                             className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${overviewChartTab === 'faturamento' ? 'bg-[#fdde58] text-stone-950 font-bold border border-[#d8ba39]' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+2137:                           >
+2138:                             <div className="flex items-center gap-2">
+2139:                               <span>📈</span>
+2140:                               <span>Evolução do Faturamento</span>
+2141:                             </div>
+2142:                             {overviewChartTab === 'faturamento' && <Check size={14} className="text-stone-950 stroke-[2.5]" />}
+2143:                           </button>
+2144: 
+2145:                           <button
+2146:                             type="button"
+2147:                             onClick={() => { setOverviewChartTab('categorias'); setIsOverviewChartDropdownOpen(false); }}
+2148:                             className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${overviewChartTab === 'categorias' ? 'bg-[#fdde58] text-stone-950 font-bold border border-[#d8ba39]' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+2149:                           >
+2150:                             <div className="flex items-center gap-2">
+2151:                               <span>🏷️</span>
+2152:                               <span>Vendas por Categoria</span>
+2153:                             </div>
+2154:                             {overviewChartTab === 'categorias' && <Check size={14} className="text-stone-950 stroke-[2.5]" />}
+2155:                           </button>
+2156: 
+2157:                           <button
+2158:                             type="button"
+2159:                             onClick={() => { setOverviewChartTab('produtos'); setIsOverviewChartDropdownOpen(false); }}
+2160:                             className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${overviewChartTab === 'produtos' ? 'bg-[#fdde58] text-stone-950 font-bold border border-[#d8ba39]' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+2161:                           >
+2162:                             <div className="flex items-center gap-2">
+2163:                               <span>🏆</span>
+2164:                               <span>Top 5 Produtos</span>
+2165:                             </div>
+2166:                             {overviewChartTab === 'produtos' && <Check size={14} className="text-stone-950 stroke-[2.5]" />}
+2167:                           </button>
+2168: 
+2169:                           <button
+2170:                             type="button"
+2171:                             onClick={() => { setOverviewChartTab('pagamentos'); setIsOverviewChartDropdownOpen(false); }}
+2172:                             className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all text-left cursor-pointer ${overviewChartTab === 'pagamentos' ? 'bg-[#fdde58] text-stone-950 font-bold border border-[#d8ba39]' : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'}`}
+2173:                           >
+2174:                             <div className="flex items-center gap-2">
+2175:                               <span>💳</span>
+2176:                               <span>Formas de Pagamento</span>
+2177:                             </div>
+2178:                             {overviewChartTab === 'pagamentos' && <Check size={14} className="text-stone-950 stroke-[2.5]" />}
+2179:                           </button>
+2180:                         </div>
+2181:                       )}
+2182:                     </div>
+2183:                   </div>
+2184: 
+2185:                   {/* Área do Gráfico Calibrada para Primeiro Plano (sem scroll) */}
+2186:                   <div className="h-[230px] sm:h-[245px] w-full pt-1">
+2187:                     {overviewChartTab === 'faturamento' && (
+2188:                       <ResponsiveContainer width="100%" height="100%">
+2189:                         <BarChart
+2190:                           data={salesData}
+2191:                           margin={{ top: 8, right: 8, left: -20, bottom: 0 }}
+2192:                         >
+2193:                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f1f4" />
+2194:                           <XAxis 
+2195:                             dataKey="name" 
+2196:                             axisLine={false} 
+2197:                             tickLine={false} 
+2198:                             tick={{ fill: '#71717a', fontSize: 10, fontWeight: 600, fontFamily: 'ui-monospace, monospace' }} 
+2199:                             dy={5}
+2200:                           />
+The above content does NOT show the entire file contents. If you need to view any lines of the file which were not shown to complete your task, call this tool again to view those lines.

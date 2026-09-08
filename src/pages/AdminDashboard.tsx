@@ -1619,6 +1619,16 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
+        
+        <div className="p-2 mt-auto border-t border-stone-800/80">
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-1.5 px-2 py-2 rounded font-bold text-rose-500 hover:text-rose-400 hover:bg-rose-950/40 transition-colors text-[11px] cursor-pointer"
+          >
+            <LogOut size={12} />
+            Sair do Sistema
+          </button>
+        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -1628,24 +1638,6 @@ export default function AdminDashboard() {
           : 'pt-2 md:pt-4 pb-8'
       }`}>
         
-        {/* Absolute Logout for Cockpit Views */}
-        {['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) && (
-          <div className="absolute top-4 right-4 md:right-8 z-50 flex items-center gap-2">
-            {adminLogoUrl && (
-              <>
-                <img src={adminLogoUrl} alt="Logo do restaurante" className="h-6 object-contain" />
-                <div className="w-px h-4 bg-stone-200" />
-              </>
-            )}
-            <button 
-              onClick={handleLogout} 
-              className="w-8 h-8 flex items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-colors shadow-2xs"
-              title="Sair do Sistema"
-            >
-              <LogOut size={14} />
-            </button>
-          </div>
-        )}
 
         <div className={`max-w-7xl mx-auto w-full ${
           ['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) 

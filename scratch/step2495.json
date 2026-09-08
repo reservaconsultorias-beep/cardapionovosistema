@@ -1,0 +1,37 @@
+{
+  "Description": "Restoring the lost CAFE category and search bar from previous agent changes",
+  "Instruction": "Add the 'CAFE' category back to categoriesUI. Add cardapioSearchTerm state. Add the search bar input inside the cardapio-digital tab, and filter itemsByCategory using the searchTerm.",
+  "ReplacementChunks": [
+    {
+      "AllowMultiple": false,
+      "EndLine": 169,
+      "ReplacementContent": "  const [printOrder, setPrintOrder] = useState<any>(null);\n  const [showPrintPreview, setShowPrintPreview] = useState(false);\n  const [cardapioSearchTerm, setCardapioSearchTerm] = useState(\"\");",
+      "StartLine": 168,
+      "TargetContent": "  const [printOrder, setPrintOrder] = useState<any>(null);\n  const [showPrintPreview, setShowPrintPreview] = useState(false);"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 912,
+      "ReplacementContent": "      id: \"bebidas\",\n      label: \"BEBIDAS\",\n      group: [\"bebidas\"],\n    },\n    {\n      id: \"cafe\",\n      label: \"CAFÉ ☕\",\n      group: [\"cafe\"],\n    },\n  ];",
+      "StartLine": 908,
+      "TargetContent": "      id: \"bebidas\",\n      label: \"BEBIDAS\",\n      group: [\"bebidas\"],\n    },\n  ];"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 2386,
+      "ReplacementContent": "        {/* Cardápio Digital Tab (Preview/Manage) */}\n        {activeTab === \"cardapio-digital\" && hasPermission('gerenciar_produtos') && (\n          <div className=\"space-y-4\">\n            <div className=\"flex flex-col sm:flex-row sm:items-center justify-between gap-4\">\n              <h2 className=\"text-[10.5px] font-mono font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5\">\n                <span className=\"w-1.5 h-1.5 rounded-full bg-rose-600\" /> Cardápio Online\n              </h2>\n              \n              {/* Search Bar */}\n              <div className=\"relative w-full sm:w-72\">\n                <Search size={16} className=\"absolute left-3 top-1/2 -translate-y-1/2 text-stone-400\" />\n                <input\n                  type=\"text\"\n                  placeholder=\"Buscar produto por nome...\"\n                  value={cardapioSearchTerm}\n                  onChange={(e) => setCardapioSearchTerm(e.target.value)}\n                  className=\"w-full pl-9 pr-3 py-2 bg-white border border-stone-200 rounded-xl text-sm focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 transition-colors shadow-2xs\"\n                />\n              </div>\n            </div>\n\n            <div className=\"space-y-6\">\n              {currentCategoriesUI.map((cat) => {\n                const categoryItems = (itemsByCategory[cat.id] || []).filter(item => \n                  item.name.toLowerCase().includes(cardapioSearchTerm.toLowerCase())\n                );\n                \n                if (categoryItems.length === 0) return null;",
+      "StartLine": 2372,
+      "TargetContent": "        {/* Cardápio Digital Tab (Preview/Manage) */}\n        {activeTab === \"cardapio-digital\" && hasPermission('gerenciar_produtos') && (\n          <div className=\"space-y-4\">\n            <h2 className=\"text-[10.5px] font-mono font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5\">\n              <span className=\"w-1.5 h-1.5 rounded-full bg-rose-600\" /> Cardápio Online\n            </h2>\n\n            <div className=\"space-y-6\">\n              {currentCategoriesUI.map((cat) => {\n                const categoryItems = itemsByCategory[cat.id] || [];\n                if (categoryItems.length === 0) return null;"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 2389,
+      "ReplacementContent": "                  <div key={cat.id} className=\"bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden\">\n                    <div className=\"bg-stone-50/80 px-4 py-3 border-b border-stone-200/80 flex items-center justify-between\">\n                      <h3 className=\"font-black text-stone-900 tracking-tight\">{cat.label}</h3>\n                      <span className=\"text-[11px] font-mono font-bold text-stone-500 bg-stone-200/50 px-2 py-0.5 rounded-md\">\n                        {categoryItems.length} {categoryItems.length === 1 ? 'item' : 'itens'}\n                      </span>\n                    </div>",
+      "StartLine": 2383,
+      "TargetContent": "                  <div key={cat.id} className=\"bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden\">\n                    <div className=\"bg-stone-50/80 px-4 py-3 border-b border-stone-200/80 flex items-center justify-between\">\n                      <h3 className=\"font-black text-stone-900 tracking-tight\">{cat.label}</h3>\n                      <span className=\"text-[11px] font-mono font-bold text-stone-500 bg-stone-200/50 px-2 py-0.5 rounded-md\">\n                        {categoryItems.length} {categoryItems.length === 1 ? 'item' : 'itens'}\n                      </span>\n                    </div>"
+    }
+  ],
+  "TargetFile": "c:\\Users\\herek\\OneDrive\\Área de Trabalho\\cardapio digital\\pizzaria-&-esfiharia-delivery (6)\\src\\pages\\AdminDashboard.tsx",
+  "toolAction": "Restoring lost changes to AdminDashboard.tsx",
+  "toolSummary": "Restore lost AdminDashboard changes"
+}

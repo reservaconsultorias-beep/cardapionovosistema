@@ -1,0 +1,142 @@
+{
+  "Description": "Reduce sidebar font size from 11px to 10px, button padding from py-1 to py-[3px], icon sizes from 14 to 13, and section spacing to eliminate scroll requirement in the sidebar navigation.",
+  "Instruction": "Reduce font sizes and vertical padding in the desktop sidebar to eliminate scrolling. Change text-[11px] to text-[10px], py-1 to py-[3px], reduce icon sizes from 14 to 13, and tighten spacing between sections.",
+  "ReplacementChunks": [
+    {
+      "AllowMultiple": false,
+      "EndLine": 1271,
+      "ReplacementContent": "        <div className=\"p-1 flex-1 space-y-px font-sans text-[10px] overflow-y-auto hide-scrollbar\">",
+      "StartLine": 1271,
+      "TargetContent": "        <div className=\"p-1.5 flex-1 space-y-0.5 font-sans text-[11px] overflow-y-auto hide-scrollbar\">"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1272,
+      "ReplacementContent": "          <p className=\"px-2 text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-px\">Operacional</p>",
+      "StartLine": 1272,
+      "TargetContent": "          <p className=\"px-2 text-[8.5px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-0.5\">Operacional</p>"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1279,
+      "ReplacementContent": "              className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'visao-geral' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <LayoutDashboard size={13} className={activeTab === 'visao-geral' ? 'text-stone-950' : 'text-stone-400'} />\n              Visão Geral",
+      "StartLine": 1276,
+      "TargetContent": "              className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'visao-geral' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <LayoutDashboard size={14} className={activeTab === 'visao-geral' ? 'text-stone-950' : 'text-stone-400'} />\n              Visão Geral"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1288,
+      "ReplacementContent": "              className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'pedidos' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <ShoppingBag size={13} className={activeTab === 'pedidos' ? 'text-stone-950' : 'text-stone-400'} />\n              Pedidos",
+      "StartLine": 1285,
+      "TargetContent": "              className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'pedidos' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <ShoppingBag size={14} className={activeTab === 'pedidos' ? 'text-stone-950' : 'text-stone-400'} />\n              Pedidos"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1297,
+      "ReplacementContent": "              className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'caixa' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <CreditCard size={13} className={activeTab === 'caixa' ? 'text-stone-950' : 'text-stone-400'} />\n              Caixa",
+      "StartLine": 1294,
+      "TargetContent": "              className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'caixa' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <CreditCard size={14} className={activeTab === 'caixa' ? 'text-stone-950' : 'text-stone-400'} />\n              Caixa"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1306,
+      "ReplacementContent": "              className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'despesas' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <TrendingDown size={13} className={activeTab === 'despesas' ? 'text-stone-950' : 'text-stone-400'} />\n              Despesas",
+      "StartLine": 1303,
+      "TargetContent": "              className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'despesas' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <TrendingDown size={14} className={activeTab === 'despesas' ? 'text-stone-950' : 'text-stone-400'} />\n              Despesas"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1315,
+      "ReplacementContent": "              className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'relatorios' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <BarChart3 size={13} className={activeTab === 'relatorios' ? 'text-stone-950' : 'text-stone-400'} />\n              Relatórios",
+      "StartLine": 1312,
+      "TargetContent": "              className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'relatorios' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <BarChart3 size={14} className={activeTab === 'relatorios' ? 'text-stone-950' : 'text-stone-400'} />\n              Relatórios"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1324,
+      "ReplacementContent": "              className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'funil' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <Filter size={13} className={activeTab === 'funil' ? 'text-stone-950' : 'text-stone-400'} />\n              Funil de Vendas",
+      "StartLine": 1321,
+      "TargetContent": "              className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'funil' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <Filter size={14} className={activeTab === 'funil' ? 'text-stone-950' : 'text-stone-400'} />\n              Funil de Vendas"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1333,
+      "ReplacementContent": "              className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'clientes' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <Users size={13} className={activeTab === 'clientes' ? 'text-stone-950' : 'text-stone-400'} />\n              Clientes",
+      "StartLine": 1330,
+      "TargetContent": "              className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'clientes' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n            >\n              <Users size={14} className={activeTab === 'clientes' ? 'text-stone-950' : 'text-stone-400'} />\n              Clientes"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1339,
+      "ReplacementContent": "            <div className=\"pt-0.5 mt-0.5 border-t border-stone-800/80 space-y-px\">\n              <p className=\"px-2 text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-px\">Atendente I.A.</p>",
+      "StartLine": 1338,
+      "TargetContent": "            <div className=\"pt-1 mt-1 border-t border-stone-800/80 space-y-0.5\">\n              <p className=\"px-2 text-[8.5px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-0.5\">Atendente I.A.</p>"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1345,
+      "ReplacementContent": "                className={`w-full flex items-center justify-between px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'agente-ia' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n              >\n                <div className=\"flex items-center gap-1.5\">\n                  <Bot size={13} className={activeTab === 'agente-ia' ? 'text-stone-950' : 'text-stone-400'} />",
+      "StartLine": 1342,
+      "TargetContent": "                className={`w-full flex items-center justify-between px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'agente-ia' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n              >\n                <div className=\"flex items-center gap-2\">\n                  <Bot size={14} className={activeTab === 'agente-ia' ? 'text-stone-950' : 'text-stone-400'} />"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1357,
+      "ReplacementContent": "            <div className=\"pt-0.5 mt-0.5 border-t border-stone-800/80 space-y-px\">\n              <p className=\"px-2 text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-px\">Cardápio</p>",
+      "StartLine": 1356,
+      "TargetContent": "            <div className=\"pt-1 mt-1 border-t border-stone-800/80 space-y-0.5\">\n              <p className=\"px-2 text-[8.5px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-0.5\">Cardápio</p>"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1363,
+      "ReplacementContent": "                className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'cardapio-digital' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n              >\n                <UtensilsCrossed size={13} className={activeTab === 'cardapio-digital' ? 'text-stone-950' : 'text-stone-400'} />\n                Cardápio Digital",
+      "StartLine": 1360,
+      "TargetContent": "                className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'cardapio-digital' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n              >\n                <UtensilsCrossed size={14} className={activeTab === 'cardapio-digital' ? 'text-stone-950' : 'text-stone-400'} />\n                Cardápio Digital"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1371,
+      "ReplacementContent": "                  className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'gestao-cardapio' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n                >\n                  <Package size={13} className={activeTab === 'gestao-cardapio' ? 'text-stone-950' : 'text-stone-400'} />\n                  Produtos",
+      "StartLine": 1368,
+      "TargetContent": "                  className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'gestao-cardapio' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n                >\n                  <Package size={14} className={activeTab === 'gestao-cardapio' ? 'text-stone-950' : 'text-stone-400'} />\n                  Produtos"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1380,
+      "ReplacementContent": "                  className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'categorias' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n                >\n                  <FolderTree size={13} className={activeTab === 'categorias' ? 'text-stone-950' : 'text-stone-400'} />\n                  Categorias",
+      "StartLine": 1377,
+      "TargetContent": "                  className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'categorias' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n                >\n                  <FolderTree size={14} className={activeTab === 'categorias' ? 'text-stone-950' : 'text-stone-400'} />\n                  Categorias"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1388,
+      "ReplacementContent": "                className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'banner-promocional' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n              >\n                <Megaphone size={13} className={activeTab === 'banner-promocional' ? 'text-stone-950' : 'text-stone-400'} />\n                Banner Promocional",
+      "StartLine": 1385,
+      "TargetContent": "                className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'banner-promocional' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}\n              >\n                <Megaphone size={14} className={activeTab === 'banner-promocional' ? 'text-stone-950' : 'text-stone-400'} />\n                Banner Promocional"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1395,
+      "ReplacementContent": "            <div className=\"pt-0.5 mt-0.5 border-t border-stone-800/80 space-y-px\">\n              <p className=\"px-2 text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-px\">Sistema</p>",
+      "StartLine": 1394,
+      "TargetContent": "            <div className=\"pt-1 mt-1 border-t border-stone-800/80 space-y-0.5\">\n              <p className=\"px-2 text-[8.5px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-0.5\">Sistema</p>"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1402,
+      "ReplacementContent": "                  className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'configuracoes' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}\n                >\n                  <Settings size={13} className={activeTab === 'configuracoes' ? 'text-stone-950' : 'text-stone-500'} />\n                  Configurações",
+      "StartLine": 1399,
+      "TargetContent": "                  className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'configuracoes' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}\n                >\n                  <Settings size={14} className={activeTab === 'configuracoes' ? 'text-stone-950' : 'text-stone-500'} />\n                  Configurações"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1411,
+      "ReplacementContent": "                  className={`w-full flex items-center gap-1.5 px-2 py-[3px] rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'usuarios' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}\n                >\n                  <Shield size={13} className={activeTab === 'usuarios' ? 'text-stone-950' : 'text-stone-500'} />\n                  Usuários & Acesso",
+      "StartLine": 1408,
+      "TargetContent": "                  className={`w-full flex items-center gap-2 px-2 py-1 rounded-md font-medium transition-colors cursor-pointer ${activeTab === 'usuarios' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}\n                >\n                  <Shield size={14} className={activeTab === 'usuarios' ? 'text-stone-950' : 'text-stone-500'} />\n                  Usuários & Acesso"
+    }
+  ],
+  "TargetFile": "c:\\Users\\herek\\OneDrive\\Área de Trabalho\\cardapio digital\\pizzaria-&-esfiharia-delivery (6)\\src\\pages\\AdminDashboard.tsx",
+  "toolAction": "Reducing sidebar font sizes",
+  "toolSummary": "Sidebar compaction edit"
+}

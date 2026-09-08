@@ -1,0 +1,86 @@
+{
+  "Description": "Applying Motion Design skill to the Relatorios tab",
+  "Instruction": "Add framer-motion import, modify ReportCard to use motion.button with Corporate archetype properties (ease: [0.2,0,0,1], duration: 0.3, stagger delays). Add customDelay prop to ReportCard. Add motion tags to titles and containers in the RELATORIOS tab with proper staggering.",
+  "ReplacementChunks": [
+    {
+      "AllowMultiple": false,
+      "EndLine": 1,
+      "ReplacementContent": "import React, { useState, useEffect, useRef } from \"react\";\nimport { motion } from \"framer-motion\";",
+      "StartLine": 1,
+      "TargetContent": "import React, { useState, useEffect, useRef } from \"react\";"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1796,
+      "ReplacementContent": "        {/* Relatórios Tab */}\n        {activeTab === \"relatorios\" && (\n          <div className=\"mt-1 space-y-2.5\">\n            {/* Filtro de Tempo Compacto Padronizado */}\n            <motion.div \n              initial={{ opacity: 0, y: -10 }}\n              animate={{ opacity: 1, y: 0 }}\n              transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}\n              className=\"bg-white rounded-xl border border-stone-200/90 shadow-2xs px-3 py-1.5\"\n            >",
+      "StartLine": 1792,
+      "TargetContent": "        {/* Relatórios Tab */}\n        {activeTab === \"relatorios\" && (\n          <div className=\"mt-1 space-y-2.5\">\n            {/* Filtro de Tempo Compacto Padronizado */}\n            <div className=\"bg-white rounded-xl border border-stone-200/90 shadow-2xs px-3 py-1.5\">"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1839,
+      "ReplacementContent": "              </div>\n            </motion.div>\n\n            {/* Relatórios Financeiros & Faturamento */}\n            <div>\n              <motion.h2 \n                initial={{ opacity: 0, x: -10 }}\n                animate={{ opacity: 1, x: 0 }}\n                transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}\n                className=\"text-[10.5px] font-mono font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5 mb-1.5\"\n              >\n                <span className=\"w-1.5 h-1.5 rounded-full bg-amber-400\" /> Relatórios Financeiros & Faturamento\n              </motion.h2>\n              <div className=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5\">\n                <ReportCard\n                  customDelay={0.05}",
+      "StartLine": 1835,
+      "TargetContent": "              </div>\n            </div>\n\n            {/* Relatórios Financeiros & Faturamento */}\n            <div>\n              <h2 className=\"text-[10.5px] font-mono font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5 mb-1.5\">\n                <span className=\"w-1.5 h-1.5 rounded-full bg-amber-400\" /> Relatórios Financeiros & Faturamento\n              </h2>\n              <div className=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5\">\n                <ReportCard"
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1846,
+      "ReplacementContent": "                  subtitle=\"Entradas, Saídas e Lucro\"\n                />\n                <ReportCard\n                  customDelay={0.10}\n                  title=\"Faturamento Geral\"",
+      "StartLine": 1845,
+      "TargetContent": "                  subtitle=\"Entradas, Saídas e Lucro\"\n                />\n                <ReportCard\n                  title=\"Faturamento Geral\""
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1853,
+      "ReplacementContent": "                  subtitle=\"Vendas por dia e pedidos\"\n                />\n                <ReportCard\n                  customDelay={0.15}\n                  title=\"Pedidos no período\"",
+      "StartLine": 1852,
+      "TargetContent": "                  subtitle=\"Vendas por dia e pedidos\"\n                />\n                <ReportCard\n                  title=\"Pedidos no período\""
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1860,
+      "ReplacementContent": "                  subtitle=\"Lista completa de vendas\"\n                />\n                <ReportCard\n                  customDelay={0.20}\n                  title=\"Ticket Médio\"",
+      "StartLine": 1859,
+      "TargetContent": "                  subtitle=\"Lista completa de vendas\"\n                />\n                <ReportCard\n                  title=\"Ticket Médio\""
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1871,
+      "ReplacementContent": "            {/* Vendas por Canal, Produtos & Operação */}\n            <div>\n              <motion.h2 \n                initial={{ opacity: 0, x: -10 }}\n                animate={{ opacity: 1, x: 0 }}\n                transition={{ duration: 0.3, delay: 0.1, ease: [0.2, 0, 0, 1] }}\n                className=\"text-[10.5px] font-mono font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5 mb-1.5\"\n              >\n                <span className=\"w-1.5 h-1.5 rounded-full bg-amber-400\" /> Vendas por Canal, Produtos & Operação\n              </motion.h2>\n              <div className=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5\">\n                <ReportCard\n                  customDelay={0.15}\n                  title=\"Vendas de produtos\"",
+      "StartLine": 1867,
+      "TargetContent": "            {/* Vendas por Canal, Produtos & Operação */}\n            <div>\n              <h2 className=\"text-[10.5px] font-mono font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5 mb-1.5\">\n                <span className=\"w-1.5 h-1.5 rounded-full bg-amber-400\" /> Vendas por Canal, Produtos & Operação\n              </h2>\n              <div className=\"grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5\">\n                <ReportCard\n                  title=\"Vendas de produtos\""
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1878,
+      "ReplacementContent": "                  subtitle=\"Detalhamento por item\"\n                />\n                <ReportCard\n                  customDelay={0.20}\n                  title=\"Vendas de complementos\"",
+      "StartLine": 1877,
+      "TargetContent": "                  subtitle=\"Detalhamento por item\"\n                />\n                <ReportCard\n                  title=\"Vendas de complementos\""
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1885,
+      "ReplacementContent": "                  subtitle=\"Bordas e extras\"\n                />\n                <ReportCard\n                  customDelay={0.25}\n                  title=\"Formas de Pagamento\"",
+      "StartLine": 1884,
+      "TargetContent": "                  subtitle=\"Bordas e extras\"\n                />\n                <ReportCard\n                  title=\"Formas de Pagamento\""
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 1892,
+      "ReplacementContent": "                  subtitle=\"PIX, Cartão e Dinheiro\"\n                />\n                <ReportCard\n                  customDelay={0.30}\n                  title=\"Canais de Venda\"",
+      "StartLine": 1891,
+      "TargetContent": "                  subtitle=\"PIX, Cartão e Dinheiro\"\n                />\n                <ReportCard\n                  title=\"Canais de Venda\""
+    },
+    {
+      "AllowMultiple": false,
+      "EndLine": 3030,
+      "ReplacementContent": "function ReportCard({ \n  title, \n  value, \n  icon, \n  iconBg = 'bg-stone-100 text-stone-700 border-stone-200/80',\n  onClick,\n  subtitle,\n  customDelay = 0\n}: { \n  title: string; \n  value: string; \n  icon: React.ReactNode; \n  iconBg?: string;\n  onClick: () => void;\n  subtitle?: string;\n  customDelay?: number;\n}) {\n  return (\n    <motion.button\n      initial={{ opacity: 0, y: 10 }}\n      animate={{ opacity: 1, y: 0 }}\n      transition={{ \n        duration: 0.3, \n        delay: customDelay, \n        ease: [0.2, 0, 0, 1] \n      }}\n      whileHover={{ scale: 0.98, transition: { duration: 0.1 } }}\n      whileTap={{ scale: 0.95, transition: { duration: 0.1 } }}\n      onClick={onClick}\n      className=\"bg-white px-3 py-2 rounded-xl border border-stone-200/90 hover:border-amber-400/80 hover:bg-amber-50/15 transition-all cursor-pointer flex items-center justify-between text-left w-full group shadow-2xs hover:shadow-xs relative h-[52px]\"\n    >\n      <div className=\"flex items-center gap-2.5 min-w-0 pr-2\">\n        <div className={`w-8 h-8 rounded-lg ${iconBg} border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform`}>\n          {icon}\n        </div>\n        <div className=\"min-w-0\">\n          <p className=\"text-[10px] font-mono font-bold uppercase tracking-wider text-stone-500 truncate leading-tight\">{title}</p>\n          {value ? (\n            <p className=\"text-sm font-black font-mono tabular-nums text-stone-900 tracking-tight leading-tight mt-0.5 truncate\">{value}</p>\n          ) : (\n            <p className=\"text-[10.5px] font-medium text-stone-600 truncate leading-tight mt-0.5\">{subtitle || 'Ver detalhes'}</p>\n          )}\n        </div>\n      </div>\n      <ArrowDownRight className=\"w-3.5 h-3.5 text-stone-400 group-hover:text-stone-900 group-hover:translate-x-0.5 group-hover:translate-y-0.5 transition-all shrink-0\" />\n    </motion.button>\n  );\n}",
+      "StartLine": 2995,
+      "TargetContent": "function ReportCard({ \n  title, \n  value, \n  icon, \n  iconBg = 'bg-stone-100 text-stone-700 border-stone-200/80',\n  onClick,\n  subtitle\n}: { \n  title: string; \n  value: string; \n  icon: React.ReactNode; \n  iconBg?: string;\n  onClick: () => void;\n  subtitle?: string;\n}) {\n  return (\n    <button\n      onClick={onClick}\n      className=\"bg-white px-3 py-2 rounded-xl border border-stone-200/90 hover:border-amber-400/80 hover:bg-amber-50/15 transition-all cursor-pointer flex items-center justify-between text-left w-full group shadow-2xs hover:shadow-xs relative h-[52px]\"\n    >\n      <div className=\"flex items-center gap-2.5 min-w-0 pr-2\">\n        <div className={`w-8 h-8 rounded-lg ${iconBg} border flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform`}>\n          {icon}\n        </div>\n        <div className=\"min-w-0\">\n          <p className=\"text-[10px] font-mono font-bold uppercase tracking-wider text-stone-500 truncate leading-tight\">{title}</p>\n          {value ? (\n            <p className=\"text-sm font-black font-mono tabular-nums text-stone-900 tracking-tight leading-tight mt-0.5 truncate\">{value}</p>\n          ) : (\n            <p className=\"text-[10.5px] font-medium text-stone-600 truncate leading-tight mt-0.5\">{subtitle || 'Ver detalhes'}</p>\n          )}\n        </div>\n      </div>\n      <ArrowDownRight className=\"w-3.5 h-3.5 text-stone-400 group-hover:text-stone-900 group-hover:translate-x-0.5 group-hover:translate-y-0.5 transition-all shrink-0\" />\n    </button>\n  );\n}"
+    }
+  ],
+  "TargetFile": "c:\\Users\\herek\\OneDrive\\Área de Trabalho\\cardapio digital\\pizzaria-&-esfiharia-delivery (6)\\src\\pages\\AdminDashboard.tsx",
+  "toolAction": "Applying motion to Relatorios tab",
+  "toolSummary": "Reapply motion skill"
+}
