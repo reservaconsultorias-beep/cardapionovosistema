@@ -182,7 +182,7 @@ export const menuDoDia: MenuItem[] = [
   {id: 'b-5',name: 'Guaraná Antártica (Lata)',ingredients: 'Refrigerante em lata.',priceSingle: 2.00,category: 'bebidas', imageUrl: '/guaranaantarticalata.png'},
   {id: 'b-6',name: 'Sumol Laranja (Lata)',ingredients: 'Refrigerante em lata.',priceSingle: 2.00,category: 'bebidas', imageUrl: '/sumollaranjalata.png'},
   {id: 'b-7',name: 'Ice Tea Pêssego (Lata)',ingredients: 'Ice tea em lata.',priceSingle: 2.00,category: 'bebidas', imageUrl: '/iceteapessegolata.png'},
-  {id: 'b-8',name: 'Água',ingredients: 'Água mineral.',priceSingle: 1.50,category: 'bebidas', imageUrl: '/agua.png'},
+  {id: 'b-8',name: 'Água',ingredients: 'Água mineral.',priceSingle: 1.60,category: 'bebidas', imageUrl: '/agua.png'},
   {id: 'b-9',name: 'Coca-Cola (Garrafa 1 litro) Normal',ingredients: 'Refrigerante em garrafa.',priceSingle: 3.00,category: 'bebidas', imageUrl: '/cocacolagarrafa1litronormalezero.png'},
   {id: 'b-12',name: 'Coca-Cola (Garrafa 1 litro) Zero',ingredients: 'Refrigerante em garrafa zero açúcar.',priceSingle: 3.00,category: 'bebidas', imageUrl: '/cocacolagarrafa1litronormalezero.png'},
   {id: 'b-10',name: 'Cerveja Sagres',ingredients: 'Cerveja.',priceSingle: 3.00,category: 'bebidas', imageUrl: '/cervejasagres.png'},

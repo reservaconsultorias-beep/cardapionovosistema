@@ -222,11 +222,11 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
       <div className="bg-[#111110] rounded-none sm:rounded-xl w-full h-full sm:h-auto sm:max-w-[1400px] sm:max-h-[98vh] flex flex-col shadow-2xl border-0 sm:border border-stone-800 relative overflow-hidden">
         
         {/* CABEÇALHO ULTRA DENSO (BOLDER) */}
-        <div className="px-4 py-3 bg-[#0a0a09] border-b border-stone-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shrink-0">
+        <div className="px-4 py-2 bg-[#0a0a09] border-b border-stone-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0">
           <div className="flex items-center gap-3">
             <span className={`w-2 h-2 rounded-full ${session.status === 'fechado' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
             <h2 className="font-mono font-bold text-white text-lg tracking-tight flex items-center gap-2">
-              FECHAMENTO <span className="text-stone-500">#{String(session.id).slice(0, 8)}</span>
+              FECHAMENTO
             </h2>
             <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase border ${
               session.status === 'fechado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
@@ -248,7 +248,7 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
 
         {/* ESTATÍSTICAS INLINE NO TOPO */}
         {activeTab === 'balanco' && (
-          <div className="px-4 py-2.5 bg-stone-900/50 border-b border-stone-800 flex items-center justify-between gap-4 shrink-0 overflow-x-auto no-scrollbar">
+          <div className="px-4 py-1.5 bg-stone-900/50 border-b border-stone-800 flex items-center justify-between gap-4 shrink-0 overflow-x-auto no-scrollbar">
             <div className="flex gap-6 min-w-max">
               <div className="flex flex-col">
                 <span className="text-[10px] font-mono text-stone-500 uppercase">Faturamento Bruto</span>
@@ -286,12 +286,12 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
             /* ========================================================= */
             /* ABA 1: BALANÇO & CONFERÊNCIA FINANCEIRA (GRID HORIZONTAL ZERO SCROLL) */
             /* ========================================================= */
-            <div className="p-3 sm:p-4 grid grid-cols-1 lg:grid-cols-3 gap-3 h-full items-start">
+            <div className="p-2 sm:p-3 grid grid-cols-1 lg:grid-cols-3 gap-2 h-full items-start">
               
               {/* COLUNA 1: CANAIS */}
-              <div className="bg-stone-900 border border-stone-800 rounded-lg p-3 lg:h-full flex flex-col">
-                <h3 className="font-mono text-[10px] text-stone-500 uppercase tracking-widest mb-3 border-b border-stone-800 pb-2 flex items-center gap-1.5"><Sparkles size={12} className="text-[#fdde58]" /> Canais de Atendimento</h3>
-                <div className="space-y-2 flex-1">
+              <div className="bg-stone-900 border border-stone-800 rounded-lg p-2 lg:h-full flex flex-col">
+                <h3 className="font-mono text-[10px] text-stone-500 uppercase tracking-widest mb-2 border-b border-stone-800 pb-1.5 flex items-center gap-1.5"><Sparkles size={12} className="text-[#fdde58]" /> Canais de Atendimento</h3>
+                <div className="space-y-1.5 flex-1">
                   
                   {/* Entrega */}
                   <div className="p-2.5 rounded bg-black/40 border border-stone-800/60">
@@ -333,12 +333,12 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
               </div>
 
               {/* COLUNA 2: PAGAMENTOS E MOVS */}
-              <div className="bg-stone-900 border border-stone-800 rounded-lg p-3 lg:h-full flex flex-col gap-3">
+              <div className="bg-stone-900 border border-stone-800 rounded-lg p-2 lg:h-full flex flex-col gap-2">
                 
                 {/* Pagamentos */}
                 <div>
-                  <h3 className="font-mono text-[10px] text-stone-500 uppercase tracking-widest mb-3 border-b border-stone-800 pb-2 flex items-center gap-1.5"><CreditCard size={12} /> Recebimentos</h3>
-                  <div className="space-y-2.5">
+                  <h3 className="font-mono text-[10px] text-stone-500 uppercase tracking-widest mb-2 border-b border-stone-800 pb-1.5 flex items-center gap-1.5"><CreditCard size={12} /> Recebimentos</h3>
+                  <div className="space-y-2">
                     {Object.entries(summary.paymentTotals).map(([pm, val]: any) => {
                       const pct = summary.totalRevenue > 0 ? (val / summary.totalRevenue) * 100 : 0;
                       return (
@@ -357,9 +357,9 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                 </div>
 
                 {/* Movimentações */}
-                <div className="flex-1 mt-2 border-t border-stone-800 pt-3">
-                  <h3 className="font-mono text-[10px] text-stone-500 uppercase tracking-widest mb-3 border-b border-stone-800 pb-2">Movimentações Avulsas</h3>
-                  <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="flex-1 mt-1 border-t border-stone-800 pt-2">
+                  <h3 className="font-mono text-[10px] text-stone-500 uppercase tracking-widest mb-2 border-b border-stone-800 pb-1.5">Movimentações Avulsas</h3>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
                     <div className="bg-emerald-950/30 border border-emerald-900/50 p-2 rounded">
                       <span className="text-[9px] font-mono text-emerald-500 block">SUPRIMENTOS</span>
                       <span className="text-emerald-400 font-mono font-bold">+ €{summary.suprimentosTotal.toFixed(2)}</span>
@@ -382,30 +382,30 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
               </div>
 
               {/* COLUNA 3: AUDITORIA GAVETA */}
-              <div className="bg-[#1a1a18] border border-[#fdde58]/20 rounded-lg p-3 lg:h-full flex flex-col shadow-[inset_0_0_20px_rgba(253,222,88,0.02)]">
-                <div className="flex items-center justify-between border-b border-stone-800 pb-2 mb-3">
+              <div className="bg-[#1a1a18] border border-[#fdde58]/20 rounded-lg p-2 lg:h-full flex flex-col shadow-[inset_0_0_20px_rgba(253,222,88,0.02)]">
+                <div className="flex items-center justify-between border-b border-stone-800 pb-1.5 mb-2">
                   <h3 className="font-mono text-[10px] text-[#fdde58] uppercase tracking-widest flex items-center gap-1.5"><Wallet size={12} /> Auditoria da Gaveta</h3>
                   <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase border ${summary.difference === 0 ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-rose-400 border-rose-500/30 bg-rose-500/10'}`}>
                     {summary.difference === 0 ? 'EXATA' : summary.difference < 0 ? `FALTA €${Math.abs(summary.difference).toFixed(2)}` : `SOBRA €${summary.difference.toFixed(2)}`}
                   </span>
                 </div>
 
-                <div className="space-y-1.5 mb-4">
-                  <div className="flex justify-between items-center p-2 rounded bg-stone-900/80 border border-stone-800/50">
+                <div className="space-y-1 mb-2">
+                  <div className="flex justify-between items-center p-1.5 rounded bg-stone-900/80 border border-stone-800/50">
                     <span className="text-[10px] font-mono text-stone-400">FUNDO ABERTURA</span>
                     <span className="font-mono text-sm text-stone-200">€ {summary.fundoInicial.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-center p-2 rounded bg-stone-900/80 border border-stone-800/50">
+                  <div className="flex justify-between items-center p-1.5 rounded bg-stone-900/80 border border-stone-800/50">
                     <span className="text-[10px] font-mono text-stone-400">(+) DINHEIRO VENDAS</span>
                     <span className="font-mono text-sm text-emerald-400">+ € {summary.totalDinheiro.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-center p-2 rounded bg-stone-900/80 border border-stone-800/50">
+                  <div className="flex justify-between items-center p-1.5 rounded bg-stone-900/80 border border-stone-800/50">
                     <span className="text-[10px] font-mono text-stone-400">(+/-) MOVS MANUAIS</span>
                     <span className={`font-mono text-sm ${summary.netManualMovements >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {summary.netManualMovements >= 0 ? '+' : ''}€ {summary.netManualMovements.toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center p-2.5 rounded bg-[#fdde58]/10 border border-[#fdde58]/30 mt-2 shadow-[0_0_15px_rgba(253,222,88,0.05)]">
+                  <div className="flex justify-between items-center p-2 rounded bg-[#fdde58]/10 border border-[#fdde58]/30 mt-1 shadow-[0_0_15px_rgba(253,222,88,0.05)]">
                     <span className="text-[10px] font-mono text-[#fdde58] font-bold">(=) SALDO ESPERADO</span>
                     <span className="font-mono text-base font-bold text-[#fdde58]">€ {summary.expectedCash.toFixed(2)}</span>
                   </div>
@@ -417,7 +417,7 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                       <span className="text-[10px] font-mono text-stone-500">VALOR CONTADO:</span>
                       <span className="font-mono text-sm font-bold text-white bg-stone-800 px-2 py-0.5 rounded border border-stone-700">€ {summary.countedCash.toFixed(2)}</span>
                     </div>
-                    <div className={`flex justify-between items-center p-2.5 rounded ${summary.difference === 0 ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/50' : 'bg-rose-950/40 text-rose-400 border border-rose-900/50'}`}>
+                    <div className={`flex justify-between items-center p-2 rounded ${summary.difference === 0 ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/50' : 'bg-rose-950/40 text-rose-400 border border-rose-900/50'}`}>
                       <span className="text-[11px] font-mono font-bold uppercase">Diferença:</span>
                       <span className="font-mono text-lg font-black">{summary.difference >= 0 ? '+' : ''}€ {summary.difference.toFixed(2)}</span>
                     </div>
@@ -433,10 +433,10 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
             /* ========================================================= */
             /* ABA 2: LISTA DE PEDIDOS DO TURNO (COCKPIT DE AUDITORIA) */
             /* ========================================================= */
-            <div className="space-y-4">
+            <div className="space-y-2">
               
               {/* Barra de Controles & Busca Rápida */}
-              <div className="bg-white rounded-2xl border border-stone-200/80 p-3 sm:p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+              <div className="bg-white rounded-2xl border border-stone-200/80 p-2 sm:p-3 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2">
                 
                 {/* Segmented Filter Pills */}
                 <div className="inline-flex bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-mono overflow-x-auto">
@@ -526,15 +526,15 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                           {/* Linha Resumida */}
                           <div 
                             onClick={() => toggleExpandOrder(order.id)}
-                            className="p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none"
+                            className="p-2 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer select-none"
                           >
                             <div className="flex items-start sm:items-center gap-3.5 min-w-0">
                               
                               {/* ID & Badge do Canal */}
                               <div className="shrink-0 text-left font-mono">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="font-black text-sm text-stone-950">#{order.id}</span>
-                                  <span className={`text-[9.5px] font-bold px-2 py-0.5 rounded-md border uppercase tracking-wider ${
+                                  <span className="font-black text-xs text-stone-950">#{order.id}</span>
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border uppercase tracking-wider ${
                                     normType === 'entrega' 
                                       ? 'bg-amber-50 text-amber-800 border-amber-300' 
                                       : normType === 'mesa'
@@ -544,7 +544,7 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                                     {normType === 'entrega' ? 'Entrega' : normType === 'mesa' ? 'Mesa' : 'Retirada'}
                                   </span>
                                 </div>
-                                <div className="text-[11px] text-stone-400 flex items-center gap-1 mt-0.5">
+                                <div className="text-[10px] text-stone-400 flex items-center gap-1 mt-0.5">
                                   <Clock size={11} />
                                   <span>{format(orderDate, 'HH:mm')}</span>
                                 </div>
@@ -553,17 +553,17 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                               {/* Dados do Cliente e Resumo de Itens */}
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
-                                  <span className="font-bold text-xs sm:text-sm text-stone-900 truncate">
+                                  <span className="font-bold text-xs text-stone-900 truncate">
                                     {order.customer_name || order.customerName || 'Cliente Balcão'}
                                   </span>
                                   {(order.customer_phone || order.customerPhone) && (
-                                    <span className="text-[11px] font-mono text-stone-500 hidden md:inline">
+                                    <span className="text-[10px] font-mono text-stone-500 hidden md:inline">
                                       • {order.customer_phone || order.customerPhone}
                                     </span>
                                   )}
                                 </div>
 
-                                <div className="text-[11px] text-stone-500 truncate mt-0.5">
+                                <div className="text-[10px] text-stone-500 truncate mt-0.5">
                                   {items.length > 0 ? (
                                     items.map((it: any) => `${it.quantity || 1}x ${it.name}`).join(', ')
                                   ) : (
@@ -575,12 +575,12 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                             </div>
 
                             {/* Forma de Pagamento, Valor e Ações */}
-                            <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-stone-100">
-                              <span className="text-[11px] font-mono font-semibold px-2.5 py-0.5 rounded-lg bg-stone-100 text-stone-700 border border-stone-200">
+                            <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-stone-100">
+                              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-lg bg-stone-100 text-stone-700 border border-stone-200">
                                 {normPayment}
                               </span>
 
-                              <span className="font-mono font-semibold text-sm text-stone-950 tabular-nums">
+                              <span className="font-mono font-semibold text-xs text-stone-950 tabular-nums">
                                 € {totalAmt.toFixed(2)}
                               </span>
 
@@ -611,12 +611,12 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
 
                           {/* Bloco Expandido: Todos os detalhes do pedido */}
                           {isExpanded && (
-                            <div className="p-4 sm:p-5 bg-stone-100/60 border-t border-stone-200 text-xs space-y-4 animate-in fade-in duration-150">
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="p-2 sm:p-3 bg-stone-100/60 border-t border-stone-200 text-xs space-y-2 animate-in fade-in duration-150">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 
                                 {/* Informações do Cliente & Entrega */}
-                                <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-2.5 shadow-2xs">
-                                  <div className="font-bold text-stone-800 text-[11px] uppercase tracking-wider font-mono border-b border-stone-100 pb-2 flex items-center gap-1.5">
+                                <div className="bg-white p-2 rounded-xl border border-stone-200 space-y-1.5 shadow-2xs">
+                                  <div className="font-bold text-stone-800 text-[10px] uppercase tracking-wider font-mono border-b border-stone-100 pb-1.5 flex items-center gap-1.5">
                                     <User size={13} className="text-amber-600" /> Dados do Cliente & Operação
                                   </div>
                                   
@@ -664,8 +664,8 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                                 </div>
 
                                 {/* Informações Financeiras do Pedido */}
-                                <div className="bg-white p-4 rounded-xl border border-stone-200 space-y-2.5 shadow-2xs">
-                                  <div className="font-bold text-stone-800 text-[11px] uppercase tracking-wider font-mono border-b border-stone-100 pb-2 flex items-center gap-1.5">
+                                <div className="bg-white p-2 rounded-xl border border-stone-200 space-y-1.5 shadow-2xs">
+                                  <div className="font-bold text-stone-800 text-[10px] uppercase tracking-wider font-mono border-b border-stone-100 pb-1.5 flex items-center gap-1.5">
                                     <CreditCard size={13} className="text-emerald-600" /> Dados Financeiros do Pedido
                                   </div>
 
@@ -689,12 +689,12 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                                     </div>
                                   )}
 
-                                  <div className="pt-2 border-t border-stone-100 space-y-1">
-                                    <div className="flex justify-between text-stone-500 font-mono text-[11px]">
+                                  <div className="pt-1 border-t border-stone-100 space-y-0.5">
+                                    <div className="flex justify-between text-stone-500 font-mono text-[10px]">
                                       <span>Data e Hora:</span>
-                                      <span>{format(orderDate, "dd/MM/yyyy 'às' HH:mm:ss")}</span>
+                                      <span>{format(orderDate, "dd/MM/yyyy 'às' HH:mm")}</span>
                                     </div>
-                                    <div className="flex justify-between text-stone-900 font-mono font-bold text-sm pt-1 border-t border-dashed border-stone-200">
+                                    <div className="flex justify-between text-stone-900 font-mono font-bold text-xs pt-1 border-t border-dashed border-stone-200">
                                       <span>Total Pago:</span>
                                       <span className="text-emerald-700">€ {totalAmt.toFixed(2)}</span>
                                     </div>
@@ -704,7 +704,7 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                                     <button
                                       type="button"
                                       onClick={() => setSelectedReceiptOrder(order)}
-                                      className="px-3.5 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg font-mono text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                                      className="px-2 py-1 bg-stone-900 hover:bg-stone-800 text-white rounded-lg font-mono text-[10px] font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                                     >
                                       <Printer size={13} /> Ver / Imprimir Talão
                                     </button>
@@ -714,7 +714,7 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
 
                               {/* Tabela de Itens do Pedido */}
                               <div className="bg-white rounded-xl border border-stone-200 overflow-hidden shadow-2xs">
-                                <div className="p-3 bg-stone-50 border-b border-stone-200 font-bold font-mono text-[11px] text-stone-700 uppercase tracking-wider flex items-center justify-between">
+                                <div className="p-2 bg-stone-50 border-b border-stone-200 font-bold font-mono text-[10px] text-stone-700 uppercase tracking-wider flex items-center justify-between">
                                   <span>Itens Deste Pedido ({items.length})</span>
                                   <span className="text-stone-400 font-normal lowercase">valores calculados por produto</span>
                                 </div>
@@ -722,10 +722,10 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                                 <div className="overflow-x-auto">
                                   <table className="w-full text-left border-collapse">
                                     <thead>
-                                      <tr className="border-b border-stone-100 bg-stone-50/50 text-[10px] font-mono text-stone-500 uppercase">
-                                        <th className="py-2 px-3 w-12 text-center">Qtd</th>
-                                        <th className="py-2 px-3">Item / Descrição</th>
-                                        <th className="py-2 px-3">Bordas / Extras</th>
+                                      <tr className="border-b border-stone-100 bg-stone-50/50 text-[9px] font-mono text-stone-500 uppercase">
+                                        <th className="py-1.5 px-2 w-10 text-center">Qtd</th>
+                                        <th className="py-1.5 px-2">Item / Descrição</th>
+                                        <th className="py-1.5 px-2">Bordas / Extras</th>
                                         <th className="py-2 px-3 text-right">Preço Unit.</th>
                                         <th className="py-2 px-3 text-right">Subtotal</th>
                                       </tr>

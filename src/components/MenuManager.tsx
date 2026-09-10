@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { MenuItem, ALL_MENU_ITEMS } from '../data/menu';
-import { Plus, Edit2, Trash2, Save, X, Image as ImageIcon } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Image as ImageIcon, Search } from 'lucide-react';
 
 export default function MenuManager() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -272,10 +272,10 @@ export default function MenuManager() {
 
       {/* Category Filter */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide flex-1">
+        <div className="flex overflow-x-auto gap-1.5 pb-2 scrollbar-hide flex-1">
           <button 
             onClick={() => setActiveCategory('all')}
-            className={`px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === 'all' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md' : 'bg-[#FAFAF9] text-[#78716C] border border-[#E7E5E1] hover:bg-gray-100'}`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === 'all' ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md' : 'bg-[#FAFAF9] text-[#78716C] border border-[#E7E5E1] hover:bg-gray-100'}`}
           >
             Todos os Produtos
           </button>
@@ -283,19 +283,22 @@ export default function MenuManager() {
             <button 
               key={cat.id}
               onClick={() => setActiveCategory(cat.id)}
-              className={`px-4 py-2.5 rounded-xl text-sm font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === cat.id ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md' : 'bg-[#FAFAF9] text-[#78716C] border border-[#E7E5E1] hover:bg-gray-100'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all duration-200 active:scale-95 cursor-pointer ${activeCategory === cat.id ? 'bg-[#1C1917] text-[#D4AF6A] shadow-md' : 'bg-[#FAFAF9] text-[#78716C] border border-[#E7E5E1] hover:bg-gray-100'}`}
             >
               {cat.name}
             </button>
           ))}
         </div>
-        <div className="w-full sm:w-64 flex-shrink-0">
+        <div className="w-full sm:w-72 flex-shrink-0 relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search size={16} className="text-stone-400" />
+          </div>
           <input
             type="text"
-            placeholder="Buscar por produto ou ingrediente..."
+            placeholder="Buscar produto..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-xl border border-[#E7E5E1] text-sm focus:outline-none focus:ring-2 focus:ring-[#fdde58] transition-all bg-[#FAFAF9]"
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-300 bg-white text-sm text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#fdde58] focus:border-[#fdde58] shadow-sm transition-all"
           />
         </div>
       </div>
@@ -419,37 +422,32 @@ export default function MenuManager() {
               </button>
             </div>
             
-            <form onSubmit={handleSave} className="p-4 sm:p-6 space-y-5 bg-white">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">ID (Código)</label>
-                  <input required type="text" value={editingItem.id} onChange={e => setEditingItem({...editingItem, id: e.target.value})} className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" disabled={!editingItem.id.startsWith('item-')} />
-                  <p className="text-[10px] text-stone-400 font-mono mt-1">Ex: p-1 para Pizza 1</p>
+            <form onSubmit={handleSave} className="p-3 sm:p-4 space-y-2.5 bg-white">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                <div className="space-y-1 md:col-span-2">
+                  <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Nome do Produto</label>
+                  <input required type="text" value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} className="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" placeholder="Ex: 61 - Bacon" />
                 </div>
-                <div className="space-y-1.5">
+
+                <div className="space-y-1 md:col-span-1">
                   <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Categoria</label>
-                  <select required value={editingItem.category} onChange={e => setEditingItem({...editingItem, category: e.target.value})} className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors cursor-pointer">
+                  <select required value={editingItem.category} onChange={e => setEditingItem({...editingItem, category: e.target.value})} className="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors cursor-pointer">
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Nome do Produto</label>
-                <input required type="text" value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" placeholder="Ex: 61 - Bacon" />
-              </div>
-
-              <div className="space-y-1.5">
+              <div className="space-y-1">
                 <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Ingredientes / Descrição</label>
-                <textarea rows={3} value={editingItem.ingredients} onChange={e => setEditingItem({...editingItem, ingredients: e.target.value})} className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors resize-y" placeholder="Lista de ingredientes..."></textarea>
+                <textarea rows={1} value={editingItem.ingredients} onChange={e => setEditingItem({...editingItem, ingredients: e.target.value})} className="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors resize-y min-h-[40px]" placeholder="Lista de ingredientes..."></textarea>
               </div>
 
               
-              <div className="space-y-3 bg-stone-50 p-4 rounded-md border border-stone-200">
-                <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Imagem do Produto</label>
+              <div className="space-y-1.5 bg-stone-50 p-2.5 rounded-md border border-stone-200">
+                <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Imagem do Produto (URL ou Upload)</label>
                 
                 {editingItem.image_url && (
-                  <div className="w-full h-40 rounded-md overflow-hidden border border-stone-200 bg-white mb-3 flex items-center justify-center p-2 relative shadow-sm">
+                  <div className="w-full h-20 rounded-md overflow-hidden border border-stone-200 bg-white mb-1.5 flex items-center justify-center p-1 relative shadow-sm">
                     <img 
                       src={editingItem.image_url.startsWith('http') ? editingItem.image_url : (editingItem.image_url.startsWith('/') ? editingItem.image_url : '/' + editingItem.image_url)} 
                       alt="Preview proporcional" 
@@ -458,65 +456,61 @@ export default function MenuManager() {
                   </div>
                 )}
 
-                <div className="flex gap-3 items-center">
-                  <input type="text" value={editingItem.image_url || ''} onChange={e => setEditingItem({...editingItem, image_url: e.target.value})} className="w-full px-3 py-2.5 bg-white border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors" placeholder="URL da imagem (ou faça o upload abaixo)" />
+                <div className="flex gap-2 items-center">
+                  <input type="text" value={editingItem.image_url || ''} onChange={e => setEditingItem({...editingItem, image_url: e.target.value})} className="w-full px-3 py-1.5 bg-white border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors" placeholder="URL da imagem (Ex: /pizza.png)" />
                 </div>
-                
-                <div className="pt-2 border-t border-stone-200 mt-3">
-                  <label className="block text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider mb-2">Upload do Computador</label>
-                  <input 
-                    type="file" 
-                    accept="image/jpeg, image/png, image/webp" 
-                    onChange={handleImageUpload}
-                    disabled={uploadingImage}
-                    className="block w-full text-sm text-stone-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-md file:border-0
-                      file:text-sm file:font-bold
-                      file:bg-stone-900 file:text-white
-                      hover:file:bg-stone-950 hover:file:cursor-pointer
-                      cursor-pointer border border-stone-200 rounded-md bg-white p-1"
-                  />
-                  <p className="text-[10px] font-mono text-stone-400 mt-2">Formatos: JPG, PNG, WEBP.</p>
+
+                <div className="pt-2 border-t border-stone-200 mt-2 flex items-center justify-between">
+                  <span className="block text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Enviar do PC:</span>
+                  <label className="cursor-pointer bg-stone-900 hover:bg-stone-950 text-white px-3 py-1 rounded text-[10px] font-bold uppercase transition-colors shadow-sm">
+                    {uploadingImage ? 'Enviando...' : 'Escolher Arquivo'}
+                    <input 
+                      type="file" 
+                      accept="image/jpeg, image/png, image/webp" 
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
               </div>
 
-              <div className="border-t border-stone-100 pt-5">
-                <h3 className="text-xs font-black text-stone-400 uppercase tracking-wider mb-3">Preços (Deixe em branco se não se aplicar)</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="space-y-1.5">
+              <div className="border-t border-stone-100 pt-2.5">
+                <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-wider mb-2">Preços (Deixe em branco se não se aplicar)</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+                  <div className="space-y-1">
                     <label className="block text-[10px] font-mono font-bold text-emerald-700 uppercase tracking-wider">Único (€)</label>
-                    <input type="number" step="0.01" value={editingItem.price_single || ''} onChange={e => setEditingItem({...editingItem, price_single: e.target.value})} className="w-full px-3 py-2.5 bg-emerald-50/30 border border-emerald-200 rounded-md text-sm font-extrabold text-emerald-900 outline-none focus:border-emerald-500 transition-colors" />
+                    <input type="number" step="0.01" value={editingItem.price_single || ''} onChange={e => setEditingItem({...editingItem, price_single: e.target.value})} className="w-full px-3 py-1.5 bg-emerald-50/30 border border-emerald-200 rounded-md text-sm font-extrabold text-emerald-900 outline-none focus:border-emerald-500 transition-colors" />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Pizzas (P)</label>
-                    <input type="number" step="0.01" value={editingItem.price_p || ''} onChange={e => setEditingItem({...editingItem, price_p: e.target.value})} className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-extrabold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" />
+                    <input type="number" step="0.01" value={editingItem.price_p || ''} onChange={e => setEditingItem({...editingItem, price_p: e.target.value})} className="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-extrabold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Pizzas (M)</label>
-                    <input type="number" step="0.01" value={editingItem.price_m || ''} onChange={e => setEditingItem({...editingItem, price_m: e.target.value})} className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-extrabold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" />
+                    <input type="number" step="0.01" value={editingItem.price_m || ''} onChange={e => setEditingItem({...editingItem, price_m: e.target.value})} className="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-extrabold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" />
                   </div>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Pizzas (G)</label>
-                    <input type="number" step="0.01" value={editingItem.price_g || ''} onChange={e => setEditingItem({...editingItem, price_g: e.target.value})} className="w-full px-3 py-2.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-extrabold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" />
+                    <input type="number" step="0.01" value={editingItem.price_g || ''} onChange={e => setEditingItem({...editingItem, price_g: e.target.value})} className="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-extrabold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" />
                   </div>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
-                <label className="flex items-center gap-2 text-sm text-[#1C1917] font-bold cursor-pointer">
+              <div className="pt-2 flex justify-between items-center border-t border-stone-100">
+                <label className="flex items-center gap-2 text-xs text-[#1C1917] font-bold cursor-pointer">
                   <input type="checkbox" checked={editingItem.is_bestseller || false} onChange={e => setEditingItem({...editingItem, is_bestseller: e.target.checked})} className="w-4 h-4 accent-[#d8ba39] rounded cursor-pointer" />
-                  🌟 Marcar como Mais Pedido (Destaque)
+                  🌟 Destaque
                 </label>
-              </div>
 
-              <div className="pt-4 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3 rounded-md font-bold text-sm bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer border border-stone-200">
-                  Cancelar
-                </button>
-                <button type="submit" className="px-8 py-3 rounded-md font-bold text-sm bg-[#fdde58] hover:bg-[#e2c23f] text-stone-950 shadow-sm transition-all active:translate-y-px cursor-pointer flex items-center gap-2 border border-[#d8ba39]">
-                  <Save size={16} /> Salvar Produto
-                </button>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 rounded-md font-bold text-xs bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer border border-stone-200">
+                    Cancelar
+                  </button>
+                  <button type="submit" className="px-5 py-2 rounded-md font-bold text-xs bg-[#fdde58] hover:bg-[#e2c23f] text-stone-950 shadow-sm transition-all active:translate-y-px cursor-pointer flex items-center gap-1.5 border border-[#d8ba39]">
+                    <Save size={14} /> Salvar
+                  </button>
+                </div>
               </div>
             </form>
           </div>

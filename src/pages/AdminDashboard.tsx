@@ -280,6 +280,10 @@ export default function AdminDashboard() {
         nif: o.nif || '',
         items: o.items,
         isEdited: o.is_edited,
+        discountAmount: Number(o.discount_amount) || 0,
+        additionalAmount: Number(o.additional_amount) || 0,
+        editReason: o.edit_reason || '',
+        notes: o.notes || '',
         updatedAt: o.updated_at,
         createdAt: o.created_at,
         cashSessionId: o.cash_session_id
@@ -3350,22 +3354,56 @@ export default function AdminDashboard() {
                 <div style={{ borderBottom: '1px solid #000', marginBottom: '6px' }}></div>
 
                 {/* Totals Section */}
-                <div style={{ marginBottom: '6px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'normal', marginBottom: '2px' }}>
-                    <span>Subtotal</span>
-                    <span>{safeParseItems(printOrder.items).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * (item.quantity || 1), 0).toFixed(2)} €</span>
-                  </div>
-                  {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega') && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'normal', marginBottom: '2px' }}>
-                      <span>Taxa de Entrega</span>
-                      <span>{((printOrder.totalAmount || 0) - safeParseItems(printOrder.items).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * (item.quantity || 1), 0)).toFixed(2)} €</span>
+                {(() => {
+                  const itemsSubtotal = safeParseItems(printOrder.items).reduce((sum: number, item: any) => {
+                    const price = Number(item.priceCalculated ?? item.basePrice ?? item.price ?? 0);
+                    const qty = Number(item.quantity || 1);
+                    return sum + (price * qty);
+                  }, 0);
+                  const addAmount = Number(printOrder.additionalAmount || printOrder.additional_amount || 0);
+                  const discAmount = Number(printOrder.discountAmount || printOrder.discount_amount || 0);
+                  const isDelivery = printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega';
+                  const deliveryFee = isDelivery ? Math.max(0, (printOrder.totalAmount || 0) - itemsSubtotal - addAmount + discAmount) : 0;
+                  const reasonNote = printOrder.editReason || printOrder.edit_reason || '';
+
+                  return (
+                    <div style={{ marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'normal', marginBottom: '2px' }}>
+                        <span>Subtotal</span>
+                        <span>{itemsSubtotal.toFixed(2)} €</span>
+                      </div>
+                      {isDelivery && deliveryFee > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'normal', marginBottom: '2px' }}>
+                          <span>Taxa de Entrega</span>
+                          <span>{deliveryFee.toFixed(2)} €</span>
+                        </div>
+                      )}
+                      {addAmount > 0 && (
+                        <div style={{ marginBottom: '3px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold' }}>
+                            <span>+ Taxa / Adicional</span>
+                            <span>+ {addAmount.toFixed(2)} €</span>
+                          </div>
+                          {reasonNote && (
+                            <div style={{ fontSize: '10px', fontStyle: 'italic', paddingLeft: '8px', color: '#333' }}>
+                              Obs: {reasonNote}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {discAmount > 0 && (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px' }}>
+                          <span>- Desconto</span>
+                          <span>- {discAmount.toFixed(2)} €</span>
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '900', marginTop: '3px', borderTop: '1px dashed #000', paddingTop: '3px' }}>
+                        <span>Montante pago</span>
+                        <span>{(printOrder.totalAmount || 0).toFixed(2)} €</span>
+                      </div>
                     </div>
-                  )}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: '900', marginTop: '2px' }}>
-                    <span>Montante pago</span>
-                    <span>{(printOrder.totalAmount || 0).toFixed(2)} €</span>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 {/* Payment + Time */}
                 <div style={{ fontSize: '10px' }}>
@@ -3465,22 +3503,56 @@ export default function AdminDashboard() {
             <div style={{ borderBottom: '1px solid #000', marginBottom: '8px' }}></div>
 
             {/* Totals Section */}
-            <div style={{ marginBottom: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', fontWeight: 'normal', marginBottom: '3px' }}>
-                <span>Subtotal</span>
-                <span>{safeParseItems(printOrder.items).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * (item.quantity || 1), 0).toFixed(2)} €</span>
-              </div>
-              {(printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega') && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', fontWeight: 'normal', marginBottom: '3px' }}>
-                  <span>Taxa de Entrega</span>
-                  <span>{((printOrder.totalAmount || 0) - safeParseItems(printOrder.items).reduce((sum: number, item: any) => sum + (item.priceCalculated || 0) * (item.quantity || 1), 0)).toFixed(2)} €</span>
+            {(() => {
+              const itemsSubtotal = safeParseItems(printOrder.items).reduce((sum: number, item: any) => {
+                const price = Number(item.priceCalculated ?? item.basePrice ?? item.price ?? 0);
+                const qty = Number(item.quantity || 1);
+                return sum + (price * qty);
+              }, 0);
+              const addAmount = Number(printOrder.additionalAmount || printOrder.additional_amount || 0);
+              const discAmount = Number(printOrder.discountAmount || printOrder.discount_amount || 0);
+              const isDelivery = printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega';
+              const deliveryFee = isDelivery ? Math.max(0, (printOrder.totalAmount || 0) - itemsSubtotal - addAmount + discAmount) : 0;
+              const reasonNote = printOrder.editReason || printOrder.edit_reason || '';
+
+              return (
+                <div style={{ marginBottom: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', fontWeight: 'normal', marginBottom: '3px' }}>
+                    <span>Subtotal</span>
+                    <span>{itemsSubtotal.toFixed(2)} €</span>
+                  </div>
+                  {isDelivery && deliveryFee > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', fontWeight: 'normal', marginBottom: '3px' }}>
+                      <span>Taxa de Entrega</span>
+                      <span>{deliveryFee.toFixed(2)} €</span>
+                    </div>
+                  )}
+                  {addAmount > 0 && (
+                    <div style={{ marginBottom: '3px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', fontWeight: 'bold' }}>
+                        <span>+ Taxa / Adicional</span>
+                        <span>+ {addAmount.toFixed(2)} €</span>
+                      </div>
+                      {reasonNote && (
+                        <div style={{ fontSize: '10pt', fontStyle: 'italic', paddingLeft: '8px', color: '#000' }}>
+                          Obs: {reasonNote}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {discAmount > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', fontWeight: 'bold', marginBottom: '3px' }}>
+                      <span>- Desconto</span>
+                      <span>- {discAmount.toFixed(2)} €</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', fontWeight: '900', marginTop: '3px', borderTop: '1px dashed #000', paddingTop: '3px' }}>
+                    <span>Montante pago</span>
+                    <span>{(printOrder.totalAmount || 0).toFixed(2)} €</span>
+                  </div>
                 </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10pt', fontWeight: '900', marginTop: '3px' }}>
-                <span>Montante pago</span>
-                <span>{(printOrder.totalAmount || 0).toFixed(2)} €</span>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* Payment + Time */}
             <div style={{ fontSize: '10pt' }}>
@@ -3504,7 +3576,7 @@ export default function AdminDashboard() {
     {editingOrder && (
       <EditOrderModal
         order={editingOrder}
-        menuItems={ALL_MENU_ITEMS}
+        menuItems={menuItems && menuItems.length > 0 ? menuItems : ALL_MENU_ITEMS}
         onClose={() => setEditingOrder(null)}
         onSave={handleSaveOrderEdit}
       />
@@ -3547,7 +3619,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
 
   const subtotal = React.useMemo(() => {
     return items.reduce((acc, item) => {
-      const price = Number(item.priceCalculated || item.price || 0);
+      const price = Number(item.priceCalculated ?? item.basePrice ?? item.price ?? 0);
       const qty = Number(item.quantity || 1);
       return acc + (price * qty);
     }, 0);
@@ -3596,6 +3668,8 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
       quantity: 1,
       size: sizeName,
       priceCalculated: price,
+      basePrice: price,
+      price: price
     };
 
     setItems(prev => [...prev, newItem]);
@@ -3633,10 +3707,16 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
       items: items,
       discount_amount: Number(discountAmount) || 0,
       additional_amount: Number(additionalAmount) || 0,
+      discountAmount: Number(discountAmount) || 0,
+      additionalAmount: Number(additionalAmount) || 0,
       total_amount: finalTotal,
+      totalAmount: finalTotal,
       cash_provided: Number(cashProvided) || 0,
+      cashProvided: Number(cashProvided) || 0,
       edit_reason: editReason,
-      is_edited: true
+      editReason: editReason,
+      is_edited: true,
+      isEdited: true
     };
     await onSave(updatedPayload);
     setSaving(false);
@@ -3669,6 +3749,29 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
           >
             <X size={18} />
           </button>
+        </div>
+
+        {/* Real-time total summary bar */}
+        <div className="bg-stone-900 px-4 sm:px-6 py-2.5 border-b border-stone-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex flex-wrap items-center gap-3 sm:gap-4 font-mono">
+            <span className="text-stone-300">
+              Subtotal: <strong className="text-white font-bold">€ {subtotal.toFixed(2)}</strong>
+            </span>
+            {Number(additionalAmount) > 0 && (
+              <span className="text-amber-400 font-bold">
+                (+) Adicional: € {Number(additionalAmount).toFixed(2)}
+              </span>
+            )}
+            {Number(discountAmount) > 0 && (
+              <span className="text-emerald-400 font-bold">
+                (-) Desconto: € {Number(discountAmount).toFixed(2)}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-wider">Total em tempo real:</span>
+            <span className="text-xl font-black text-rose-500 font-mono leading-none">€ {finalTotal.toFixed(2)}</span>
+          </div>
         </div>
 
         {/* Content Body */}
@@ -3897,9 +4000,9 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
             </div>
           </div>
 
-          {/* Section 3: Financial Adjustments (Desconto & Adicional & Audit Reason) */}
+          {/* Section 3: Financial Adjustments (Desconto & Adicional & Observação da Comanda) */}
           <div className="bg-white p-4 rounded-md border border-stone-200 space-y-4">
-            <h4 className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Ajustes & Auditoria</h4>
+            <h4 className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Ajustes Financeiros & Valores Extras</h4>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
@@ -3918,7 +4021,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
               </div>
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-mono font-bold text-amber-700 uppercase tracking-wider">
-                  Taxa Adicional (+ €)
+                  Taxa Adicional / Valor Extra (+ €)
                 </label>
                 <input
                   type="number"
@@ -3932,15 +4035,21 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
               </div>
             </div>
 
-            <div className="space-y-1.5 pt-2">
-              <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Motivo da Alteração (Auditoria)</label>
+            <div className="space-y-1.5 pt-1">
+              <label className="block text-[10px] font-mono font-bold text-amber-900 uppercase tracking-wider flex items-center justify-between">
+                <span>Observação da Taxa / Valor Adicional (Sai na Comanda)</span>
+                <span className="text-[9px] text-amber-700 font-bold lowercase tracking-normal font-sans">* impresso no talão</span>
+              </label>
               <input
                 type="text"
                 value={editReason}
                 onChange={(e) => setEditReason(e.target.value)}
-                placeholder="Ex: Cliente adicionou produto no balcão"
-                className="w-full px-3 py-2.5 bg-stone-50 rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
+                placeholder="Ex: Embalagem extra, volta + emb, taxa de atendimento, etc."
+                className="w-full px-3 py-2.5 bg-amber-50/20 rounded-md border border-amber-300 text-sm font-bold text-stone-900 outline-none focus:border-amber-600 transition-colors"
               />
+              <p className="text-[11px] text-stone-500 font-medium">
+                Esta observação é impressa na comanda logo abaixo do valor adicional para que o cliente e o restaurante identifiquem a taxa.
+              </p>
             </div>
           </div>
 

@@ -427,7 +427,7 @@ export const SalesFunnelManager: React.FC<SalesFunnelManagerProps> = ({ onNaviga
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* COLUNA ESQUERDA (7 colunas): ILUSTRAÇÃO 3D ISOMÉTRICA DA MARCA */}
-        <div className="lg:col-span-7 bg-stone-900 rounded-2xl border border-stone-800 p-4 sm:p-6 shadow-xl relative overflow-hidden flex flex-col items-center justify-center">
+        <div className="lg:col-span-7 bg-stone-900 rounded-2xl border border-stone-800 p-3 sm:p-4 shadow-xl relative overflow-hidden flex flex-col items-center justify-center">
           
           {/* Luz de topo suave dourada e ambiente clean sem tons marrons */}
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(253,222,88,0.08),transparent_70%)] pointer-events-none" />
@@ -446,10 +446,10 @@ export const SalesFunnelManager: React.FC<SalesFunnelManagerProps> = ({ onNaviga
           </div>
 
           {/* SVG DO FUNIL 3D COM GRADIENTES CLEAN E TIPOGRAFIA PERFEITAMENTE POSICIONADA */}
-          <div className="w-full max-w-[530px] flex justify-center py-2 z-10">
+          <div className="w-full max-w-[460px] flex justify-center py-1 z-10">
             <svg 
               viewBox="0 0 600 560" 
-              className="w-full h-auto max-h-[490px] select-none filter drop-shadow-[0_15px_25px_rgba(0,0,0,0.8)]"
+              className="w-full h-auto max-h-[370px] select-none filter drop-shadow-[0_15px_25px_rgba(0,0,0,0.8)]"
             >
               <defs>
                 {/* Sombra de texto nítida para contraste absoluto */}
@@ -698,7 +698,7 @@ export const SalesFunnelManager: React.FC<SalesFunnelManagerProps> = ({ onNaviga
             </svg>
           </div>
 
-          <div className="w-full mt-2 pt-2.5 border-t border-stone-800 flex items-center justify-between text-xs font-mono text-stone-400 z-10">
+          <div className="w-full mt-1 pt-2 border-t border-stone-800 flex items-center justify-between text-xs font-mono text-stone-400 z-10">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
               Retenção Geral: <strong className="text-white">{data.conversionRate.toFixed(1)}%</strong>
