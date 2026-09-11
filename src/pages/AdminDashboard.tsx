@@ -3691,6 +3691,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   const [customerPhone, setCustomerPhone] = useState(order.customerPhone || order.customer_phone || '');
   const initialPm = (order.paymentMethod || order.payment_method || 'Dinheiro').toString().trim();
   const [paymentMethod, setPaymentMethod] = useState(initialPm.toLowerCase() === 'mbway' ? 'MB Way' : initialPm);
+  const [orderType, setOrderType] = useState(order.orderType || order.order_type || 'balcao');
   const [items, setItems] = useState<any[]>(() => {
     let raw = order.items;
     if (typeof raw === 'string') {
