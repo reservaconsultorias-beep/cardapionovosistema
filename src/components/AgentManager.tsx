@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { 
   Bot, Power, Loader2, MessageSquare, 
-  Send, User, Search, PauseCircle, PlayCircle
+  Send, User, Search, PauseCircle, PlayCircle, X
 } from 'lucide-react';
 
 export interface ChatMessage {
@@ -272,6 +272,32 @@ export default function AgentManager() {
     }
   };
 
+  const deleteConversation = async (e: React.MouseEvent, phone: string) => {
+    e.stopPropagation();
+    
+    if (!window.confirm('Tem certeza que deseja excluir esta conversa?')) return;
+
+    try {
+      const convKey = `chat_conversation_${phone}`;
+      
+      const { error } = await supabase
+        .from('settings')
+        .delete()
+        .eq('key', convKey);
+
+      if (error) throw error;
+
+      setConversations(prev => prev.filter(c => c.phone !== phone));
+      
+      if (selectedPhone === phone) {
+        setSelectedPhone(null);
+      }
+    } catch (err) {
+      console.error('Erro ao excluir conversa:', err);
+      alert('Erro ao excluir a conversa.');
+    }
+  };
+
   const selectedConversation = conversations.find(c => c.phone === selectedPhone);
 
   const filteredConversations = conversations.filter(c => {
@@ -353,7 +379,7 @@ export default function AgentManager() {
       </div>
 
       {/* Espelho de Conversas estilo ADO / WhatsApp Minimalista */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-xs overflow-hidden flex flex-col md:flex-row h-[calc(100vh-210px)] min-h-[580px] max-h-[720px]">
+      <div className="bg-white rounded-xl border border-stone-200 shadow-xs overflow-hidden flex flex-col md:flex-row h-[calc(100vh-230px)] min-h-[400px]">
         {/* Coluna Esquerda: Lista de Conversas (Alta Densidade) */}
         <div className="w-full md:w-72 lg:w-80 border-r border-stone-200 flex flex-col h-full bg-stone-50/50">
           {/* Busca Limpa Compacta */}
@@ -407,9 +433,18 @@ export default function AgentManager() {
                         <span className="font-semibold text-xs text-stone-900 truncate">
                           {c.name || c.phone}
                         </span>
-                        <span className="text-[9px] font-mono text-stone-400 shrink-0">
-                          {c.updated_at ? new Date(c.updated_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[9px] font-mono text-stone-400">
+                            {c.updated_at ? new Date(c.updated_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                          </span>
+                          <button
+                            onClick={(e) => deleteConversation(e, c.phone)}
+                            className="text-stone-300 hover:text-red-500 hover:bg-red-50 p-0.5 rounded transition-colors"
+                            title="Excluir conversa"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between gap-1.5">
@@ -434,7 +469,7 @@ export default function AgentManager() {
 
         {/* Coluna Direita: Painel do Chat */}
         {selectedConversation ? (
-          <div className="flex-1 flex flex-col h-full bg-[#f9f9fb]">
+          <div className="flex-1 flex flex-col h-full bg-[#efeae2]">
             {/* Topo do Chat Selecionado */}
             <div className="px-3 py-2 bg-white border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
               <div className="flex items-center gap-2 min-w-0">
@@ -484,8 +519,8 @@ export default function AgentManager() {
               </button>
             </div>
 
-            {/* Mensagens com Balões Limpos Compactos */}
-            <div className="flex-1 p-3 overflow-y-auto space-y-2">
+            {/* Mensagens com Balões Padrão WhatsApp */}
+            <div className="flex-1 p-4 overflow-y-auto space-y-3 relative" style={{ backgroundImage: 'url("https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png")', opacity: 0.9 }}>
               {selectedConversation.messages && selectedConversation.messages.length > 0 ? (
                 selectedConversation.messages.map((m, idx) => {
                   const isClient = m.sender === 'client';
@@ -497,30 +532,42 @@ export default function AgentManager() {
                       key={m.id || idx}
                       className={`flex flex-col ${isClient ? 'items-start' : 'items-end'}`}
                     >
-                      <div className="flex items-center gap-1 mb-0.5 px-1 text-[9px] font-mono text-stone-400">
-                        {isClient && <span>{selectedConversation.name || 'Cliente'}</span>}
-                        {isBot && <span className="text-emerald-700 font-medium">Giovanna</span>}
-                        {isHuman && <span className="text-blue-700 font-medium">Você</span>}
-                        <span>•</span>
-                        <span>{new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
                       <div
-                        className={`max-w-[78%] rounded-xl px-3 py-1.5 text-xs leading-relaxed shadow-2xs whitespace-pre-wrap ${
+                        className={`relative max-w-[85%] rounded-lg px-2.5 pt-1.5 pb-2 text-[14px] leading-snug shadow-sm ${
                           isClient
-                            ? 'bg-white text-stone-800 border border-stone-200/80 rounded-tl-xs'
-                            : isBot
-                            ? 'bg-emerald-600 text-white rounded-tr-xs'
-                            : 'bg-stone-900 text-white rounded-tr-xs'
+                            ? 'bg-white text-[#111b21] rounded-tl-sm'
+                            : 'bg-[#d9fdd3] text-[#111b21] rounded-tr-sm'
                         }`}
                       >
-                        {m.text}
+                        {/* Rabinho do balão estilo WhatsApp (opcional via CSS, aqui usamos rounded ajustado) */}
+                        
+                        {/* Nome do remetente interno */}
+                        {!isClient && (
+                          <div className={`text-[12px] font-medium mb-0.5 ${isBot ? 'text-emerald-600' : 'text-blue-500'}`}>
+                            {isBot ? 'Giovanna' : 'Você'}
+                          </div>
+                        )}
+                        {isClient && selectedConversation.name && (
+                          <div className="text-[12px] font-medium mb-0.5 text-[#a80076]">
+                            {selectedConversation.name}
+                          </div>
+                        )}
+
+                        <div className="whitespace-pre-wrap">{m.text}</div>
+
+                        {/* Horário (flutuando à direita inferior ou em linha) */}
+                        <div className={`text-[10px] text-[#667781] text-right mt-1 -mb-0.5 ${m.text.length < 20 ? 'inline-block ml-3 translate-y-1' : 'block'}`}>
+                          {new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
                       </div>
                     </div>
                   );
                 })
               ) : (
-                <div className="h-full flex items-center justify-center text-xs font-mono text-stone-400">
-                  Nenhuma mensagem registrada ainda.
+                <div className="h-full flex items-center justify-center relative z-10">
+                  <div className="bg-[#ffeecd] text-[#543b16] px-4 py-2 rounded-lg text-xs shadow-sm max-w-sm text-center">
+                    Nenhuma mensagem registrada. As mensagens enviadas para este contato aparecerão aqui.
+                  </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
