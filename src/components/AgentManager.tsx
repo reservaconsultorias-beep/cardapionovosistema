@@ -519,8 +519,8 @@ export default function AgentManager() {
               </button>
             </div>
 
-            {/* Mensagens com Balões Padrão WhatsApp */}
-            <div className="flex-1 p-4 overflow-y-auto space-y-3 relative" style={{ backgroundImage: 'url("https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png")', opacity: 0.9 }}>
+            {/* Mensagens com Balões Padrão WhatsApp (Compacto) */}
+            <div className="flex-1 p-3 overflow-y-auto space-y-1.5 relative" style={{ backgroundImage: 'url("https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png")', opacity: 0.9 }}>
               {selectedConversation.messages && selectedConversation.messages.length > 0 ? (
                 selectedConversation.messages.map((m, idx) => {
                   const isClient = m.sender === 'client';
@@ -533,7 +533,7 @@ export default function AgentManager() {
                       className={`flex flex-col ${isClient ? 'items-start' : 'items-end'}`}
                     >
                       <div
-                        className={`relative max-w-[85%] rounded-lg px-2.5 pt-1.5 pb-2 text-[14px] leading-snug shadow-sm ${
+                        className={`relative max-w-[85%] rounded-lg px-2 pt-1 pb-1.5 text-[12.5px] leading-snug shadow-sm ${
                           isClient
                             ? 'bg-white text-[#111b21] rounded-tl-sm'
                             : 'bg-[#d9fdd3] text-[#111b21] rounded-tr-sm'
@@ -543,12 +543,12 @@ export default function AgentManager() {
                         
                         {/* Nome do remetente interno */}
                         {!isClient && (
-                          <div className={`text-[12px] font-medium mb-0.5 ${isBot ? 'text-emerald-600' : 'text-blue-500'}`}>
+                          <div className={`text-[10.5px] font-medium mb-0.5 leading-none ${isBot ? 'text-emerald-600' : 'text-blue-500'}`}>
                             {isBot ? 'Giovanna' : 'Você'}
                           </div>
                         )}
                         {isClient && selectedConversation.name && (
-                          <div className="text-[12px] font-medium mb-0.5 text-[#a80076]">
+                          <div className="text-[10.5px] font-medium mb-0.5 leading-none text-[#a80076]">
                             {selectedConversation.name}
                           </div>
                         )}
@@ -556,7 +556,7 @@ export default function AgentManager() {
                         <div className="whitespace-pre-wrap">{m.text}</div>
 
                         {/* Horário (flutuando à direita inferior ou em linha) */}
-                        <div className={`text-[10px] text-[#667781] text-right mt-1 -mb-0.5 ${m.text.length < 20 ? 'inline-block ml-3 translate-y-1' : 'block'}`}>
+                        <div className={`text-[9px] text-[#667781] text-right mt-0.5 -mb-0.5 ${m.text.length < 20 ? 'inline-block ml-3 translate-y-0.5' : 'block'}`}>
                           {new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
