@@ -218,17 +218,17 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
   if (!session) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-[#111110] rounded-none sm:rounded-xl w-full h-full sm:h-auto sm:max-w-[1400px] sm:max-h-[98vh] flex flex-col shadow-2xl border-0 sm:border border-stone-800 relative overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-3 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-[#111110] rounded-none sm:rounded-xl w-full h-full sm:h-auto sm:max-w-[1380px] sm:max-h-[95vh] flex flex-col shadow-2xl border-0 sm:border border-stone-800 relative overflow-hidden">
         
         {/* CABEÇALHO ULTRA DENSO (BOLDER) */}
-        <div className="px-4 py-2 bg-[#0a0a09] border-b border-stone-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="px-3.5 py-1.5 bg-[#0a0a09] border-b border-stone-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2.5">
             <span className={`w-2 h-2 rounded-full ${session.status === 'fechado' ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'}`} />
-            <h2 className="font-mono font-bold text-white text-lg tracking-tight flex items-center gap-2">
+            <h2 className="font-mono font-bold text-white text-base sm:text-lg tracking-tight flex items-center gap-2">
               FECHAMENTO
             </h2>
-            <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase border ${
+            <span className={`text-[9.5px] font-mono font-bold px-2 py-0.5 rounded uppercase border ${
               session.status === 'fechado' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
             }`}>
               {session.status === 'fechado' ? 'FECHADO' : 'EM ABERTO'}
@@ -248,27 +248,27 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
 
         {/* ESTATÍSTICAS INLINE NO TOPO */}
         {activeTab === 'balanco' && (
-          <div className="px-4 py-1.5 bg-stone-900/50 border-b border-stone-800 flex items-center justify-between gap-4 shrink-0 overflow-x-auto no-scrollbar">
-            <div className="flex gap-6 min-w-max">
+          <div className="px-3 py-1 bg-stone-900/60 border-b border-stone-800 flex items-center justify-between gap-3 shrink-0 overflow-x-auto no-scrollbar">
+            <div className="flex gap-4 sm:gap-6 min-w-max">
               <div className="flex flex-col">
-                <span className="text-[10px] font-mono text-stone-500 uppercase">Faturamento Bruto</span>
-                <span className="font-mono text-white font-bold text-sm">€ {summary.totalRevenue.toFixed(2)}</span>
+                <span className="text-[9px] font-mono text-stone-500 uppercase tracking-wider">Faturamento Bruto</span>
+                <span className="font-mono text-white font-bold text-xs sm:text-sm leading-tight">€ {summary.totalRevenue.toFixed(2)}</span>
               </div>
-              <div className="flex flex-col border-l border-stone-800 pl-6">
-                <span className="text-[10px] font-mono text-stone-500 uppercase">Numerário</span>
-                <span className="font-mono text-emerald-400 font-bold text-sm">€ {summary.totalDinheiro.toFixed(2)}</span>
+              <div className="flex flex-col border-l border-stone-800 pl-4 sm:pl-6">
+                <span className="text-[9px] font-mono text-stone-500 uppercase tracking-wider">Numerário</span>
+                <span className="font-mono text-emerald-400 font-bold text-xs sm:text-sm leading-tight">€ {summary.totalDinheiro.toFixed(2)}</span>
               </div>
-              <div className="flex flex-col border-l border-stone-800 pl-6">
-                <span className="text-[10px] font-mono text-stone-500 uppercase">MB Way</span>
-                <span className="font-mono text-blue-400 font-bold text-sm">€ {(summary.paymentTotals['MB Way'] || summary.paymentTotals['MBWAY'] || summary.paymentTotals['mbway'] || 0).toFixed(2)}</span>
+              <div className="flex flex-col border-l border-stone-800 pl-4 sm:pl-6">
+                <span className="text-[9px] font-mono text-stone-500 uppercase tracking-wider">MB Way</span>
+                <span className="font-mono text-blue-400 font-bold text-xs sm:text-sm leading-tight">€ {(summary.paymentTotals['MB Way'] || summary.paymentTotals['MBWAY'] || summary.paymentTotals['mbway'] || 0).toFixed(2)}</span>
               </div>
-              <div className="flex flex-col border-l border-stone-800 pl-6">
-                <span className="text-[10px] font-mono text-[#fdde58]/70 uppercase">Caixa (Fundo + Vendas)</span>
-                <span className="font-mono text-[#fdde58] font-bold text-sm">€ {(summary.fundoInicial + summary.totalDinheiro).toFixed(2)}</span>
+              <div className="flex flex-col border-l border-stone-800 pl-4 sm:pl-6">
+                <span className="text-[9px] font-mono text-[#fdde58]/70 uppercase tracking-wider">Caixa (Fundo + Vendas)</span>
+                <span className="font-mono text-[#fdde58] font-bold text-xs sm:text-sm leading-tight">€ {(summary.fundoInicial + summary.totalDinheiro).toFixed(2)}</span>
               </div>
             </div>
             
-            <div className="text-[10px] font-mono text-stone-500 flex gap-3 text-right">
+            <div className="text-[9px] font-mono text-stone-500 flex gap-2.5 text-right shrink-0">
               <span>ABERTURA: {format(new Date(session.opened_at), "HH:mm", { locale: ptBR })}</span>
               {session.closed_at && <span>FECHAMENTO: {format(new Date(session.closed_at), "HH:mm", { locale: ptBR })}</span>}
             </div>
@@ -284,48 +284,56 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
           ) : activeTab === 'balanco' ? (
             
             /* ========================================================= */
-            /* ABA 1: BALANÇO & CONFERÊNCIA FINANCEIRA (GRID HORIZONTAL ZERO SCROLL) */
+            /* ABA 1: BALANÇO & CONFERÊNCIA FINANCEIRA (GRID COMPACTA ZERO SCROLL) */
             /* ========================================================= */
-            <div className="p-2 sm:p-3 grid grid-cols-1 lg:grid-cols-3 gap-2 h-full items-start">
+            <div className="p-2 sm:p-2.5 grid grid-cols-1 lg:grid-cols-3 gap-2 items-start">
               
               {/* COLUNA 1: CANAIS */}
-              <div className="bg-stone-900 border border-stone-800 rounded-lg p-2 lg:h-full flex flex-col">
-                <h3 className="font-mono text-[10px] text-stone-500 uppercase tracking-widest mb-2 border-b border-stone-800 pb-1.5 flex items-center gap-1.5"><Sparkles size={12} className="text-[#fdde58]" /> Canais de Atendimento</h3>
+              <div className="bg-stone-900 border border-stone-800 rounded-lg p-2 flex flex-col">
+                <h3 className="font-mono text-[9px] text-stone-500 uppercase tracking-widest mb-1.5 border-b border-stone-800 pb-1 flex items-center gap-1.5">
+                  <Sparkles size={11} className="text-[#fdde58]" /> Canais de Atendimento
+                </h3>
                 <div className="space-y-1.5 flex-1">
                   
                   {/* Entrega */}
-                  <div className="p-2.5 rounded bg-black/40 border border-stone-800/60">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="font-mono text-xs font-bold text-stone-300 flex items-center gap-1.5"><Bike size={13} className="text-amber-500" /> ENTREGA</span>
-                      <span className="font-mono text-sm font-bold text-white">€ {summary.entrega.total.toFixed(2)}</span>
+                  <div className="p-1.5 sm:p-2 rounded bg-black/40 border border-stone-800/60">
+                    <div className="flex justify-between items-center mb-0.5">
+                      <span className="font-mono text-[11px] font-bold text-stone-300 flex items-center gap-1.5">
+                        <Bike size={12} className="text-amber-500" /> ENTREGA
+                      </span>
+                      <span className="font-mono text-xs sm:text-sm font-bold text-white">€ {summary.entrega.total.toFixed(2)}</span>
                     </div>
-                    <div className="text-[10px] font-mono text-stone-500 flex justify-between">
+                    <div className="text-[9px] font-mono text-stone-500 flex justify-between items-center">
                       <span>{summary.entrega.count} pedidos</span>
-                      {summary.entrega.count > 0 && <span>{Object.entries(summary.entrega.orders.reduce((acc, o) => { const pm = normalizePaymentMethod(o.payment_method || o.paymentMethod); acc[pm] = (acc[pm] || 0) + Number(o.total_amount || o.totalAmount || 0); return acc; }, {})).map(([pm, val]) => `${pm} €${val.toFixed(2)}`).join(' | ')}</span>}
+                      {summary.entrega.count > 0 && <span className="truncate max-w-[180px]">{Object.entries(summary.entrega.orders.reduce((acc, o) => { const pm = normalizePaymentMethod(o.payment_method || o.paymentMethod); acc[pm] = (acc[pm] || 0) + Number(o.total_amount || o.totalAmount || 0); return acc; }, {})).map(([pm, val]) => `${pm} €${val.toFixed(2)}`).join(' | ')}</span>}
                     </div>
                   </div>
 
                   {/* Mesa */}
-                  <div className="p-2.5 rounded bg-black/40 border border-stone-800/60">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="font-mono text-xs font-bold text-stone-300 flex items-center gap-1.5"><UtensilsCrossed size={13} className="text-emerald-500" /> MESA</span>
-                      <span className="font-mono text-sm font-bold text-white">€ {summary.mesa.total.toFixed(2)}</span>
+                  <div className="p-1.5 sm:p-2 rounded bg-black/40 border border-stone-800/60">
+                    <div className="flex justify-between items-center mb-0.5">
+                      <span className="font-mono text-[11px] font-bold text-stone-300 flex items-center gap-1.5">
+                        <UtensilsCrossed size={12} className="text-emerald-500" /> MESA
+                      </span>
+                      <span className="font-mono text-xs sm:text-sm font-bold text-white">€ {summary.mesa.total.toFixed(2)}</span>
                     </div>
-                    <div className="text-[10px] font-mono text-stone-500 flex justify-between">
+                    <div className="text-[9px] font-mono text-stone-500 flex justify-between items-center">
                       <span>{summary.mesa.count} pedidos</span>
-                      {summary.mesa.count > 0 && <span>{Object.entries(summary.mesa.orders.reduce((acc, o) => { const pm = normalizePaymentMethod(o.payment_method || o.paymentMethod); acc[pm] = (acc[pm] || 0) + Number(o.total_amount || o.totalAmount || 0); return acc; }, {})).map(([pm, val]) => `${pm} €${val.toFixed(2)}`).join(' | ')}</span>}
+                      {summary.mesa.count > 0 && <span className="truncate max-w-[180px]">{Object.entries(summary.mesa.orders.reduce((acc, o) => { const pm = normalizePaymentMethod(o.payment_method || o.paymentMethod); acc[pm] = (acc[pm] || 0) + Number(o.total_amount || o.totalAmount || 0); return acc; }, {})).map(([pm, val]) => `${pm} €${val.toFixed(2)}`).join(' | ')}</span>}
                     </div>
                   </div>
 
                   {/* Retirada */}
-                  <div className="p-2.5 rounded bg-black/40 border border-stone-800/60">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="font-mono text-xs font-bold text-stone-300 flex items-center gap-1.5"><ShoppingBag size={13} className="text-sky-500" /> RETIRADA</span>
-                      <span className="font-mono text-sm font-bold text-white">€ {summary.retirada.total.toFixed(2)}</span>
+                  <div className="p-1.5 sm:p-2 rounded bg-black/40 border border-stone-800/60">
+                    <div className="flex justify-between items-center mb-0.5">
+                      <span className="font-mono text-[11px] font-bold text-stone-300 flex items-center gap-1.5">
+                        <ShoppingBag size={12} className="text-sky-500" /> RETIRADA
+                      </span>
+                      <span className="font-mono text-xs sm:text-sm font-bold text-white">€ {summary.retirada.total.toFixed(2)}</span>
                     </div>
-                    <div className="text-[10px] font-mono text-stone-500 flex justify-between">
+                    <div className="text-[9px] font-mono text-stone-500 flex justify-between items-center">
                       <span>{summary.retirada.count} pedidos</span>
-                      {summary.retirada.count > 0 && <span>{Object.entries(summary.retirada.orders.reduce((acc, o) => { const pm = normalizePaymentMethod(o.payment_method || o.paymentMethod); acc[pm] = (acc[pm] || 0) + Number(o.total_amount || o.totalAmount || 0); return acc; }, {})).map(([pm, val]) => `${pm} €${val.toFixed(2)}`).join(' | ')}</span>}
+                      {summary.retirada.count > 0 && <span className="truncate max-w-[180px]">{Object.entries(summary.retirada.orders.reduce((acc, o) => { const pm = normalizePaymentMethod(o.payment_method || o.paymentMethod); acc[pm] = (acc[pm] || 0) + Number(o.total_amount || o.totalAmount || 0); return acc; }, {})).map(([pm, val]) => `${pm} €${val.toFixed(2)}`).join(' | ')}</span>}
                     </div>
                   </div>
 
@@ -333,17 +341,19 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
               </div>
 
               {/* COLUNA 2: PAGAMENTOS E MOVS */}
-              <div className="bg-stone-900 border border-stone-800 rounded-lg p-2 lg:h-full flex flex-col gap-2">
+              <div className="bg-stone-900 border border-stone-800 rounded-lg p-2 flex flex-col gap-1.5">
                 
                 {/* Pagamentos */}
                 <div>
-                  <h3 className="font-mono text-[10px] text-stone-500 uppercase tracking-widest mb-2 border-b border-stone-800 pb-1.5 flex items-center gap-1.5"><CreditCard size={12} /> Recebimentos</h3>
-                  <div className="space-y-2">
+                  <h3 className="font-mono text-[9px] text-stone-500 uppercase tracking-widest mb-1.5 border-b border-stone-800 pb-1 flex items-center gap-1.5">
+                    <CreditCard size={11} /> Recebimentos
+                  </h3>
+                  <div className="space-y-1.5">
                     {Object.entries(summary.paymentTotals).map(([pm, val]: any) => {
                       const pct = summary.totalRevenue > 0 ? (val / summary.totalRevenue) * 100 : 0;
                       return (
                         <div key={pm}>
-                          <div className="flex justify-between text-xs font-mono mb-1">
+                          <div className="flex justify-between text-[11px] font-mono mb-0.5">
                             <span className="text-stone-300">{pm}</span>
                             <span className="font-bold text-white">€ {val.toFixed(2)}</span>
                           </div>
@@ -357,69 +367,75 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                 </div>
 
                 {/* Movimentações */}
-                <div className="flex-1 mt-1 border-t border-stone-800 pt-2">
-                  <h3 className="font-mono text-[10px] text-stone-500 uppercase tracking-widest mb-2 border-b border-stone-800 pb-1.5">Movimentações Avulsas</h3>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
-                    <div className="bg-emerald-950/30 border border-emerald-900/50 p-2 rounded">
-                      <span className="text-[9px] font-mono text-emerald-500 block">SUPRIMENTOS</span>
-                      <span className="text-emerald-400 font-mono font-bold">+ €{summary.suprimentosTotal.toFixed(2)}</span>
+                <div className="flex-1 mt-0.5 border-t border-stone-800 pt-1.5">
+                  <h3 className="font-mono text-[9px] text-stone-500 uppercase tracking-widest mb-1 border-b border-stone-800 pb-0.5">Movimentações Avulsas</h3>
+                  <div className="grid grid-cols-2 gap-1.5 mb-1">
+                    <div className="bg-emerald-950/30 border border-emerald-900/50 px-2 py-1 rounded">
+                      <span className="text-[8.5px] font-mono text-emerald-500 block leading-tight">SUPRIMENTOS</span>
+                      <span className="text-emerald-400 font-mono font-bold text-xs leading-tight">+ €{summary.suprimentosTotal.toFixed(2)}</span>
                     </div>
-                    <div className="bg-rose-950/30 border border-rose-900/50 p-2 rounded">
-                      <span className="text-[9px] font-mono text-rose-500 block">SANGRIAS</span>
-                      <span className="text-rose-400 font-mono font-bold">- €{summary.sangriasTotal.toFixed(2)}</span>
+                    <div className="bg-rose-950/30 border border-rose-900/50 px-2 py-1 rounded">
+                      <span className="text-[8.5px] font-mono text-rose-500 block leading-tight">SANGRIAS</span>
+                      <span className="text-rose-400 font-mono font-bold text-xs leading-tight">- €{summary.sangriasTotal.toFixed(2)}</span>
                     </div>
                   </div>
-                  <div className="max-h-24 overflow-y-auto pr-1 space-y-1">
-                    {sessionDetails?.movements?.map((m: any, idx: number) => (
-                      <div key={idx} className="flex justify-between text-[10px] font-mono">
-                        <span className="text-stone-400 uppercase">{m.type} {m.notes ? `(${m.notes})` : ''}</span>
-                        <span className={m.type === 'suprimento' ? 'text-emerald-400' : 'text-rose-400'}>{m.type === 'suprimento' ? '+' : '-'}€{Number(m.amount||0).toFixed(2)}</span>
-                      </div>
-                    ))}
+                  <div className="max-h-16 overflow-y-auto pr-1 space-y-0.5">
+                    {sessionDetails?.movements && sessionDetails.movements.length > 0 ? (
+                      sessionDetails.movements.map((m: any, idx: number) => (
+                        <div key={idx} className="flex justify-between text-[9px] font-mono">
+                          <span className="text-stone-400 uppercase truncate max-w-[150px]">{m.type} {m.notes ? `(${m.notes})` : ''}</span>
+                          <span className={m.type === 'suprimento' ? 'text-emerald-400' : 'text-rose-400'}>{m.type === 'suprimento' ? '+' : '-'}€{Number(m.amount||0).toFixed(2)}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-[9px] font-mono text-stone-500 italic">Nenhuma movimentação avulsa</span>
+                    )}
                   </div>
                 </div>
 
               </div>
 
               {/* COLUNA 3: AUDITORIA GAVETA */}
-              <div className="bg-[#1a1a18] border border-[#fdde58]/20 rounded-lg p-2 lg:h-full flex flex-col shadow-[inset_0_0_20px_rgba(253,222,88,0.02)]">
-                <div className="flex items-center justify-between border-b border-stone-800 pb-1.5 mb-2">
-                  <h3 className="font-mono text-[10px] text-[#fdde58] uppercase tracking-widest flex items-center gap-1.5"><Wallet size={12} /> Auditoria da Gaveta</h3>
-                  <span className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase border ${summary.difference === 0 ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-rose-400 border-rose-500/30 bg-rose-500/10'}`}>
+              <div className="bg-[#1a1a18] border border-[#fdde58]/20 rounded-lg p-2 flex flex-col shadow-[inset_0_0_20px_rgba(253,222,88,0.02)]">
+                <div className="flex items-center justify-between border-b border-stone-800 pb-1 mb-1.5">
+                  <h3 className="font-mono text-[9px] text-[#fdde58] uppercase tracking-widest flex items-center gap-1.5">
+                    <Wallet size={11} /> Auditoria da Gaveta
+                  </h3>
+                  <span className={`text-[8.5px] font-mono font-bold px-1.5 py-0.5 rounded uppercase border ${summary.difference === 0 ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' : 'text-rose-400 border-rose-500/30 bg-rose-500/10'}`}>
                     {summary.difference === 0 ? 'EXATA' : summary.difference < 0 ? `FALTA €${Math.abs(summary.difference).toFixed(2)}` : `SOBRA €${summary.difference.toFixed(2)}`}
                   </span>
                 </div>
 
-                <div className="space-y-1 mb-2">
-                  <div className="flex justify-between items-center p-1.5 rounded bg-stone-900/80 border border-stone-800/50">
-                    <span className="text-[10px] font-mono text-stone-400">FUNDO ABERTURA</span>
-                    <span className="font-mono text-sm text-stone-200">€ {summary.fundoInicial.toFixed(2)}</span>
+                <div className="space-y-1 mb-1.5">
+                  <div className="flex justify-between items-center px-2 py-1 rounded bg-stone-900/80 border border-stone-800/50">
+                    <span className="text-[9px] font-mono text-stone-400">FUNDO ABERTURA</span>
+                    <span className="font-mono text-xs text-stone-200">€ {summary.fundoInicial.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-center p-1.5 rounded bg-stone-900/80 border border-stone-800/50">
-                    <span className="text-[10px] font-mono text-stone-400">(+) DINHEIRO VENDAS</span>
-                    <span className="font-mono text-sm text-emerald-400">+ € {summary.totalDinheiro.toFixed(2)}</span>
+                  <div className="flex justify-between items-center px-2 py-1 rounded bg-stone-900/80 border border-stone-800/50">
+                    <span className="text-[9px] font-mono text-stone-400">(+) DINHEIRO VENDAS</span>
+                    <span className="font-mono text-xs text-emerald-400">+ € {summary.totalDinheiro.toFixed(2)}</span>
                   </div>
-                  <div className="flex justify-between items-center p-1.5 rounded bg-stone-900/80 border border-stone-800/50">
-                    <span className="text-[10px] font-mono text-stone-400">(+/-) MOVS MANUAIS</span>
-                    <span className={`font-mono text-sm ${summary.netManualMovements >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  <div className="flex justify-between items-center px-2 py-1 rounded bg-stone-900/80 border border-stone-800/50">
+                    <span className="text-[9px] font-mono text-stone-400">(+/-) MOVS MANUAIS</span>
+                    <span className={`font-mono text-xs ${summary.netManualMovements >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                       {summary.netManualMovements >= 0 ? '+' : ''}€ {summary.netManualMovements.toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center p-2 rounded bg-[#fdde58]/10 border border-[#fdde58]/30 mt-1 shadow-[0_0_15px_rgba(253,222,88,0.05)]">
-                    <span className="text-[10px] font-mono text-[#fdde58] font-bold">(=) SALDO ESPERADO</span>
-                    <span className="font-mono text-base font-bold text-[#fdde58]">€ {summary.expectedCash.toFixed(2)}</span>
+                  <div className="flex justify-between items-center px-2 py-1.5 rounded bg-[#fdde58]/10 border border-[#fdde58]/30 mt-0.5 shadow-[0_0_15px_rgba(253,222,88,0.05)]">
+                    <span className="text-[9px] font-mono text-[#fdde58] font-bold">(=) SALDO ESPERADO</span>
+                    <span className="font-mono text-sm font-bold text-[#fdde58]">€ {summary.expectedCash.toFixed(2)}</span>
                   </div>
                 </div>
 
                 {session.status === 'fechado' && (
-                  <div className="mt-auto border-t border-stone-800 pt-3">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-mono text-stone-500">VALOR CONTADO:</span>
-                      <span className="font-mono text-sm font-bold text-white bg-stone-800 px-2 py-0.5 rounded border border-stone-700">€ {summary.countedCash.toFixed(2)}</span>
+                  <div className="mt-0.5 border-t border-stone-800 pt-1.5 space-y-1">
+                    <div className="flex justify-between items-center px-1">
+                      <span className="text-[9px] font-mono text-stone-400">VALOR CONTADO:</span>
+                      <span className="font-mono text-xs font-bold text-white bg-stone-800 px-2 py-0.5 rounded border border-stone-700">€ {summary.countedCash.toFixed(2)}</span>
                     </div>
-                    <div className={`flex justify-between items-center p-2 rounded ${summary.difference === 0 ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/50' : 'bg-rose-950/40 text-rose-400 border border-rose-900/50'}`}>
-                      <span className="text-[11px] font-mono font-bold uppercase">Diferença:</span>
-                      <span className="font-mono text-lg font-black">{summary.difference >= 0 ? '+' : ''}€ {summary.difference.toFixed(2)}</span>
+                    <div className={`flex justify-between items-center px-2 py-1 rounded ${summary.difference === 0 ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-900/50' : 'bg-rose-950/40 text-rose-400 border border-rose-900/50'}`}>
+                      <span className="text-[9px] font-mono font-bold uppercase">Diferença:</span>
+                      <span className="font-mono text-sm font-black">{summary.difference >= 0 ? '+' : ''}€ {summary.difference.toFixed(2)}</span>
                     </div>
                   </div>
                 )}
@@ -433,16 +449,16 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
             /* ========================================================= */
             /* ABA 2: LISTA DE PEDIDOS DO TURNO (COCKPIT DE AUDITORIA) */
             /* ========================================================= */
-            <div className="space-y-2">
+            <div className="p-2 sm:p-2.5 space-y-2">
               
               {/* Barra de Controles & Busca Rápida */}
-              <div className="bg-white rounded-2xl border border-stone-200/80 p-2 sm:p-3 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2">
+              <div className="bg-white rounded-xl border border-stone-200/80 p-2 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2">
                 
                 {/* Segmented Filter Pills */}
-                <div className="inline-flex bg-stone-100 p-1 rounded-xl border border-stone-200 text-xs font-mono overflow-x-auto">
+                <div className="inline-flex bg-stone-100 p-0.5 rounded-lg border border-stone-200 text-xs font-mono overflow-x-auto">
                   <button
                     onClick={() => setOrderTypeFilter('todos')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer whitespace-nowrap text-[11px] ${
                       orderTypeFilter === 'todos' ? 'bg-stone-900 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
@@ -450,52 +466,52 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                   </button>
                   <button
                     onClick={() => setOrderTypeFilter('entrega')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                    className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap text-[11px] ${
                       orderTypeFilter === 'entrega' ? 'bg-amber-500 text-stone-950 shadow-xs' : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    <Bike size={13} /> Entrega ({summary.entrega.count})
+                    <Bike size={12} /> Entrega ({summary.entrega.count})
                   </button>
                   <button
                     onClick={() => setOrderTypeFilter('mesa')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                    className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap text-[11px] ${
                       orderTypeFilter === 'mesa' ? 'bg-emerald-500 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    <UtensilsCrossed size={13} /> Mesa ({summary.mesa.count})
+                    <UtensilsCrossed size={12} /> Mesa ({summary.mesa.count})
                   </button>
                   <button
                     onClick={() => setOrderTypeFilter('retirada')}
-                    className={`px-3 py-1.5 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                    className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 whitespace-nowrap text-[11px] ${
                       orderTypeFilter === 'retirada' ? 'bg-sky-500 text-white shadow-xs' : 'text-stone-600 hover:text-stone-900'
                     }`}
                   >
-                    <ShoppingBag size={13} /> Retirada ({summary.retirada.count})
+                    <ShoppingBag size={12} /> Retirada ({summary.retirada.count})
                   </button>
                 </div>
 
                 {/* Input de Busca em Tempo Real */}
                 <div className="flex items-center gap-2">
-                  <div className="relative flex-1 sm:w-72">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <div className="relative flex-1 sm:w-64">
+                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
                     <input
                       type="text"
                       value={orderSearch}
                       onChange={(e) => setOrderSearch(e.target.value)}
                       placeholder="Buscar por cliente, pedido, item..."
-                      className="w-full pl-9 pr-8 py-2 text-xs bg-stone-50 hover:bg-white focus:bg-white rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-stone-900 text-stone-800 placeholder-stone-400 font-medium transition-all"
+                      className="w-full pl-8 pr-7 py-1.5 text-xs bg-stone-50 hover:bg-white focus:bg-white rounded-lg border border-stone-200 focus:outline-none focus:ring-1 focus:ring-stone-900 text-stone-800 placeholder-stone-400 font-medium transition-all"
                     />
                     {orderSearch && (
                       <button 
                         onClick={() => setOrderSearch('')} 
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700"
                       >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-3 h-3" />
                       </button>
                     )}
                   </div>
 
-                  <div className="hidden lg:flex items-center gap-1.5 px-3 py-2 bg-stone-100 rounded-xl text-xs font-mono text-stone-600 shrink-0 border border-stone-200">
+                  <div className="hidden lg:flex items-center gap-1 px-2.5 py-1 bg-stone-100 rounded-lg text-xs font-mono text-stone-600 shrink-0 border border-stone-200">
                     <span>Filtrado:</span>
                     <strong className="text-stone-950 font-bold">€ {totalFilteredRevenue.toFixed(2)}</strong>
                   </div>
@@ -504,12 +520,12 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
               </div>
 
               {/* Lista de Pedidos Auditados */}
-              <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+              <div className="bg-white rounded-xl border border-stone-200 shadow-xs overflow-hidden">
                 {filteredOrders.length === 0 ? (
-                  <div className="p-12 text-center text-stone-400 text-xs font-mono space-y-2">
-                    <Filter className="w-8 h-8 mx-auto text-stone-300" />
+                  <div className="p-8 text-center text-stone-400 text-xs font-mono space-y-1.5">
+                    <Filter className="w-7 h-7 mx-auto text-stone-300" />
                     <p className="font-bold text-stone-600">Nenhum pedido encontrado</p>
-                    <p>Tente alterar o filtro de canal ou os termos da busca.</p>
+                    <p className="text-[11px]">Tente alterar o filtro de canal ou os termos da busca.</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-stone-100">
@@ -523,18 +539,18 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
 
                       return (
                         <div key={order.id} className="transition-colors hover:bg-stone-50/80">
-                          {/* Linha Resumida */}
+                          {/* Linha Resumida Ultra Compacta */}
                           <div 
                             onClick={() => toggleExpandOrder(order.id)}
-                            className="p-2 sm:p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 cursor-pointer select-none"
+                            className="px-2.5 py-1.5 sm:px-3 sm:py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 cursor-pointer select-none"
                           >
-                            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                            <div className="flex items-center gap-2.5 min-w-0">
                               
                               {/* ID & Badge do Canal */}
                               <div className="shrink-0 text-left font-mono">
                                 <div className="flex items-center gap-1.5">
-                                  <span className="font-black text-xs text-stone-950">#{order.id}</span>
-                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-md border uppercase tracking-wider ${
+                                  <span className="font-bold text-xs text-stone-950">#{order.id}</span>
+                                  <span className={`text-[8.5px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${
                                     normType === 'entrega' 
                                       ? 'bg-amber-50 text-amber-800 border-amber-300' 
                                       : normType === 'mesa'
@@ -544,8 +560,8 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                                     {normType === 'entrega' ? 'Entrega' : normType === 'mesa' ? 'Mesa' : 'Retirada'}
                                   </span>
                                 </div>
-                                <div className="text-[10px] text-stone-400 flex items-center gap-1 mt-0.5">
-                                  <Clock size={11} />
+                                <div className="text-[9.5px] text-stone-400 flex items-center gap-1 mt-0.5">
+                                  <Clock size={10} />
                                   <span>{format(orderDate, 'HH:mm')}</span>
                                 </div>
                               </div>
@@ -557,13 +573,13 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                                     {order.customer_name || order.customerName || 'Cliente Balcão'}
                                   </span>
                                   {(order.customer_phone || order.customerPhone) && (
-                                    <span className="text-[10px] font-mono text-stone-500 hidden md:inline">
+                                    <span className="text-[9.5px] font-mono text-stone-500 hidden md:inline">
                                       • {order.customer_phone || order.customerPhone}
                                     </span>
                                   )}
                                 </div>
 
-                                <div className="text-[10px] text-stone-500 truncate mt-0.5">
+                                <div className="text-[9.5px] text-stone-500 truncate mt-0.5">
                                   {items.length > 0 ? (
                                     items.map((it: any) => `${it.quantity || 1}x ${it.name}`).join(', ')
                                   ) : (
@@ -576,11 +592,11 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
 
                             {/* Forma de Pagamento, Valor e Ações */}
                             <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-stone-100">
-                              <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-lg bg-stone-100 text-stone-700 border border-stone-200">
+                              <span className="text-[9.5px] font-mono font-semibold px-2 py-0.5 rounded bg-stone-100 text-stone-700 border border-stone-200">
                                 {normPayment}
                               </span>
 
-                              <span className="font-mono font-semibold text-xs text-stone-950 tabular-nums">
+                              <span className="font-mono font-bold text-xs text-stone-950 tabular-nums">
                                 € {totalAmt.toFixed(2)}
                               </span>
 
@@ -591,18 +607,18 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                                     e.stopPropagation();
                                     setSelectedReceiptOrder(order);
                                   }}
-                                  className="p-1.5 rounded-lg text-stone-500 hover:text-stone-950 hover:bg-stone-200/80 transition-colors"
+                                  className="p-1 rounded text-stone-500 hover:text-stone-950 hover:bg-stone-200/80 transition-colors cursor-pointer"
                                   title="Ver Cupom / Imprimir Talão"
                                 >
-                                  <Receipt size={16} />
+                                  <Receipt size={14} />
                                 </button>
                                 
                                 <button
                                   type="button"
-                                  className={`p-1.5 rounded-lg text-stone-400 transition-transform ${isExpanded ? 'rotate-180 text-stone-900' : ''}`}
+                                  className={`p-1 rounded text-stone-400 transition-transform ${isExpanded ? 'rotate-180 text-stone-900' : ''}`}
                                   title={isExpanded ? 'Recolher detalhes' : 'Expandir detalhes'}
                                 >
-                                  <ChevronDown size={17} />
+                                  <ChevronDown size={15} />
                                 </button>
                               </div>
                             </div>
@@ -801,23 +817,23 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
         {/* ========================================================= */}
         {/* RODAPÉ EXECUTIVO */}
         {/* ========================================================= */}
-        <div className="p-4 border-t border-stone-200 bg-white flex flex-col sm:flex-row justify-between items-center gap-3 shrink-0">
-          <div className="text-xs font-mono text-stone-500 flex items-center gap-2">
+        <div className="px-3.5 py-2 border-t border-stone-200 bg-white flex flex-col sm:flex-row justify-between items-center gap-2 shrink-0">
+          <div className="text-[11px] font-mono text-stone-500 flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             <span>Auditoria concluída • <strong>{summary.totalOrdersCount} pedidos</strong> registrados</span>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setActiveTab(activeTab === 'balanco' ? 'pedidos' : 'balanco')}
-              className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold rounded-xl transition-colors cursor-pointer font-mono border border-stone-300"
+              className="px-3.5 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-800 text-[11px] font-bold rounded-lg transition-colors cursor-pointer font-mono border border-stone-300"
             >
               {activeTab === 'balanco' ? `Ver Pedidos (${summary.totalOrdersCount})` : 'Ver Balanço Financeiro'}
             </button>
 
             <button
               onClick={onClose}
-              className="px-5 py-2 bg-stone-950 hover:bg-stone-800 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer font-mono shadow-xs"
+              className="px-4 py-1.5 bg-stone-950 hover:bg-stone-800 text-white text-[11px] font-bold rounded-lg transition-colors cursor-pointer font-mono shadow-xs"
             >
               Fechar Janela
             </button>

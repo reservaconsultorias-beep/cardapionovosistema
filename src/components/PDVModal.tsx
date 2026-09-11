@@ -138,39 +138,7 @@ export default function PDVModal({
   const cardsRef = useRef<(HTMLButtonElement | null)[]>([]);
 
 
-  // History interception for mobile back button
-  const cartRef = useRef(cart);
-  useEffect(() => { cartRef.current = cart; }, [cart]);
-  
-  const onCloseRef = useRef(onClose);
-  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    window.history.pushState({ pdvModalOpen: true }, '');
-
-    const handlePopState = (event: PopStateEvent) => {
-      event.preventDefault();
-      
-      if (cartRef.current.length > 0) {
-        if (!window.confirm('Deseja cancelar o pedido atual e fechar?')) {
-          window.history.pushState({ pdvModalOpen: true }, '');
-          return;
-        }
-      }
-      onCloseRef.current();
-    };
-
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      if (window.history.state?.pdvModalOpen) {
-        window.history.back();
-      }
-    };
-  }, [isOpen]);
+  // History interception for mobile back button removed to prevent modal crashing/blinking and closing unintentionally
 
   // Load delivery zones and settings
   useEffect(() => {
@@ -872,8 +840,8 @@ export default function PDVModal({
                     type="tel"
                     value={customerPhone}
                     onChange={e => setCustomerPhone(e.target.value)}
-                    placeholder="Telefone *"
-                    className="w-full h-7 px-2 bg-white border border-stone-300 rounded-md text-[11px] font-mono font-bold text-stone-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 focus:outline-none transition-all placeholder:text-stone-400 placeholder:font-normal"
+                    placeholder="Telefone (opcional)"
+                    className="w-full h-7 px-2 bg-white border border-stone-300 rounded-md text-[11px] font-mono font-medium text-stone-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 focus:outline-none transition-all placeholder:text-stone-400 placeholder:font-normal"
                   />
                 </div>
 

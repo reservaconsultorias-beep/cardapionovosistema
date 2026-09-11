@@ -1,0 +1,100 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://tipnhvpivhaerumetona.supabase.co',
+  process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || 'sb_publishable_71P_V0V6Q7x-FEw4tCFDCg_qCOwUMat'
+);
+
+export default async (req: Request) => {
+  const headers = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Authorization, Content-Type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Content-Type': 'application/json'
+  };
+
+  if (req.method === 'OPTIONS') {
+    return new Response('', { status: 200, headers });
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ success: false, message: 'Method Not Allowed' }), { status: 405, headers });
+  }
+
+  // Token de autenticação opcional / de segurança
+  const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+  const SECRET_TOKEN = process.env.WHATSAPP_API_TOKEN || 'SenhaSuperSecreta41Menus2026';
+
+  if (!authHeader || authHeader !== `Bearer ${SECRET_TOKEN}`) {
+    return new Response(JSON.stringify({ success: false, message: 'Unauthorized. Invalid Token.' }), { status: 401, headers });
+  }
+
+  try {
+    const payload = await req.json();
+    const rawPhone = String(payload.phone || payload.customer_phone || '').replace(/\D/g, '');
+    const name = String(payload.name || payload.customer_name || 'Cliente');
+    const sender = (payload.sender === 'bot' || payload.sender === 'ai') ? 'bot' : (payload.sender === 'human' ? 'human' : 'client');
+    const text = String(payload.text || payload.content || '').trim();
+
+    if (!rawPhone || !text) {
+      return new Response(JSON.stringify({ success: false, message: 'phone e text são obrigatórios' }), { status: 400, headers });
+    }
+
+    const convKey = `chat_conversation_${rawPhone}`;
+
+    // 1. Buscar histórico atual
+    const { data: currentSetting } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', convKey)
+      .maybeSingle();
+
+    const existingData = currentSetting?.value || {};
+    const messages = Array.isArray(existingData.messages) ? existingData.messages : [];
+
+    // Adiciona nova mensagem mantendo limite das últimas 100 mensagens
+    const newMessage = {
+      id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      sender, // 'client' | 'bot' | 'human'
+      text,
+      timestamp: new Date().toISOString()
+    };
+
+    const updatedMessages = [...messages, newMessage].slice(-100);
+
+    const updatedValue = {
+      phone: rawPhone,
+      name: existingData.name && existingData.name !== 'Cliente' ? existingData.name : name,
+      paused: Boolean(existingData.paused ?? false),
+      paused_at: existingData.paused_at ?? null,
+      last_message: text,
+      last_sender: sender,
+      updated_at: new Date().toISOString(),
+      messages: updatedMessages
+    };
+
+    const { error: upsertErr } = await supabase
+      .from('settings')
+      .upsert({
+        key: convKey,
+        value: updatedValue,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'key' });
+
+    if (upsertErr) throw upsertErr;
+
+    return new Response(JSON.stringify({
+      success: true,
+      phone: rawPhone,
+      total_messages: updatedMessages.length
+    }), { status: 200, headers });
+
+  } catch (error: any) {
+    console.error('Chat Mirror API Error:', error);
+    return new Response(JSON.stringify({ success: false, message: error.message }), { status: 500, headers });
+  }
+};
+
+export const config = {
+  path: '/.netlify/functions/chat-mirror'
+};

@@ -214,28 +214,96 @@ export default function AdminDashboard() {
   const [editingOrder, setEditingOrder] = useState<any | null>(null);
 
   const handleSaveOrderEdit = async (updatedOrder: any) => {
+    // 1. Atualização Otimista Imediata no Estado React (Gestor, Comanda e Gráficos atualizam sem recarregar página)
+    const normPm = (updatedOrder.payment_method || updatedOrder.paymentMethod || 'Dinheiro').toString().trim();
+    const normalizedPaymentMethod = (normPm.toLowerCase() === 'mbway' || normPm.toLowerCase() === 'mb way') ? 'MB Way' : normPm;
+
+    const formattedUpdatedOrder = {
+      ...updatedOrder,
+      customerName: updatedOrder.customer_name || updatedOrder.customerName,
+      customerPhone: updatedOrder.customer_phone || updatedOrder.customerPhone,
+      orderType: updatedOrder.order_type || updatedOrder.orderType,
+      paymentMethod: normalizedPaymentMethod,
+      payment_method: normalizedPaymentMethod,
+      items: updatedOrder.items,
+      discountAmount: Number(updatedOrder.discount_amount ?? updatedOrder.discountAmount ?? 0),
+      discount_amount: Number(updatedOrder.discount_amount ?? updatedOrder.discountAmount ?? 0),
+      additionalAmount: Number(updatedOrder.additional_amount ?? updatedOrder.additionalAmount ?? 0),
+      additional_amount: Number(updatedOrder.additional_amount ?? updatedOrder.additionalAmount ?? 0),
+      totalAmount: Number(updatedOrder.total_amount ?? updatedOrder.totalAmount ?? 0),
+      total_amount: Number(updatedOrder.total_amount ?? updatedOrder.totalAmount ?? 0),
+      editReason: updatedOrder.edit_reason || updatedOrder.editReason || '',
+      edit_reason: updatedOrder.edit_reason || updatedOrder.editReason || '',
+      isEdited: true,
+      is_edited: true,
+      updatedAt: new Date().toISOString()
+    };
+
+    // Atualiza allOrders
+    setAllOrders(prev => prev.map(o => o.id === updatedOrder.id ? { ...o, ...formattedUpdatedOrder } : o));
+
+    // Atualiza filteredOrders
+    setFilteredOrders(prev => prev.map(o => o.id === updatedOrder.id ? { ...o, ...formattedUpdatedOrder } : o));
+
+    // Atualiza dashboardData (recentOrders, KPIs e gráfico de formas de pagamento)
+    setDashboardData((prev: any) => {
+      if (!prev) return prev;
+      const updatedRecent = (prev.recentOrders || []).map((o: any) => 
+        o.id === updatedOrder.id ? { ...o, ...formattedUpdatedOrder } : o
+      );
+      
+      // Recalcular distribuição de formas de pagamento em tempo real
+      const pmCounts: Record<string, number> = {};
+      let totalFat = 0;
+      updatedRecent.forEach((o: any) => {
+        if (o.status !== 'Cancelado' && o.status !== 'cancelado') {
+          const pm = o.paymentMethod || 'Outros';
+          const amt = Number(o.totalAmount || 0);
+          pmCounts[pm] = (pmCounts[pm] || 0) + amt;
+          totalFat += amt;
+        }
+      });
+      const newPaymentMethodsData = Object.entries(pmCounts).map(([name, value]) => ({ name, value }));
+
+      return {
+        ...prev,
+        recentOrders: updatedRecent,
+        paymentMethodsData: newPaymentMethodsData,
+        faturamentoBruto: totalFat > 0 ? totalFat : prev.faturamentoBruto,
+        faturamento: totalFat > 0 ? totalFat : prev.faturamento
+      };
+    });
+
+    // Se a comanda / talão estiver com esse pedido aberto ou em cache, atualiza imediatamente
+    setPrintOrder((prev: any) => {
+      if (prev && prev.id === updatedOrder.id) {
+        return { ...prev, ...formattedUpdatedOrder };
+      }
+      return prev;
+    });
+
+    setEditingOrder(null);
+
     try {
       const { error } = await supabase.from('orders').update({
-        customer_name: updatedOrder.customer_name,
-        customer_phone: updatedOrder.customer_phone,
-        order_type: updatedOrder.order_type,
-        payment_method: updatedOrder.payment_method,
-        items: updatedOrder.items,
-        discount_amount: updatedOrder.discount_amount,
-        additional_amount: updatedOrder.additional_amount,
-        total_amount: updatedOrder.total_amount,
-        edit_reason: updatedOrder.edit_reason,
+        customer_name: formattedUpdatedOrder.customerName,
+        customer_phone: formattedUpdatedOrder.customerPhone,
+        order_type: formattedUpdatedOrder.orderType,
+        payment_method: formattedUpdatedOrder.paymentMethod,
+        items: formattedUpdatedOrder.items,
+        discount_amount: formattedUpdatedOrder.discountAmount,
+        additional_amount: formattedUpdatedOrder.additionalAmount,
+        total_amount: formattedUpdatedOrder.totalAmount,
+        edit_reason: formattedUpdatedOrder.editReason,
         is_edited: true,
-        updated_at: new Date().toISOString()
+        updated_at: formattedUpdatedOrder.updatedAt
       }).eq('id', updatedOrder.id);
 
       if (error) throw error;
-      setEditingOrder(null);
       fetchDashboardData(true);
-      alert(`Pedido #${updatedOrder.id} atualizado com sucesso!`);
     } catch (err: any) {
       console.error('Erro ao atualizar pedido:', err);
-      alert('Erro ao atualizar pedido: ' + err.message);
+      alert('Erro ao sincronizar atualização no banco: ' + err.message);
     }
   };
 
@@ -555,7 +623,17 @@ export default function AdminDashboard() {
         faturamentoNumerario,
         faturamentoMBWay,
         pendingOrders: pendingOrders.length,
-        recentOrders: activeSessionId ? allDbOrders.filter(o => o.cashSessionId === activeSessionId) : [],
+        recentOrders: allDbOrders.filter(o => {
+          // Se houver sessão de caixa aberta e o pedido pertencer a ela
+          if (activeSessionId && o.cashSessionId === activeSessionId) return true;
+          // Pedidos não finalizados/não cancelados sempre aparecem para a cozinha/gestão
+          const isPendingOrActive = o.status !== 'Finalizado' && o.status !== 'Cancelado';
+          if (isPendingOrActive) return true;
+          // Pedidos do dia atual (mesmo que sem sessão aberta vinculada)
+          const orderDate = safeGetTime(o.createdAt);
+          const todayStr = now.toISOString().split('T')[0];
+          return orderDate && orderDate.toISOString().split('T')[0] === todayStr;
+        }),
         popularItems,
         popularPizzas,
         chartData: {
@@ -807,8 +885,23 @@ export default function AdminDashboard() {
     const interval = setInterval(() => {
       fetchDashboardData(true);
     }, 15000);
+
+    // Supabase Realtime para sincronização instantânea de pedidos entre telas e abas
+    const channel = supabase
+      .channel('admin-orders-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => {
+          fetchDashboardData(true);
+        }
+      )
+      .subscribe();
     
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
   }, [isAuthenticated]);
 
   
@@ -2340,6 +2433,7 @@ export default function AdminDashboard() {
                       <th className="py-3 px-4 rounded-tl-md">Nº / Hora</th>
                       <th className="py-3 px-4">Cliente</th>
                       <th className="py-3 px-4">Tipo</th>
+                      <th className="py-3 px-4">Pagamento</th>
                       <th className="py-3 px-4">Valor</th>
                       <th className="py-3 px-4 text-center">Status</th>
                       <th className="py-3 px-4 rounded-tr-md">Ações</th>
@@ -2348,17 +2442,12 @@ export default function AdminDashboard() {
                   <tbody className="text-xs font-mono">
                     {(!dashboardData?.recentOrders || dashboardData.recentOrders.length === 0) ? (
                       <tr>
-                        <td colSpan={6} className="py-12 text-center">
-                          {!dashboardData?.activeSessionId ? (
-                            <div className="flex flex-col items-center justify-center text-stone-400">
-                              <Wallet size={32} className="mb-2 opacity-50" />
-                              <p className="font-bold text-stone-600 text-sm">Caixa Fechado</p>
-                              <p>Nenhum pedido em andamento no momento.</p>
-                              <p className="text-[10px] mt-1">Abra o caixa na aba "Caixa" para receber pedidos.</p>
-                            </div>
-                          ) : (
-                            <span className="text-stone-500 font-mono text-xs">Nenhum pedido recebido neste turno ainda.</span>
-                          )}
+                        <td colSpan={7} className="py-12 text-center">
+                          <div className="flex flex-col items-center justify-center text-stone-400">
+                            <ShoppingBag size={32} className="mb-2 opacity-50" />
+                            <p className="font-bold text-stone-600 text-sm">Nenhum pedido no momento</p>
+                            <p className="text-stone-500 font-mono text-xs mt-0.5">Aguardando novos pedidos entrarem pelo cardápio ou WhatsApp.</p>
+                          </div>
                         </td>
                       </tr>
                     ) : (
@@ -2379,6 +2468,11 @@ export default function AdminDashboard() {
                           <td className="py-3 px-4">
                             <span className="text-stone-600 bg-stone-100 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold border border-stone-200">
                               {order.orderType}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-stone-100 text-stone-800 border border-stone-200">
+                              {order.paymentMethod || order.payment_method || 'Outros'}
                             </span>
                           </td>
                           <td className="py-3 px-4 font-bold tabular-nums text-stone-900">€{order.totalAmount.toFixed(2)}</td>
@@ -3581,6 +3675,7 @@ export default function AdminDashboard() {
         onSave={handleSaveOrderEdit}
       />
     )}
+
     {selectedSessionForDetails && (
       <CashSessionDetailsModal
         session={selectedSessionForDetails}
@@ -3594,8 +3689,8 @@ export default function AdminDashboard() {
 function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, menuItems: any[], onClose: () => void, onSave: (updatedOrder: any) => Promise<void> }) {
   const [customerName, setCustomerName] = useState(order.customerName || order.customer_name || '');
   const [customerPhone, setCustomerPhone] = useState(order.customerPhone || order.customer_phone || '');
-  const [orderType, setOrderType] = useState(order.orderType || order.order_type || 'entrega');
-  const [paymentMethod, setPaymentMethod] = useState(order.paymentMethod || order.payment_method || 'Dinheiro');
+  const initialPm = (order.paymentMethod || order.payment_method || 'Dinheiro').toString().trim();
+  const [paymentMethod, setPaymentMethod] = useState(initialPm.toLowerCase() === 'mbway' ? 'MB Way' : initialPm);
   const [items, setItems] = useState<any[]>(() => {
     let raw = order.items;
     if (typeof raw === 'string') {
@@ -3729,370 +3824,347 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   }, [menuItems, selectedProductSearch]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div className="bg-stone-50 rounded-xl w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-stone-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/70 backdrop-blur-xs">
+      <div className="bg-stone-100 rounded-xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-stone-800">
         
-        {/* Header */}
-        <div className="p-4 sm:p-5 bg-stone-950 text-white flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-stone-800 text-rose-500 rounded-md border border-stone-700">
-              <Edit3 size={18} />
+        {/* Header Compacto */}
+        <div className="px-3.5 py-2 bg-stone-950 text-white flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-2">
+            <div className="p-1 bg-stone-800 text-rose-500 rounded border border-stone-700">
+              <Edit3 size={14} />
             </div>
             <div>
-              <h3 className="font-extrabold text-lg leading-none text-white tracking-tight">Editar Pedido #{order.id}</h3>
-              <p className="text-xs text-stone-400 mt-1.5 font-medium">Altere produtos, quantidades, taxas e descontos</p>
+              <h3 className="font-extrabold text-xs leading-tight text-white tracking-tight">Editar Pedido #{order.id}</h3>
+              <p className="text-[9px] text-stone-400 font-medium leading-none mt-0.5">Altere produtos, valores e forma de pagamento</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-stone-400 hover:text-white bg-stone-900 hover:bg-rose-600 rounded-md transition-colors cursor-pointer border border-stone-800 hover:border-rose-500"
+            className="p-1 text-stone-400 hover:text-white bg-stone-900 hover:bg-rose-600 rounded transition-colors cursor-pointer border border-stone-800 hover:border-rose-500"
           >
-            <X size={18} />
+            <X size={14} />
           </button>
         </div>
 
-        {/* Real-time total summary bar */}
-        <div className="bg-stone-900 px-4 sm:px-6 py-2.5 border-b border-stone-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex flex-wrap items-center gap-3 sm:gap-4 font-mono">
+        {/* Real-time total summary bar Compacto */}
+        <div className="bg-stone-900 px-3.5 py-1 border-b border-stone-800 flex items-center justify-between text-xs shrink-0">
+          <div className="flex items-center gap-2.5 font-mono text-[10px]">
             <span className="text-stone-300">
               Subtotal: <strong className="text-white font-bold">€ {subtotal.toFixed(2)}</strong>
             </span>
             {Number(additionalAmount) > 0 && (
-              <span className="text-amber-400 font-bold">
-                (+) Adicional: € {Number(additionalAmount).toFixed(2)}
+              <span className="text-amber-400 font-semibold">
+                (+) Adic: € {Number(additionalAmount).toFixed(2)}
               </span>
             )}
             {Number(discountAmount) > 0 && (
-              <span className="text-emerald-400 font-bold">
-                (-) Desconto: € {Number(discountAmount).toFixed(2)}
+              <span className="text-emerald-400 font-semibold">
+                (-) Desc: € {Number(discountAmount).toFixed(2)}
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-wider">Total em tempo real:</span>
-            <span className="text-xl font-black text-rose-500 font-mono leading-none">€ {finalTotal.toFixed(2)}</span>
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] font-mono text-stone-400 uppercase">Total:</span>
+            <span className="text-sm font-black text-rose-500 font-mono leading-none">€ {finalTotal.toFixed(2)}</span>
           </div>
         </div>
 
-        {/* Content Body */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
-          
-          {/* Section 1: Customer Info */}
-          <div className="bg-white p-4 rounded-md border border-stone-200 space-y-4">
-            <h4 className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Dados do Cliente & Entrega</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Nome do Cliente</label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-stone-50 rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Telefone</label>
-                <input
-                  type="text"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-stone-50 rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Tipo de Pedido</label>
-                <select
-                  value={orderType}
-                  onChange={(e) => setOrderType(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-stone-50 rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors cursor-pointer"
-                >
-                  <option value="entrega">Entrega (Delivery)</option>
-                  <option value="retirada">Retirada (Takeaway)</option>
-                  <option value="mesa">Consumo no Local (Mesa)</option>
-                </select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Forma de Pagamento</label>
-                <select
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-stone-50 rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors cursor-pointer"
-                >
-                  <option value="Dinheiro">Dinheiro</option>
-                  <option value="MBWay">MBWay</option>
-                  <option value="Multibanco">Multibanco</option>
-                  <option value="Cartão">Cartão na Entrega</option>
-                  <option value="Pix">Pix</option>
-                </select>
-              </div>
-            </div>
-
-            {paymentMethod === 'Dinheiro' && (
-              <div className="pt-4 mt-2 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Troco Para (€ / R$)</label>
+        {/* Form Body com Conteúdo Otimizado */}
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-3 py-2 space-y-2 flex flex-col justify-between">
+          <div className="space-y-2">
+            {/* Section 1: Customer Info Compacto */}
+            <div className="bg-white p-2 rounded-lg border border-stone-200/90 shadow-2xs space-y-1.5">
+              <h4 className="text-[9px] font-mono font-bold text-stone-400 uppercase tracking-wider">Cliente & Entrega</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <div className="space-y-0.5">
+                  <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">Nome</label>
                   <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={cashProvided || ''}
-                    onChange={(e) => setCashProvided(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2.5 bg-stone-50 rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
-                    placeholder="Ex: 50.00"
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    className="w-full px-2 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
+                    required
                   />
                 </div>
-                <div className="flex flex-col justify-center bg-stone-50 p-2.5 rounded-md border border-stone-100">
-                  <span className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Troco Recalculado:</span>
-                  <span className="text-lg font-black text-emerald-600 mt-1">€ {calculatedChange.toFixed(2)}</span>
+                <div className="space-y-0.5">
+                  <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">Telefone</label>
+                  <input
+                    type="text"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    className="w-full px-2 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
+                  />
+                </div>
+                <div className="space-y-0.5">
+                  <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">Tipo</label>
+                  <select
+                    value={orderType}
+                    onChange={(e) => setOrderType(e.target.value)}
+                    className="w-full px-1.5 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors cursor-pointer"
+                  >
+                    <option value="entrega">Entrega (Delivery)</option>
+                    <option value="retirada">Retirada (Takeaway)</option>
+                    <option value="mesa">Consumo Local (Mesa)</option>
+                  </select>
+                </div>
+                <div className="space-y-0.5">
+                  <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">Pagamento</label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value)}
+                    className="w-full px-1.5 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors cursor-pointer"
+                  >
+                    <option value="Dinheiro">Dinheiro</option>
+                    <option value="MB Way">MB Way</option>
+                    <option value="Cartão">Cartão</option>
+                    <option value="Multibanco">Multibanco</option>
+                    <option value="Pix">Pix</option>
+                  </select>
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* Section 2: Items List & Add Items */}
-          <div className="space-y-4 bg-white p-4 rounded-md border border-stone-200">
-            <div className="flex justify-between items-center">
-              <h4 className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Itens do Pedido ({items.length})</h4>
-            </div>
-
-            {/* Current Items Table */}
-            <div className="border border-stone-200 rounded-md overflow-hidden bg-stone-50">
-              {items.length === 0 ? (
-                <div className="p-6 text-center text-sm text-stone-400 font-medium">Nenhum item no pedido.</div>
-              ) : (
-                <div className="divide-y divide-stone-200">
-                  {items.map((item, idx) => {
-                    const price = Number(item.priceCalculated || item.price || 0);
-                    const qty = Number(item.quantity || 1);
-                    return (
-                      <div key={idx} className="p-3.5 flex items-center justify-between gap-3 bg-white hover:bg-stone-50 transition-colors">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-sm text-stone-900 truncate">{item.name}</div>
-                          <div className="text-xs text-stone-500 font-medium mt-0.5">
-                            {item.size ? `Tam: ${item.size} | ` : ''}€ {price.toFixed(2)} un.
-                          </div>
-                        </div>
-
-                        {/* Qty Controls */}
-                        <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-md border border-stone-200">
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateQty(idx, -1)}
-                            className="w-7 h-7 rounded bg-white text-stone-800 font-bold flex items-center justify-center border border-stone-200 hover:border-stone-300 hover:bg-stone-50 transition-colors cursor-pointer"
-                          >
-                            -
-                          </button>
-                          <span className="w-8 text-center text-sm font-extrabold text-stone-900">{qty}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateQty(idx, 1)}
-                            className="w-7 h-7 rounded bg-white text-stone-800 font-bold flex items-center justify-center border border-stone-200 hover:border-stone-300 hover:bg-stone-50 transition-colors cursor-pointer"
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        <div className="font-black text-sm text-stone-900 w-20 text-right">
-                          € {(price * qty).toFixed(2)}
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(idx)}
-                          className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer border border-transparent hover:border-rose-100 ml-2"
-                          title="Remover Item"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    );
-                  })}
+              {paymentMethod === 'Dinheiro' && (
+                <div className="pt-1.5 border-t border-stone-100 grid grid-cols-2 gap-2">
+                  <div className="space-y-0.5">
+                    <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">Troco Para (€)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={cashProvided || ''}
+                      onChange={(e) => setCashProvided(parseFloat(e.target.value) || 0)}
+                      className="w-full px-2 py-0.5 bg-stone-50 rounded border border-stone-200 text-xs font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
+                      placeholder="50.00"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between bg-stone-50 px-2 py-0.5 rounded border border-stone-100">
+                    <span className="text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">Troco:</span>
+                    <span className="text-xs font-black text-emerald-600">€ {calculatedChange.toFixed(2)}</span>
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Add New Product Block */}
-            <div className="p-4 bg-stone-50 border border-stone-200 rounded-md space-y-3">
-              <h5 className="text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider flex items-center gap-1.5">
-                <Plus size={14} className="text-stone-500" /> Adicionar Produto ao Pedido
-              </h5>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="sm:col-span-2 relative space-y-2">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={selectedProductSearch}
-                      onChange={(e) => setSelectedProductSearch(e.target.value)}
-                      placeholder="Pesquisar 1º sabor / produto..."
-                      className="w-full px-3 py-2.5 bg-white rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
-                    />
-                    {selectedProductSearch && (
-                      <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded-md shadow-lg z-20 max-h-48 overflow-y-auto">
-                        {filteredMenuItems.map(m => (
-                          <div
-                            key={m.id}
-                            onClick={() => {
-                              setSelectedProductId(m.id);
-                              setSelectedProductSearch(m.name);
-                            }}
-                            className={`p-2.5 text-sm font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 ${selectedProductId === m.id ? 'bg-stone-900 text-white' : 'text-stone-800 hover:bg-stone-50'}`}
-                          >
-                            <span>{m.name}</span>
-                            <span className={selectedProductId === m.id ? 'text-stone-300' : 'text-stone-500'}>€ {(m.priceSingle || m.priceP || m.priceM || 0).toFixed(2)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+            {/* Section 2: Items List & Add Items */}
+            <div className="space-y-1.5 bg-white p-2 rounded-lg border border-stone-200/90 shadow-2xs">
+              <div className="flex justify-between items-center">
+                <h4 className="text-[9px] font-mono font-bold text-stone-400 uppercase tracking-wider">Itens do Pedido ({items.length})</h4>
+              </div>
 
-                  {selectedSize === 'priceG' && (
+              {/* Current Items Table Compacto */}
+              <div className="border border-stone-200/80 rounded overflow-hidden bg-stone-50/60 max-h-28 overflow-y-auto">
+                {items.length === 0 ? (
+                  <div className="p-2 text-center text-xs text-stone-400">Nenhum item no pedido.</div>
+                ) : (
+                  <div className="divide-y divide-stone-100">
+                    {items.map((item, idx) => {
+                      const price = Number(item.priceCalculated || item.price || 0);
+                      const qty = Number(item.quantity || 1);
+                      return (
+                        <div key={idx} className="px-2 py-1 flex items-center justify-between gap-2 bg-white hover:bg-stone-50 transition-colors">
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-xs text-stone-900 truncate">{item.name}</div>
+                            <div className="text-[9px] text-stone-400 font-medium">
+                              {item.size ? `${item.size} | ` : ''}€ {price.toFixed(2)} un.
+                            </div>
+                          </div>
+
+                          {/* Qty Controls */}
+                          <div className="flex items-center gap-0.5 bg-stone-100 px-1 py-0.5 rounded border border-stone-200">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQty(idx, -1)}
+                              className="w-4 h-4 rounded bg-white text-stone-800 font-bold text-[10px] flex items-center justify-center border border-stone-200 hover:bg-stone-50 transition-colors cursor-pointer"
+                            >
+                              -
+                            </button>
+                            <span className="w-5 text-center text-xs font-bold text-stone-900">{qty}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQty(idx, 1)}
+                              className="w-4 h-4 rounded bg-white text-stone-800 font-bold text-[10px] flex items-center justify-center border border-stone-200 hover:bg-stone-50 transition-colors cursor-pointer"
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          <div className="font-bold text-xs text-stone-900 w-14 text-right font-mono">
+                            € {(price * qty).toFixed(2)}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(idx)}
+                            className="p-0.5 text-stone-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                            title="Remover Item"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Add New Product Block Compacto */}
+              <div className="p-1.5 bg-stone-50/80 border border-stone-200/80 rounded space-y-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                  <div className="sm:col-span-2 relative">
                     <div className="relative">
                       <input
                         type="text"
-                        value={selectedSecondProductSearch}
-                        onChange={(e) => setSelectedSecondProductSearch(e.target.value)}
-                        placeholder="Pesquisar 2º sabor (opcional)..."
-                        className="w-full px-3 py-2.5 bg-white rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
+                        value={selectedProductSearch}
+                        onChange={(e) => setSelectedProductSearch(e.target.value)}
+                        placeholder="Pesquisar sabor ou produto..."
+                        className="w-full px-2 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
                       />
-                      {selectedSecondProductSearch && (
-                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded-md shadow-lg z-20 max-h-48 overflow-y-auto">
-                          {menuItems.filter(i => i.name.toLowerCase().includes(selectedSecondProductSearch.toLowerCase()) && i.categoryId === menuItems.find(m => m.id === selectedProductId)?.categoryId).map(m => (
+                      {selectedProductSearch && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-20 max-h-36 overflow-y-auto">
+                          {filteredMenuItems.map(m => (
                             <div
-                              key={`second-${m.id}`}
+                              key={m.id}
                               onClick={() => {
-                                setSelectedSecondProductId(m.id);
-                                setSelectedSecondProductSearch(m.name);
+                                setSelectedProductId(m.id);
+                                setSelectedProductSearch(m.name);
                               }}
-                              className={`p-2.5 text-sm font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 ${selectedSecondProductId === m.id ? 'bg-stone-900 text-white' : 'text-stone-800 hover:bg-stone-50'}`}
+                              className={`p-1.5 text-xs font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 ${selectedProductId === m.id ? 'bg-stone-900 text-white' : 'text-stone-800 hover:bg-stone-50'}`}
                             >
                               <span>{m.name}</span>
-                              <span className={selectedSecondProductId === m.id ? 'text-stone-300' : 'text-stone-500'}>€ {(m.priceG || 0).toFixed(2)}</span>
+                              <span className={selectedProductId === m.id ? 'text-stone-300 font-mono' : 'text-stone-500 font-mono'}>€ {(m.priceSingle || m.priceP || m.priceM || 0).toFixed(2)}</span>
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
 
-                <div className="flex gap-2">
-                  <select
-                    value={selectedSize}
-                    onChange={(e) => setSelectedSize(e.target.value)}
-                    className="flex-1 px-2 py-2.5 bg-white rounded-md border border-stone-200 text-sm font-bold text-stone-900 outline-none cursor-pointer"
-                  >
-                    <option value="priceSingle">Único/Padrão</option>
-                    <option value="priceP">Tamanho P</option>
-                    <option value="priceM">Tamanho M</option>
-                    <option value="priceG">Tamanho G</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={handleAddItem}
-                    disabled={!selectedProductId}
-                    className="px-4 py-2.5 bg-stone-900 hover:bg-stone-950 text-white font-bold rounded-md text-sm transition-colors disabled:opacity-50 cursor-pointer shrink-0 border border-stone-800"
-                  >
-                    Incluir
-                  </button>
+                    {selectedSize === 'priceG' && (
+                      <div className="relative mt-1">
+                        <input
+                          type="text"
+                          value={selectedSecondProductSearch}
+                          onChange={(e) => setSelectedSecondProductSearch(e.target.value)}
+                          placeholder="2º sabor (opcional)..."
+                          className="w-full px-2 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
+                        />
+                        {selectedSecondProductSearch && (
+                          <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-20 max-h-36 overflow-y-auto">
+                            {menuItems.filter(i => i.name.toLowerCase().includes(selectedSecondProductSearch.toLowerCase()) && i.categoryId === menuItems.find(m => m.id === selectedProductId)?.categoryId).map(m => (
+                              <div
+                                key={`second-${m.id}`}
+                                onClick={() => {
+                                  setSelectedSecondProductId(m.id);
+                                  setSelectedSecondProductSearch(m.name);
+                                }}
+                                className={`p-1.5 text-xs font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 ${selectedSecondProductId === m.id ? 'bg-stone-900 text-white' : 'text-stone-800 hover:bg-stone-50'}`}
+                              >
+                                <span>{m.name}</span>
+                                <span className={selectedSecondProductId === m.id ? 'text-stone-300 font-mono' : 'text-stone-500 font-mono'}>€ {(m.priceG || 0).toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex gap-1">
+                    <select
+                      value={selectedSize}
+                      onChange={(e) => setSelectedSize(e.target.value)}
+                      className="flex-1 px-1.5 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none cursor-pointer"
+                    >
+                      <option value="priceSingle">Único</option>
+                      <option value="priceP">Tam P</option>
+                      <option value="priceM">Tam M</option>
+                      <option value="priceG">Tam G</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={handleAddItem}
+                      disabled={!selectedProductId}
+                      className="px-2.5 py-1 bg-stone-900 hover:bg-stone-950 text-white font-bold rounded text-[11px] transition-colors disabled:opacity-50 cursor-pointer shrink-0 border border-stone-800"
+                    >
+                      Incluir
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Section 3: Financial Adjustments (Desconto & Adicional & Observação da Comanda) */}
-          <div className="bg-white p-4 rounded-md border border-stone-200 space-y-4">
-            <h4 className="text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider">Ajustes Financeiros & Valores Extras</h4>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-mono font-bold text-emerald-700 uppercase tracking-wider">
-                  Desconto (- €)
+            {/* Section 3: Financial Adjustments Compacto */}
+            <div className="bg-white p-2 rounded-lg border border-stone-200/90 shadow-2xs space-y-1.5">
+              <h4 className="text-[9px] font-mono font-bold text-stone-400 uppercase tracking-wider">Ajustes Financeiros</h4>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-0.5">
+                  <label className="block text-[8px] font-mono font-bold text-emerald-700 uppercase tracking-wider">
+                    Desconto (- €)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={discountAmount || ''}
+                    onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full px-2 py-1 bg-emerald-50/20 rounded border border-emerald-200 text-xs font-bold text-emerald-900 outline-none focus:border-emerald-500 transition-colors"
+                  />
+                </div>
+                <div className="space-y-0.5">
+                  <label className="block text-[8px] font-mono font-bold text-amber-700 uppercase tracking-wider">
+                    Taxa Extra (+ €)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={additionalAmount || ''}
+                    onChange={(e) => setAdditionalAmount(parseFloat(e.target.value) || 0)}
+                    placeholder="0.00"
+                    className="w-full px-2 py-1 bg-amber-50/20 rounded border border-amber-200 text-xs font-bold text-amber-900 outline-none focus:border-amber-500 transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-0.5">
+                <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">
+                  Obs. Taxa Adicional (Sai no Talão)
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={discountAmount || ''}
-                  onChange={(e) => setDiscountAmount(parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  className="w-full px-3 py-2.5 bg-emerald-50/30 rounded-md border border-emerald-200 text-sm font-bold text-emerald-900 outline-none focus:border-emerald-500 transition-colors"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="block text-[10px] font-mono font-bold text-amber-700 uppercase tracking-wider">
-                  Taxa Adicional / Valor Extra (+ €)
-                </label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={additionalAmount || ''}
-                  onChange={(e) => setAdditionalAmount(parseFloat(e.target.value) || 0)}
-                  placeholder="0.00"
-                  className="w-full px-3 py-2.5 bg-amber-50/30 rounded-md border border-amber-200 text-sm font-bold text-amber-900 outline-none focus:border-amber-500 transition-colors"
+                  type="text"
+                  value={editReason}
+                  onChange={(e) => setEditReason(e.target.value)}
+                  placeholder="Ex: Embalagem extra, taxa atendimento..."
+                  className="w-full px-2 py-1 bg-amber-50/20 rounded border border-amber-300 text-[11px] font-medium text-stone-900 outline-none focus:border-amber-600 transition-colors"
                 />
               </div>
             </div>
-
-            <div className="space-y-1.5 pt-1">
-              <label className="block text-[10px] font-mono font-bold text-amber-900 uppercase tracking-wider flex items-center justify-between">
-                <span>Observação da Taxa / Valor Adicional (Sai na Comanda)</span>
-                <span className="text-[9px] text-amber-700 font-bold lowercase tracking-normal font-sans">* impresso no talão</span>
-              </label>
-              <input
-                type="text"
-                value={editReason}
-                onChange={(e) => setEditReason(e.target.value)}
-                placeholder="Ex: Embalagem extra, volta + emb, taxa de atendimento, etc."
-                className="w-full px-3 py-2.5 bg-amber-50/20 rounded-md border border-amber-300 text-sm font-bold text-stone-900 outline-none focus:border-amber-600 transition-colors"
-              />
-              <p className="text-[11px] text-stone-500 font-medium">
-                Esta observação é impressa na comanda logo abaixo do valor adicional para que o cliente e o restaurante identifiquem a taxa.
-              </p>
-            </div>
           </div>
 
-          {/* Section 4: Live Total Calculation Bar */}
-          <div className="p-5 bg-stone-950 text-white rounded-md space-y-3 border border-stone-900 shadow-sm">
-            <div className="flex justify-between text-xs text-stone-400 font-mono tracking-wide">
-              <span>Subtotal dos Itens:</span>
-              <span className="font-semibold text-stone-300">€ {subtotal.toFixed(2)}</span>
+          {/* Section 4: Live Total Calculation & Actions Bar Integrada */}
+          <div className="mt-1 pt-1.5 border-t border-stone-200/80 flex items-center justify-between gap-2 bg-stone-950 text-white p-2 rounded-lg shadow-sm shrink-0">
+            <div>
+              <span className="block text-[8px] font-mono text-stone-400 uppercase">Total Recalculado</span>
+              <span className="text-xl font-black text-rose-500 leading-none font-mono">€ {finalTotal.toFixed(2)}</span>
             </div>
-            {additionalAmount > 0 && (
-              <div className="flex justify-between text-xs text-amber-400/90 font-mono tracking-wide">
-                <span>(+) Taxa Adicional:</span>
-                <span className="font-semibold">+ € {Number(additionalAmount).toFixed(2)}</span>
-              </div>
-            )}
-            {discountAmount > 0 && (
-              <div className="flex justify-between text-xs text-emerald-400/90 font-mono tracking-wide">
-                <span>(-) Desconto:</span>
-                <span className="font-semibold">- € {Number(discountAmount).toFixed(2)}</span>
-              </div>
-            )}
-            <div className="pt-3 border-t border-stone-800 flex justify-between items-end">
-              <span className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-wider">Total Recalculado</span>
-              <span className="text-3xl font-black text-rose-500 leading-none">€ {finalTotal.toFixed(2)}</span>
-            </div>
-          </div>
 
-          {/* Footer Actions */}
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-6 py-3 rounded-md font-bold text-sm bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer border border-stone-200"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-8 py-3 rounded-md font-bold text-sm bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition-all active:translate-y-px cursor-pointer flex items-center gap-2 border border-rose-700"
-            >
-              {saving ? 'Salvando...' : 'Salvar Alterações'}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-3 py-1.5 rounded font-bold text-xs bg-stone-800 hover:bg-stone-700 text-stone-300 transition-colors cursor-pointer border border-stone-700"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="px-4 py-1.5 rounded font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition-all active:translate-y-px cursor-pointer flex items-center gap-1 border border-rose-500"
+              >
+                {saving ? 'Salvando...' : 'Salvar'}
+              </button>
+            </div>
           </div>
 
         </form>
