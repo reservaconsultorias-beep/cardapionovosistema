@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 
 import { CheckCircle, Clock, Truck, ChefHat, ArrowLeft } from 'lucide-react';
+import { formatItemNameForPrint } from '../utils/printHelpers';
 
 export default function OrderTracking() {
   const { code } = useParams();
@@ -106,7 +107,7 @@ export default function OrderTracking() {
           <div className="space-y-3">
             {order.items.map((item: any, i: number) => (
               <div key={i} className="flex justify-between text-sm">
-                <span className="text-gray-600">{item.quantity}x {item.name}</span>
+                <span className="text-gray-600">{item.quantity}x {formatItemNameForPrint(item)}</span>
                 <span className="font-medium">€{(item.priceCalculated * item.quantity).toFixed(2)}</span>
               </div>
             ))}

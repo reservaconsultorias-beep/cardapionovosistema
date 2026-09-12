@@ -54,7 +54,7 @@ import { ALL_MENU_ITEMS, MenuItem } from "../data/menu";
 import { useMenu } from "../hooks/useMenu";
 import { supabase } from '../lib/supabase';
 import { normalizeOrderType, isOrderActive } from '../utils/paymentAndOrderHelper';
-import { formatItemNameForPrint } from '../utils/printHelpers';
+import { formatItemNameForPrint, getItemNameTextForPrint } from '../utils/printHelpers';
 import { motion } from 'framer-motion';
 import MenuManager from '../components/MenuManager';
 import CategoryManager from '../components/CategoryManager';
@@ -539,27 +539,29 @@ export default function AdminDashboard() {
           }
         }
 
-        if (order.items && Array.isArray(order.items)) {
-          order.items.forEach(item => {
-            if (!itemCounts[item.name]) {
-              itemCounts[item.name] = { qty: 0, revenue: 0 };
+        if (order.items) {
+          const itemsList = safeParseItems(order.items);
+          itemsList.forEach(item => {
+            const displayName = getItemNameTextForPrint(item);
+            if (!itemCounts[displayName]) {
+              itemCounts[displayName] = { qty: 0, revenue: 0 };
             }
-            itemCounts[item.name].qty += item.quantity;
-            itemCounts[item.name].revenue += item.priceCalculated * item.quantity;
+            itemCounts[displayName].qty += (Number(item.quantity) || 1);
+            itemCounts[displayName].revenue += (Number(item.priceCalculated || item.price || item.basePrice) || 0) * (Number(item.quantity) || 1);
 
             const cat = item.category || 'outros';
             if (!categoryCounts[cat]) {
               categoryCounts[cat] = { qty: 0, revenue: 0 };
             }
-            categoryCounts[cat].qty += item.quantity;
-            categoryCounts[cat].revenue += item.priceCalculated * item.quantity;
+            categoryCounts[cat].qty += (Number(item.quantity) || 1);
+            categoryCounts[cat].revenue += (Number(item.priceCalculated || item.price || item.basePrice) || 0) * (Number(item.quantity) || 1);
 
-            if (cat === 'tradicionais' || cat === 'especiais' || cat === 'vegetarianas' || cat === 'gourmet' || cat === 'doces' || cat === 'promocoes') {
-              if (!pizzaCounts[item.name]) {
-                pizzaCounts[item.name] = { qty: 0, revenue: 0 };
+            if (cat === 'tradicionais' || cat === 'especiais' || cat === 'vegetarianas' || cat === 'gourmet' || cat === 'doces' || cat === 'promocoes' || cat === 'pizzas' || displayName.toLowerCase().includes('pizza')) {
+              if (!pizzaCounts[displayName]) {
+                pizzaCounts[displayName] = { qty: 0, revenue: 0 };
               }
-              pizzaCounts[item.name].qty += item.quantity;
-              pizzaCounts[item.name].revenue += item.priceCalculated * item.quantity;
+              pizzaCounts[displayName].qty += (Number(item.quantity) || 1);
+              pizzaCounts[displayName].revenue += (Number(item.priceCalculated || item.price || item.basePrice) || 0) * (Number(item.quantity) || 1);
             }
           });
         }
@@ -2236,7 +2238,7 @@ export default function AdminDashboard() {
                                 {index + 1}
                               </span>
                               <span className="font-semibold text-stone-900 truncate" title={product.name}>
-                                {product.name}
+                                {formatItemNameForPrint({ name: product.name })}
                               </span>
                             </div>
                             <span className="font-mono font-bold tabular-nums text-stone-900 shrink-0">
@@ -2319,7 +2321,7 @@ export default function AdminDashboard() {
                             <div key={index} className="flex items-center justify-between">
                               <div className="flex items-center gap-2 truncate">
                                 <span className="w-5 h-5 rounded bg-stone-100 flex items-center justify-center text-[10px] font-mono font-bold text-stone-600 border border-stone-200 shrink-0">{index + 1}</span>
-                                <span className="text-xs font-semibold text-stone-900 truncate">{product.name}</span>
+                                <span className="text-xs font-semibold text-stone-900 truncate" title={product.name}>{formatItemNameForPrint({ name: product.name })}</span>
                               </div>
                               <span className="text-xs font-mono font-bold tabular-nums text-stone-900 shrink-0">€ {(Number(product.revenue) || 0).toFixed(2)}</span>
                             </div>
@@ -3965,7 +3967,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                       return (
                         <div key={idx} className="px-2 py-1 flex items-center justify-between gap-2 bg-white hover:bg-stone-50 transition-colors">
                           <div className="flex-1 min-w-0">
-                            <div className="font-bold text-xs text-stone-900 truncate">{item.name}</div>
+                            <div className="font-bold text-xs text-stone-900 truncate">{formatItemNameForPrint(item)}</div>
                             <div className="text-[9px] text-stone-400 font-medium">
                               {item.size ? `${item.size} | ` : ''}€ {price.toFixed(2)} un.
                             </div>

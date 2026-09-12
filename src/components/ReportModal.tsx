@@ -10,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
+import { getItemNameTextForPrint, formatItemNameForPrint } from '../utils/printHelpers';
 
 interface ReportModalProps {
   isOpen: boolean;
@@ -338,9 +339,10 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                 const items = safeParseItems(o.items);
                 items.forEach((it: any) => {
                   if (type === 'produtos') {
-                    counts[it.name] = counts[it.name] || { qty: 0, rev: 0 };
-                    counts[it.name].qty += (Number(it.quantity) || 1);
-                    counts[it.name].rev += (Number(it.priceCalculated || it.price) || 0) * (Number(it.quantity) || 1);
+                    const itemName = getItemNameTextForPrint(it);
+                    counts[itemName] = counts[itemName] || { qty: 0, rev: 0 };
+                    counts[itemName].qty += (Number(it.quantity) || 1);
+                    counts[itemName].rev += (Number(it.priceCalculated || it.price) || 0) * (Number(it.quantity) || 1);
                   } else {
                     if (it.extras && Array.isArray(it.extras)) {
                       it.extras.forEach((ext: any) => {
@@ -366,7 +368,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({
                     <tbody className="divide-y divide-stone-100 font-mono">
                       {sorted.map(([name, data]: any, idx) => (
                         <tr key={idx} className="hover:bg-stone-50">
-                          <td className="py-2 px-3.5 font-medium text-stone-900">{name}</td>
+                          <td className="py-2 px-3.5 font-medium text-stone-900">{formatItemNameForPrint({ name })}</td>
                           <td className="py-2 px-3.5 text-center text-stone-600">{data.qty}</td>
                           <td className="py-2 px-3.5 text-right font-bold text-emerald-700">€ {data.rev.toFixed(2)}</td>
                         </tr>

@@ -760,7 +760,7 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                                               {qty}x
                                             </td>
                                             <td className="py-2.5 px-3">
-                                              <div className="font-bold text-stone-900">{item.name}</div>
+                                              <div className="font-bold text-stone-900">{formatItemNameForPrint(item)}</div>
                                               {item.notes && (
                                                 <div className="text-[10.5px] text-amber-700 italic mt-0.5">
                                                   Obs: {item.notes}
