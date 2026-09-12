@@ -33,7 +33,8 @@ import {
   Shield,
   Megaphone,
   Wallet,
-  BotMessageSquare
+  BotMessageSquare,
+  MapPin
 } from "lucide-react";
 import {
   AreaChart,
@@ -226,6 +227,10 @@ export default function AdminDashboard() {
       orderType: updatedOrder.order_type || updatedOrder.orderType,
       paymentMethod: normalizedPaymentMethod,
       payment_method: normalizedPaymentMethod,
+      deliveryAddress: updatedOrder.delivery_address || updatedOrder.deliveryAddress || '',
+      delivery_address: updatedOrder.delivery_address || updatedOrder.deliveryAddress || '',
+      deliveryZone: updatedOrder.delivery_zone || updatedOrder.deliveryZone || '',
+      delivery_zone: updatedOrder.delivery_zone || updatedOrder.deliveryZone || '',
       items: updatedOrder.items,
       discountAmount: Number(updatedOrder.discount_amount ?? updatedOrder.discountAmount ?? 0),
       discount_amount: Number(updatedOrder.discount_amount ?? updatedOrder.discountAmount ?? 0),
@@ -291,6 +296,8 @@ export default function AdminDashboard() {
         customer_phone: formattedUpdatedOrder.customerPhone,
         order_type: formattedUpdatedOrder.orderType,
         payment_method: formattedUpdatedOrder.paymentMethod,
+        delivery_address: formattedUpdatedOrder.deliveryAddress,
+        delivery_zone: formattedUpdatedOrder.deliveryZone,
         items: formattedUpdatedOrder.items,
         discount_amount: formattedUpdatedOrder.discountAmount,
         additional_amount: formattedUpdatedOrder.additionalAmount,
@@ -2142,26 +2149,52 @@ export default function AdminDashboard() {
                       </ResponsiveContainer>
                     )}
 
-                    {overviewChartTab === 'produtos' && (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dashboardData?.popularItems || []} margin={{ top: 8, right: 16, left: -10, bottom: 0 }} layout="vertical">
-                          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f1f4" />
-                          <XAxis type="number" hide />
-                          <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 10, fontWeight: 600, fill: '#52525b', fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false} />
-                          <Tooltip
-                            contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', fontFamily: 'ui-monospace, monospace', fontSize: '11px' }}
-                            itemStyle={{ color: '#ffffff', fontWeight: 700 }}
-                            formatter={(value: any) => [`${Number(value) || 0} unid.`, 'Quantidade']}
-                            cursor={{fill: 'rgba(24, 24, 27, 0.04)'}}
-                          />
-                          <Bar dataKey="qty" radius={[0, 4, 4, 0]} barSize={18}>
-                            {(dashboardData?.popularItems || []).map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
+                    {overviewChartTab === 'produtos' && (() => {
+                      const items = dashboardData?.popularItems || [];
+                      if (items.length === 0) {
+                        return (
+                          <div className="h-full flex items-center justify-center text-stone-400 text-xs font-mono">
+                            Nenhum dado de produto ainda
+                          </div>
+                        );
+                      }
+                      const maxQty = Math.max(...items.map((i: any) => i.qty || 1), 1);
+                      return (
+                        <div className="h-full flex flex-col justify-between py-1 px-1">
+                          {items.slice(0, 5).map((item: any, index: number) => {
+                            const pct = Math.min(100, Math.max(6, (item.qty / maxQty) * 100));
+                            const color = CHART_COLORS[index % CHART_COLORS.length];
+                            return (
+                              <div key={`overview-item-${index}`} className="flex flex-col gap-1">
+                                <div className="flex items-center justify-between gap-2 text-xs">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span
+                                      className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-mono font-bold text-white shrink-0"
+                                      style={{ backgroundColor: color }}
+                                    >
+                                      {index + 1}
+                                    </span>
+                                    <span className="truncate text-stone-800 font-medium text-[11px] sm:text-xs">
+                                      {formatItemNameForPrint({ name: item.name })}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0 font-mono text-[10px] sm:text-[11px]">
+                                    <span className="font-bold text-stone-900 tabular-nums">{item.qty} un.</span>
+                                    <span className="text-stone-400 font-medium tabular-nums">€{(item.revenue || 0).toFixed(2)}</span>
+                                  </div>
+                                </div>
+                                <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${pct}%`, backgroundColor: color }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
 
                     {overviewChartTab === 'pagamentos' && (
                       <ResponsiveContainer width="100%" height="100%">
@@ -2365,19 +2398,52 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="h-[220px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dashboardData?.popularItems || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} layout="vertical">
-                          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e4e4e7" />
-                          <XAxis type="number" hide />
-                          <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 10, fontWeight: 600, fill: '#52525b', fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false} />
-                          <Tooltip contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', fontFamily: 'ui-monospace, monospace', fontSize: '11px' }} itemStyle={{ color: '#ffffff', fontWeight: 700 }} formatter={(value: any) => [`${Number(value) || 0} unid.`, 'Quantidade']} cursor={{fill: 'rgba(24, 24, 27, 0.04)'}} />
-                          <Bar dataKey="qty" radius={[0, 4, 4, 0]} barSize={18}>
-                            {(dashboardData?.popularItems || []).map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
+                      {(() => {
+                        const items = dashboardData?.popularItems || [];
+                        if (items.length === 0) {
+                          return (
+                            <div className="h-full flex items-center justify-center text-stone-400 text-xs font-mono">
+                              Nenhum dado de produto ainda
+                            </div>
+                          );
+                        }
+                        const maxQty = Math.max(...items.map((i: any) => i.qty || 1), 1);
+                        return (
+                          <div className="h-full flex flex-col justify-between py-1 px-1">
+                            {items.slice(0, 5).map((item: any, index: number) => {
+                              const pct = Math.min(100, Math.max(6, (item.qty / maxQty) * 100));
+                              const color = CHART_COLORS[index % CHART_COLORS.length];
+                              return (
+                                <div key={`exp-item-${index}`} className="flex flex-col gap-1">
+                                  <div className="flex items-center justify-between gap-2 text-xs">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span
+                                        className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-mono font-bold text-white shrink-0"
+                                        style={{ backgroundColor: color }}
+                                      >
+                                        {index + 1}
+                                      </span>
+                                      <span className="truncate text-stone-800 font-medium text-[11px] sm:text-xs">
+                                        {formatItemNameForPrint({ name: item.name })}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0 font-mono text-[10px] sm:text-[11px]">
+                                      <span className="font-bold text-stone-900 tabular-nums">{item.qty} un.</span>
+                                      <span className="text-stone-400 font-medium tabular-nums">€{(item.revenue || 0).toFixed(2)}</span>
+                                    </div>
+                                  </div>
+                                  <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full transition-all duration-500"
+                                      style={{ width: `${pct}%`, backgroundColor: color }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -2467,6 +2533,26 @@ export default function AdminDashboard() {
                           </td>
                           <td className="py-3 px-4">
                             <div className="font-semibold text-stone-900">{order.customerName}</div>
+                            {order.customerPhone && (
+                              <div className="text-[10px] text-stone-500 tabular-nums">{order.customerPhone}</div>
+                            )}
+                            {((order.orderType?.toLowerCase() === 'entrega' || order.orderType?.toLowerCase() === 'delivery') || order.deliveryAddress) && (
+                              <div className="mt-1 flex flex-col gap-0.5 max-w-[220px]">
+                                {order.deliveryAddress && (
+                                  <div className="flex items-start gap-1 text-[11px] font-sans font-medium text-stone-700 leading-tight">
+                                    <MapPin size={11} className="text-amber-600 shrink-0 mt-0.5" />
+                                    <span className="break-words">{order.deliveryAddress}</span>
+                                  </div>
+                                )}
+                                {order.deliveryZone && (
+                                  <div>
+                                    <span className="text-[9px] font-mono font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block">
+                                      Zona: {order.deliveryZone}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td className="py-3 px-4">
                             <span className="text-stone-600 bg-stone-100 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold border border-stone-200">
@@ -3692,6 +3778,8 @@ export default function AdminDashboard() {
 function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, menuItems: any[], onClose: () => void, onSave: (updatedOrder: any) => Promise<void> }) {
   const [customerName, setCustomerName] = useState(order.customerName || order.customer_name || '');
   const [customerPhone, setCustomerPhone] = useState(order.customerPhone || order.customer_phone || '');
+  const [deliveryAddress, setDeliveryAddress] = useState(order.deliveryAddress || order.delivery_address || '');
+  const [deliveryZone, setDeliveryZone] = useState(order.deliveryZone || order.delivery_zone || '');
   const initialPm = (order.paymentMethod || order.payment_method || 'Dinheiro').toString().trim();
   const [paymentMethod, setPaymentMethod] = useState(initialPm.toLowerCase() === 'mbway' ? 'MB Way' : initialPm);
   const [orderType, setOrderType] = useState(order.orderType || order.order_type || 'balcao');
@@ -3803,6 +3891,10 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
       customer_phone: customerPhone,
       order_type: orderType,
       payment_method: paymentMethod,
+      delivery_address: deliveryAddress,
+      deliveryAddress: deliveryAddress,
+      delivery_zone: deliveryZone,
+      deliveryZone: deliveryZone,
       items: items,
       discount_amount: Number(discountAmount) || 0,
       additional_amount: Number(additionalAmount) || 0,
@@ -3926,6 +4018,35 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                   </select>
                 </div>
               </div>
+
+              {(orderType === 'entrega' || orderType === 'Delivery') && (
+                <div className="pt-1.5 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-3 gap-1.5">
+                  <div className="sm:col-span-2 space-y-0.5">
+                    <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1">
+                      <MapPin size={10} className="text-amber-600" /> Endereço de Entrega
+                    </label>
+                    <input
+                      type="text"
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      className="w-full px-2 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-medium text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
+                      placeholder="Rua, número, andar, código postal..."
+                    />
+                  </div>
+                  <div className="space-y-0.5">
+                    <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">
+                      Zona de Entrega
+                    </label>
+                    <input
+                      type="text"
+                      value={deliveryZone}
+                      onChange={(e) => setDeliveryZone(e.target.value)}
+                      className="w-full px-2 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
+                      placeholder="Ex: Zona 1, Centro..."
+                    />
+                  </div>
+                </div>
+              )}
 
               {paymentMethod === 'Dinheiro' && (
                 <div className="pt-1.5 border-t border-stone-100 grid grid-cols-2 gap-2">
