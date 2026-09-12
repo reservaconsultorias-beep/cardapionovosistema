@@ -2536,23 +2536,6 @@ export default function AdminDashboard() {
                             {order.customerPhone && (
                               <div className="text-[10px] text-stone-500 tabular-nums">{order.customerPhone}</div>
                             )}
-                            {((order.orderType?.toLowerCase() === 'entrega' || order.orderType?.toLowerCase() === 'delivery') || order.deliveryAddress) && (
-                              <div className="mt-1 flex flex-col gap-0.5 max-w-[220px]">
-                                {order.deliveryAddress && (
-                                  <div className="flex items-start gap-1 text-[11px] font-sans font-medium text-stone-700 leading-tight">
-                                    <MapPin size={11} className="text-amber-600 shrink-0 mt-0.5" />
-                                    <span className="break-words">{order.deliveryAddress}</span>
-                                  </div>
-                                )}
-                                {order.deliveryZone && (
-                                  <div>
-                                    <span className="text-[9px] font-mono font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 inline-block">
-                                      Zona: {order.deliveryZone}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                            )}
                           </td>
                           <td className="py-3 px-4">
                             <span className="text-stone-600 bg-stone-100 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold border border-stone-200">
