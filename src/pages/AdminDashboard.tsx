@@ -54,7 +54,7 @@ import {
 import { ALL_MENU_ITEMS, MenuItem } from "../data/menu";
 import { useMenu } from "../hooks/useMenu";
 import { supabase } from '../lib/supabase';
-import { normalizeOrderType, isOrderActive } from '../utils/paymentAndOrderHelper';
+import { normalizeOrderType, isOrderActive, normalizePaymentMethod } from '../utils/paymentAndOrderHelper';
 import { formatItemNameForPrint, getItemNameTextForPrint } from '../utils/printHelpers';
 import { motion } from 'framer-motion';
 import MenuManager from '../components/MenuManager';
@@ -259,17 +259,26 @@ export default function AdminDashboard() {
       );
       
       // Recalcular distribuição de formas de pagamento em tempo real
-      const pmCounts: Record<string, number> = {};
+      const pmCounts: Record<string, { count: number, revenue: number }> = {
+        'MB Way': { count: 0, revenue: 0 },
+        'Numerário': { count: 0, revenue: 0 }
+      };
       let totalFat = 0;
       updatedRecent.forEach((o: any) => {
         if (o.status !== 'Cancelado' && o.status !== 'cancelado') {
-          const pm = o.paymentMethod || 'Outros';
-          const amt = Number(o.totalAmount || 0);
-          pmCounts[pm] = (pmCounts[pm] || 0) + amt;
+          const pmRaw = (o.paymentMethod || o.payment_method || '').trim();
+          const pmNorm = normalizePaymentMethod(pmRaw);
+          const pm = (pmNorm === 'MB Way' || pmRaw.toLowerCase().includes('mb')) ? 'MB Way' : 'Numerário';
+          const amt = Number(o.totalAmount || o.total_amount || 0);
+          pmCounts[pm].count += 1;
+          pmCounts[pm].revenue += amt;
           totalFat += amt;
         }
       });
-      const newPaymentMethodsData = Object.entries(pmCounts).map(([name, value]) => ({ name, value }));
+      const newPaymentMethodsData = Object.entries(pmCounts)
+        .filter(([_, data]) => data.count > 0 || data.revenue > 0)
+        .map(([name, data]) => ({ name, value: Number(data.revenue.toFixed(2)), count: data.count }))
+        .sort((a, b) => b.value - a.value);
 
       return {
         ...prev,
@@ -520,7 +529,10 @@ export default function AdminDashboard() {
       let totalPedidos = allOrdersAgg.length;
       let faturamentoNumerario = 0;
       let faturamentoMBWay = 0;
-      const paymentMethodCounts: Record<string, number> = {};
+      const paymentMethodCounts: Record<string, { count: number, revenue: number }> = {
+        'MB Way': { count: 0, revenue: 0 },
+        'Numerário': { count: 0, revenue: 0 }
+      };
       
       const itemCounts: Record<string, {qty: number, revenue: number}> = {};
       const categoryCounts: Record<string, {qty: number, revenue: number}> = {};
@@ -533,9 +545,13 @@ export default function AdminDashboard() {
       allOrdersAgg.forEach(order => {
         const amt = Number(order.totalAmount) || 0;
         faturamentoBruto += amt;
-        const pmRaw = order.paymentMethod || 'Outros';
-        if (!paymentMethodCounts[pmRaw]) paymentMethodCounts[pmRaw] = 0;
-        paymentMethodCounts[pmRaw] += amt;
+        const pmRaw = (order.paymentMethod || '').trim();
+        const pmNorm = normalizePaymentMethod(pmRaw);
+        const pm = (pmNorm === 'MB Way' || pmRaw.toLowerCase().includes('mb')) ? 'MB Way' : 'Numerário';
+        paymentMethodCounts[pm].count += 1;
+        paymentMethodCounts[pm].revenue += amt;
+        if (pm === 'Numerário') faturamentoNumerario += amt;
+        if (pm === 'MB Way') faturamentoMBWay += amt;
 
         const d = safeGetTime(order.createdAt);
         if (d) {
@@ -670,7 +686,14 @@ export default function AdminDashboard() {
       const uniqueCustomers = new Set(allOrdersAgg.map(o => o.customerName)).size;
       const ticketMedio = totalPedidos > 0 ? (faturamentoBruto / totalPedidos) : 0;
       
-      const paymentMethodsData = Object.entries(paymentMethodCounts).map(([name, value]) => ({ name, value }));
+      const paymentMethodsData = Object.entries(paymentMethodCounts)
+        .filter(([_, data]) => data.count > 0 || data.revenue > 0)
+        .map(([name, data]) => ({ 
+          name, 
+          value: Number(data.revenue.toFixed(2)),
+          count: data.count
+        }))
+        .sort((a, b) => b.value - a.value);
 
       const pendingOrders = allOrdersAgg.filter(o => o.status === 'Pendente');
 
@@ -2284,17 +2307,20 @@ export default function AdminDashboard() {
 
                     {overviewChartTab === 'pagamentos' && (
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={paymentMethodsData} margin={{ top: 8, right: 16, left: -10, bottom: 0 }} layout="vertical">
+                        <BarChart data={paymentMethodsData} margin={{ top: 12, right: 20, left: -5, bottom: 4 }} layout="vertical">
                           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f1f4" />
                           <XAxis type="number" hide />
-                          <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 10, fontWeight: 600, fill: '#52525b', fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false} />
+                          <YAxis dataKey="name" type="category" width={85} tick={{ fontSize: 11, fontWeight: 700, fill: '#3f3f46', fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false} />
                           <Tooltip
                             contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', fontFamily: 'ui-monospace, monospace', fontSize: '11px' }}
                             itemStyle={{ color: '#ffffff', fontWeight: 700 }}
-                            formatter={(value: any) => [`€ ${(Number(value) || 0).toFixed(2)}`, 'Total']}
+                            formatter={(value: any, _name: any, item: any) => [
+                              `€ ${(Number(value) || 0).toFixed(2)}${item?.payload?.count !== undefined ? ` (${item.payload.count} pedidos)` : ''}`,
+                              'Total'
+                            ]}
                             cursor={{fill: 'rgba(24, 24, 27, 0.04)'}}
                           />
-                          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
+                          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={26}>
                             {paymentMethodsData.map((entry: any, index: number) => (
                               <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                             ))}
@@ -2587,12 +2613,20 @@ export default function AdminDashboard() {
                     </div>
                     <div className="h-[220px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={paymentMethodsData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} layout="vertical">
+                        <BarChart data={paymentMethodsData} margin={{ top: 12, right: 20, left: -5, bottom: 4 }} layout="vertical">
                           <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e4e4e7" />
                           <XAxis type="number" hide />
-                          <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 10, fontWeight: 600, fill: '#52525b', fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false} />
-                          <Tooltip contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', fontFamily: 'ui-monospace, monospace', fontSize: '11px' }} itemStyle={{ color: '#ffffff', fontWeight: 700 }} formatter={(value: any) => [`€ ${(Number(value) || 0).toFixed(2)}`, 'Total']} cursor={{fill: 'rgba(24, 24, 27, 0.04)'}} />
-                          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
+                          <YAxis dataKey="name" type="category" width={85} tick={{ fontSize: 11, fontWeight: 700, fill: '#3f3f46', fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', fontFamily: 'ui-monospace, monospace', fontSize: '11px' }}
+                            itemStyle={{ color: '#ffffff', fontWeight: 700 }}
+                            formatter={(value: any, _name: any, item: any) => [
+                              `€ ${(Number(value) || 0).toFixed(2)}${item?.payload?.count !== undefined ? ` (${item.payload.count} pedidos)` : ''}`,
+                              'Total'
+                            ]}
+                            cursor={{fill: 'rgba(24, 24, 27, 0.04)'}}
+                          />
+                          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={26}>
                             {paymentMethodsData.map((entry: any, index: number) => (
                               <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
                             ))}
