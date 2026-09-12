@@ -1,14 +1,10 @@
+import React from 'react';
 import { ALL_MENU_ITEMS } from '../data/menu';
 
 /**
- * Formata o nome do item para exibição e impressão no talão/comanda.
- * Substitui o número do item (ex: "30 - Carbonara" ou "5 - Carne") pelo tipo:
- * - Pizzas viram "Pizza [Sabor]" (ex: "Pizza Carbonara", "Pizza Carbonara (Md)")
- * - Esfirras viram "Esfirra [Sabor]" (ex: "Esfirra Carne")
- * - Meio a meio: "1/2 Pizza Carbonara + 1/2 Pizza Calabresa (Gr)"
- * - Outros itens (bebidas, etc.): permanecem como estão.
+ * Retorna o nome formatado em texto puro substituindo números por Pizza ou Esfirra.
  */
-export function formatItemNameForPrint(item: any): string {
+export function getItemNameTextForPrint(item: any): string {
   if (!item) return '';
   const rawName = (typeof item === 'string' ? item : (item.name || '')).trim();
   if (!rawName) return '';
@@ -24,9 +20,7 @@ export function formatItemNameForPrint(item: any): string {
 
   // 2. Pizza meio a meio (contém 1/2)
   if (rawName.includes('1/2')) {
-    // Substitui padrões como "1/2 30 - " ou "1/2 p-30 - 30 - " por "1/2 Pizza "
     let formatted = rawName.replace(/1\/2\s+(?:p-?\d+\s*[-–—]\s*)?(\d+)\s*[-–—]\s*/gi, '1/2 Pizza ');
-    // Se não tiver a palavra Pizza, assegura que tem
     if (!formatted.toLowerCase().includes('pizza')) {
       formatted = 'Pizza ' + formatted;
     }
@@ -48,7 +42,6 @@ export function formatItemNameForPrint(item: any): string {
   ) {
     itemType = 'pizza';
   } else if (item.size || /\((?:Pq|Md|Gr|P|M|G|Pequena|Média|Grande)\)/i.test(rawName)) {
-    // Tamanhos existem exclusivamente em pizzas
     itemType = 'pizza';
   }
 
@@ -61,9 +54,7 @@ export function formatItemNameForPrint(item: any): string {
     const pizzaMatch = ALL_MENU_ITEMS.find((m: any) => m.id === `p-${num}`);
     const esfihaMatch = ALL_MENU_ITEMS.find((m: any) => m.id === `e-${num}`);
 
-    // Se o tipo ainda não foi determinado (ex: item vindo de histórico sem categoria explícita)
     if (!itemType) {
-      // Remove sufixos de tamanho ou borda para comparar apenas o sabor
       const restClean = rest
         .replace(/\s*\([^)]*\)/g, '')
         .replace(/\s*\[[^\]]*\]/g, '')
@@ -85,13 +76,11 @@ export function formatItemNameForPrint(item: any): string {
         } else if (cat === 'doces') {
           itemType = 'pizza';
         } else if (num > 40) {
-          // Esfihas vão até 40 no cardápio, pizzas vão até 60
           itemType = 'pizza';
         } else {
           itemType = 'pizza';
         }
       } else {
-        // Se veio apenas o número sem sabor especificado (ex: item 30)
         if (num > 40 || (pizzaMatch && !esfihaMatch)) {
           itemType = 'pizza';
         } else {
@@ -120,4 +109,32 @@ export function formatItemNameForPrint(item: any): string {
   }
 
   return rawName;
+}
+
+/**
+ * Formata o nome do item para exibição e impressão no talão/comanda.
+ * Destaca as palavras "Pizza" e "Esfirra" em negrito (bold / font-weight: 900),
+ * mantendo o restante do nome com o peso normal.
+ */
+export function formatItemNameForPrint(item: any): React.ReactNode {
+  const text = getItemNameTextForPrint(item);
+  if (!text) return '';
+
+  const parts = text.split(/(Pizza|Esfirra|Esfiha)/gi);
+  if (parts.length === 1) return text;
+
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (/^(pizza|esfirra|esfiha)$/i.test(part)) {
+          return (
+            <b key={i} style={{ fontWeight: 900 }}>
+              {part}
+            </b>
+          );
+        }
+        return part;
+      })}
+    </>
+  );
 }

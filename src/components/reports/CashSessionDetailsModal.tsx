@@ -908,7 +908,7 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                   return (
                     <div key={i} className="text-xs">
                       <div className="flex justify-between items-start">
-                        <span className="font-bold">{qty}x {formatItemNameForPrint(it)}</span>
+                        <span><strong className="font-black">{qty}x </strong><span className="font-normal">{formatItemNameForPrint(it)}</span></span>
                         <span className="font-bold tabular-nums">€ {(price * qty).toFixed(2)}</span>
                       </div>
                       {extras.length > 0 && (
