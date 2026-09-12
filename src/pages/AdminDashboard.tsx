@@ -574,19 +574,74 @@ export default function AdminDashboard() {
         }
       });
 
-      const allDaysCounts: Record<string, {orders: number, revenue: number}> = {};
-      dayNames.forEach(d => allDaysCounts[d] = { orders: 0, revenue: 0 });
+      const formatCategoryLabel = (cat: string): string => {
+        if (!cat) return 'Outros';
+        const c = cat.toLowerCase().trim();
+        if (c === 'tradicionais') return 'Pizzas Tradicionais';
+        if (c === 'especiais') return 'Pizzas Especiais';
+        if (c === 'gourmet') return 'Pizzas Gourmet';
+        if (c === 'vegetarianas') return 'Pizzas Vegetarianas';
+        if (c === 'doces') return 'Pizzas Doces';
+        if (c === 'esfihas-salgadas-tradicionais') return 'Esfihas Tradicionais';
+        if (c === 'esfihas-salgadas-especiais') return 'Esfihas Especiais';
+        if (c === 'esfihas-doces') return 'Esfihas Doces';
+        if (c === 'esfihas' || c.includes('esfiha')) return 'Esfihas';
+        if (c === 'bebidas') return 'Bebidas';
+        if (c === 'bordas') return 'Bordas Recheadas';
+        if (c === 'cafe' || c === 'café') return 'Café';
+        if (c === 'promocoes' || c === 'promoções') return 'Promoções';
+        return cat.charAt(0).toUpperCase() + cat.slice(1);
+      };
 
+      const weekDayDefs = [
+        { name: 'Segunda', shortName: 'Seg', dayIndex: 1 },
+        { name: 'Terça', shortName: 'Ter', dayIndex: 2 },
+        { name: 'Quarta', shortName: 'Qua', dayIndex: 3 },
+        { name: 'Quinta', shortName: 'Qui', dayIndex: 4 },
+        { name: 'Sexta', shortName: 'Sex', dayIndex: 5 },
+        { name: 'Sábado', shortName: 'Sáb', dayIndex: 6 },
+        { name: 'Domingo', shortName: 'Dom', dayIndex: 0 },
+      ];
+
+      // Janela dos 7 dias mais recentes terminando hoje
+      const recentDayMap: Record<number, { dateStr: string, displayDate: string, orders: number, revenue: number }> = {};
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const dayIdx = d.getDay();
+        const dateStr = d.toISOString().split('T')[0];
+        const displayDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+        recentDayMap[dayIdx] = {
+          dateStr,
+          displayDate,
+          orders: 0,
+          revenue: 0
+        };
+      }
+
+      // Calcula APENAS o faturamento de cada dia específico recente (não a soma de todas as segundas da história)
       allDbOrders.forEach(order => {
-        const amt = Number(order.totalAmount) || 0;
+        if (order.status === 'Cancelado' || order.status === 'cancelado') return;
         const d = safeGetTime(order.createdAt);
-        if (d) {
-          const dayName = dayNames[d.getDay()];
-          if (allDaysCounts[dayName]) {
-            allDaysCounts[dayName].orders += 1;
-            allDaysCounts[dayName].revenue += amt;
-          }
+        if (!d) return;
+        const orderDateStr = d.toISOString().split('T')[0];
+        const dayIdx = d.getDay();
+        if (recentDayMap[dayIdx] && recentDayMap[dayIdx].dateStr === orderDateStr) {
+          const amt = Number(order.totalAmount) || 0;
+          recentDayMap[dayIdx].orders += 1;
+          recentDayMap[dayIdx].revenue += amt;
         }
+      });
+
+      const weeklyDailySalesData = weekDayDefs.map(def => {
+        const item = recentDayMap[def.dayIndex] || { dateStr: '', displayDate: '', orders: 0, revenue: 0 };
+        return {
+          name: def.name,
+          shortName: def.shortName,
+          date: item.displayDate,
+          fullName: `${def.name} (${item.displayDate})`,
+          orders: item.orders,
+          revenue: Number(item.revenue.toFixed(2))
+        };
       });
 
       const popularItems = Object.entries(itemCounts)
@@ -599,18 +654,17 @@ export default function AdminDashboard() {
         .sort((a, b) => b.qty - a.qty)
         .slice(0, 5);
 
-      const salesByCategory = Object.entries(categoryCounts).map(([name, data]) => ({ name, value: data.revenue }));
-      const orderVolumeData = dayNames.map(day => ({
-        name: day,
-        orders: daysCounts[day].orders,
-        revenue: daysCounts[day].revenue
-      }));
+      const salesByCategory = Object.entries(categoryCounts)
+        .map(([name, data]) => ({ 
+          name: formatCategoryLabel(name), 
+          rawCategory: name,
+          value: Number(data.revenue.toFixed(2)), 
+          qty: data.qty 
+        }))
+        .sort((a, b) => b.value - a.value);
 
-      const allDaysVolumeData = dayNames.map(day => ({
-        name: day,
-        orders: allDaysCounts[day].orders,
-        revenue: allDaysCounts[day].revenue
-      }));
+      const orderVolumeData = weeklyDailySalesData;
+      const allDaysVolumeData = weeklyDailySalesData;
 
       
       const uniqueCustomers = new Set(allOrdersAgg.map(o => o.customerName)).size;
@@ -1996,13 +2050,13 @@ export default function AdminDashboard() {
                       </div>
                       <div>
                         <h2 className="text-xs sm:text-sm font-bold text-stone-900 leading-tight">
-                          {overviewChartTab === 'faturamento' && 'Evolução do Faturamento'}
+                          {overviewChartTab === 'faturamento' && 'Faturamento por Dia'}
                           {overviewChartTab === 'categorias' && 'Vendas por Categoria'}
                           {overviewChartTab === 'produtos' && 'Top 5 Produtos Mais Vendidos'}
                           {overviewChartTab === 'pagamentos' && 'Distribuição por Método de Pagamento'}
                         </h2>
                         <p className="text-[10px] text-stone-500 font-mono">
-                          {overviewChartTab === 'faturamento' && 'Volume de receita ao longo da semana'}
+                          {overviewChartTab === 'faturamento' && 'Vendas diárias da semana (Segunda a Domingo)'}
                           {overviewChartTab === 'categorias' && 'Distribuição de receita por linha de produtos'}
                           {overviewChartTab === 'produtos' && 'Ranking dos itens com maior saída'}
                           {overviewChartTab === 'pagamentos' && 'Valores totais agrupados por forma de pagamento'}
@@ -2024,7 +2078,7 @@ export default function AdminDashboard() {
                           {overviewChartTab === 'pagamentos' && '💳'}
                         </span>
                         <span className="font-sans text-xs font-bold text-stone-900 truncate">
-                          {overviewChartTab === 'faturamento' && 'Evolução do Faturamento'}
+                          {overviewChartTab === 'faturamento' && 'Faturamento por Dia'}
                           {overviewChartTab === 'categorias' && 'Vendas por Categoria'}
                           {overviewChartTab === 'produtos' && 'Top 5 Produtos'}
                           {overviewChartTab === 'pagamentos' && 'Formas de Pagamento'}
@@ -2044,7 +2098,7 @@ export default function AdminDashboard() {
                           >
                             <div className="flex items-center gap-2">
                               <span>📈</span>
-                              <span>Evolução do Faturamento</span>
+                              <span>Faturamento por Dia</span>
                             </div>
                             {overviewChartTab === 'faturamento' && <Check size={14} className="text-stone-950 stroke-[2.5]" />}
                           </button>
@@ -2115,7 +2169,11 @@ export default function AdminDashboard() {
                             contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', boxShadow: '0 4px 12px rgb(0 0 0 / 0.15)', fontFamily: 'ui-monospace, monospace', fontSize: '11px' }}
                             itemStyle={{ color: '#ffffff', fontWeight: 700 }}
                             labelStyle={{ color: '#a1a1aa', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}
-                            formatter={(value: number) => [`€ ${Number(value).toFixed(2)}`, 'Faturamento']}
+                            labelFormatter={(_label, payload) => payload?.[0]?.payload?.fullName || _label}
+                            formatter={(value: any, _name: any, item: any) => [
+                              `€ ${Number(value).toFixed(2)}${item?.payload?.orders !== undefined ? ` (${item.payload.orders} pedidos)` : ''}`,
+                              'Vendas do Dia'
+                            ]}
                             cursor={{fill: 'rgba(24, 24, 27, 0.04)'}}
                           />
                           <Bar
@@ -2128,26 +2186,54 @@ export default function AdminDashboard() {
                       </ResponsiveContainer>
                     )}
 
-                    {overviewChartTab === 'categorias' && (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dashboardData?.chartData?.salesByCategory || []} margin={{ top: 8, right: 16, left: -10, bottom: 0 }} layout="vertical">
-                          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#f1f1f4" />
-                          <XAxis type="number" hide />
-                          <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 10, fontWeight: 600, fill: '#52525b', fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false} />
-                          <Tooltip
-                            contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', fontFamily: 'ui-monospace, monospace', fontSize: '11px' }}
-                            itemStyle={{ color: '#ffffff', fontWeight: 700 }}
-                            formatter={(value: any) => [`€ ${(Number(value) || 0).toFixed(2)}`, 'Vendas']}
-                            cursor={{fill: 'rgba(24, 24, 27, 0.04)'}}
-                          />
-                          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
-                            {((dashboardData?.chartData?.salesByCategory || []) || []).map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                    )}
+                    {overviewChartTab === 'categorias' && (() => {
+                      const categories = dashboardData?.chartData?.salesByCategory || [];
+                      if (categories.length === 0) {
+                        return (
+                          <div className="h-full flex items-center justify-center text-stone-400 text-xs font-mono">
+                            Nenhum dado de categoria ainda
+                          </div>
+                        );
+                      }
+                      const maxValue = Math.max(...categories.map((c: any) => c.value || 1), 1);
+                      return (
+                        <div className="h-full flex flex-col justify-between py-1 px-1">
+                          {categories.slice(0, 5).map((cat: any, index: number) => {
+                            const pct = Math.min(100, Math.max(6, (cat.value / maxValue) * 100));
+                            const color = CHART_COLORS[index % CHART_COLORS.length];
+                            return (
+                              <div key={`overview-cat-${index}`} className="flex flex-col gap-1">
+                                <div className="flex items-center justify-between gap-2 text-xs">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span
+                                      className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-mono font-bold text-white shrink-0"
+                                      style={{ backgroundColor: color }}
+                                    >
+                                      {index + 1}
+                                    </span>
+                                    <span className="truncate text-stone-800 font-bold text-[11px] sm:text-xs">
+                                      {cat.name}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0 font-mono text-[10px] sm:text-[11px]">
+                                    {cat.qty !== undefined && cat.qty > 0 && (
+                                      <span className="font-bold text-stone-900 tabular-nums">{cat.qty} un.</span>
+                                    )}
+                                    <span className="text-stone-500 font-bold tabular-nums">€{(cat.value || 0).toFixed(2)}</span>
+                                  </div>
+                                </div>
+                                <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-all duration-500"
+                                    style={{ width: `${pct}%`, backgroundColor: color }}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
 
                     {overviewChartTab === 'produtos' && (() => {
                       const items = dashboardData?.popularItems || [];
@@ -2291,8 +2377,8 @@ export default function AdminDashboard() {
                   <div className="lg:col-span-2 bg-white p-4 rounded-xl border border-stone-200 shadow-2xs">
                     <div className="flex justify-between items-center mb-3">
                       <div>
-                        <h2 className="text-sm font-bold text-stone-900">Evolução do Faturamento</h2>
-                        <p className="text-[11px] text-stone-500 font-mono">Todos os dias da semana</p>
+                        <h2 className="text-sm font-bold text-stone-900">Faturamento por Dia</h2>
+                        <p className="text-[11px] text-stone-500 font-mono">Vendas diárias da semana (Segunda a Domingo)</p>
                       </div>
                       <div className="p-1.5 bg-stone-50 rounded border border-stone-200">
                         <Activity size={16} className="text-stone-600" />
@@ -2304,7 +2390,17 @@ export default function AdminDashboard() {
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e4e4e7" />
                           <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 11, fontWeight: 600, fontFamily: 'ui-monospace, monospace' }} dy={10} />
                           <YAxis axisLine={false} tickLine={false} tick={{ fill: '#71717a', fontSize: 11, fontWeight: 600, fontFamily: 'ui-monospace, monospace' }} tickFormatter={(value) => `€${value}`} />
-                          <Tooltip contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', fontFamily: 'ui-monospace, monospace', fontSize: '12px' }} itemStyle={{ color: '#ffffff', fontWeight: 700 }} formatter={(value: number) => [`€ ${Number(value).toFixed(2)}`, 'Faturamento']} cursor={{fill: 'rgba(24, 24, 27, 0.04)'}} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', fontFamily: 'ui-monospace, monospace', fontSize: '11px' }}
+                            itemStyle={{ color: '#ffffff', fontWeight: 700 }}
+                            labelStyle={{ color: '#a1a1aa', fontSize: '10px', fontWeight: 700, textTransform: 'uppercase' }}
+                            labelFormatter={(_label, payload) => payload?.[0]?.payload?.fullName || _label}
+                            formatter={(value: any, _name: any, item: any) => [
+                              `€ ${Number(value).toFixed(2)}${item?.payload?.orders !== undefined ? ` (${item.payload.orders} pedidos)` : ''}`,
+                              'Vendas do Dia'
+                            ]}
+                            cursor={{fill: 'rgba(24, 24, 27, 0.04)'}}
+                          />
                           <Bar dataKey="revenue" fill="#18181b" radius={[4, 4, 0, 0]} barSize={28} />
                         </BarChart>
                       </ResponsiveContainer>
@@ -2374,19 +2470,54 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="h-[220px] w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={dashboardData?.chartData?.salesByCategory || []} margin={{ top: 10, right: 20, left: 0, bottom: 0 }} layout="vertical">
-                          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke="#e4e4e7" />
-                          <XAxis type="number" hide />
-                          <YAxis dataKey="name" type="category" width={90} tick={{ fontSize: 10, fontWeight: 600, fill: '#52525b', fontFamily: 'ui-monospace, monospace' }} axisLine={false} tickLine={false} />
-                          <Tooltip contentStyle={{ backgroundColor: '#18181b', color: '#ffffff', borderRadius: '8px', border: '1px solid #27272a', fontFamily: 'ui-monospace, monospace', fontSize: '11px' }} itemStyle={{ color: '#ffffff', fontWeight: 700 }} formatter={(value: any) => [`€ ${(Number(value) || 0).toFixed(2)}`, 'Vendas']} cursor={{fill: 'rgba(24, 24, 27, 0.04)'}} />
-                          <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={18}>
-                            {((dashboardData?.chartData?.salesByCategory || []) || []).map((entry: any, index: number) => (
-                              <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                            ))}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
+                      {(() => {
+                        const categories = dashboardData?.chartData?.salesByCategory || [];
+                        if (categories.length === 0) {
+                          return (
+                            <div className="h-full flex items-center justify-center text-stone-400 text-xs font-mono">
+                              Nenhum dado de categoria ainda
+                            </div>
+                          );
+                        }
+                        const maxValue = Math.max(...categories.map((c: any) => c.value || 1), 1);
+                        return (
+                          <div className="h-full flex flex-col justify-between py-1 px-1">
+                            {categories.slice(0, 5).map((cat: any, index: number) => {
+                              const pct = Math.min(100, Math.max(6, (cat.value / maxValue) * 100));
+                              const color = CHART_COLORS[index % CHART_COLORS.length];
+                              return (
+                                <div key={`exp-cat-${index}`} className="flex flex-col gap-1">
+                                  <div className="flex items-center justify-between gap-2 text-xs">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <span
+                                        className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-mono font-bold text-white shrink-0"
+                                        style={{ backgroundColor: color }}
+                                      >
+                                        {index + 1}
+                                      </span>
+                                      <span className="truncate text-stone-800 font-bold text-[11px] sm:text-xs">
+                                        {cat.name}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0 font-mono text-[10px] sm:text-[11px]">
+                                      {cat.qty !== undefined && cat.qty > 0 && (
+                                        <span className="font-bold text-stone-900 tabular-nums">{cat.qty} un.</span>
+                                      )}
+                                      <span className="text-stone-500 font-bold tabular-nums">€{(cat.value || 0).toFixed(2)}</span>
+                                    </div>
+                                  </div>
+                                  <div className="w-full bg-stone-100 rounded-full h-2 overflow-hidden">
+                                    <div
+                                      className="h-full rounded-full transition-all duration-500"
+                                      style={{ width: `${pct}%`, backgroundColor: color }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 
