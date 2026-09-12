@@ -54,6 +54,7 @@ import { ALL_MENU_ITEMS, MenuItem } from "../data/menu";
 import { useMenu } from "../hooks/useMenu";
 import { supabase } from '../lib/supabase';
 import { normalizeOrderType, isOrderActive } from '../utils/paymentAndOrderHelper';
+import { formatItemNameForPrint } from '../utils/printHelpers';
 import { motion } from 'framer-motion';
 import MenuManager from '../components/MenuManager';
 import CategoryManager from '../components/CategoryManager';
@@ -3426,7 +3427,7 @@ export default function AdminDashboard() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <div style={{ flex: 1, paddingRight: '4px' }}>
                           <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{item.quantity} x </span>
-                          <span style={{ fontSize: '12px', fontWeight: 'normal' }}>{item.name}</span>
+                          <span style={{ fontSize: '12px', fontWeight: 'normal' }}>{formatItemNameForPrint(item)}</span>
                         </div>
                         <span style={{ fontSize: '13px', fontWeight: '800', whiteSpace: 'nowrap' }}>
                           {(((item.basePrice !== undefined ? item.basePrice : item.priceCalculated) || 0) * (item.quantity || 1)).toFixed(2)} €
@@ -3575,7 +3576,7 @@ export default function AdminDashboard() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ flex: 1, paddingRight: '6px' }}>
                       <span style={{ fontSize: '13pt', fontWeight: 'bold' }}>{item.quantity} x </span>
-                      <span style={{ fontSize: '10pt', fontWeight: 'normal' }}>{item.name}</span>
+                      <span style={{ fontSize: '10pt', fontWeight: 'normal' }}>{formatItemNameForPrint(item)}</span>
                     </div>
                     <span style={{ fontSize: '12pt', fontWeight: '800', whiteSpace: 'nowrap' }}>
                       {(((item.basePrice !== undefined ? item.basePrice : item.priceCalculated) || 0) * (item.quantity || 1)).toFixed(2)} €

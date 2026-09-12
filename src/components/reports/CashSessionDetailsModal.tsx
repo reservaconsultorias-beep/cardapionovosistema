@@ -11,6 +11,7 @@ import {
 import { format, differenceInMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { normalizePaymentMethod, normalizeOrderType, isOrderActive } from '../../utils/paymentAndOrderHelper';
+import { formatItemNameForPrint } from '../../utils/printHelpers';
 
 interface CashSessionDetailsModalProps {
   session: any;
@@ -907,7 +908,7 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
                   return (
                     <div key={i} className="text-xs">
                       <div className="flex justify-between items-start">
-                        <span className="font-bold">{qty}x {it.name}</span>
+                        <span className="font-bold">{qty}x {formatItemNameForPrint(it)}</span>
                         <span className="font-bold tabular-nums">€ {(price * qty).toFixed(2)}</span>
                       </div>
                       {extras.length > 0 && (
