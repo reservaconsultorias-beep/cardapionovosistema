@@ -29,10 +29,16 @@ export default function AgentManager() {
   const [updating, setUpdating] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
 
-  // Estado das Conversas (Espelho WhatsApp)
+  // Estado das Conversas (Espelho WhatsApp Relacional)
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [selectedPhone, setSelectedPhone] = useState<string | null>(null);
+  const selectedPhoneRef = useRef<string | null>(null);
+
+  // Mensagens da conversa atualmente aberta (limite de 20)
+  const [activeMessages, setActiveMessages] = useState<ChatMessage[]>([]);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [manualMessage, setManualMessage] = useState('');
   const [sendingManual, setSendingManual] = useState(false);
@@ -40,13 +46,18 @@ export default function AgentManager() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Mantém a ref sincronizada com o estado para o listener do Realtime
+  useEffect(() => {
+    selectedPhoneRef.current = selectedPhone;
+  }, [selectedPhone]);
+
   useEffect(() => {
     fetchBotStatus();
     loadConversations();
     
-    // Inscrever-se para atualizações em tempo real na tabela settings
+    // Inscrever-se para atualizações em tempo real (Settings, Conversas e Mensagens)
     const subscription = supabase
-      .channel('bot_settings_changes')
+      .channel('chat_agent_realtime_v2')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'settings' }, (payload) => {
         const item = (payload.new || payload.old) as any;
         if (!item || !item.key) return;
@@ -59,7 +70,7 @@ export default function AgentManager() {
           }
         }
 
-        // Espelho de conversas
+        // Espelho de conversas via settings (fallback)
         if (typeof item.key === 'string' && item.key.startsWith('chat_conversation_')) {
           if (payload.eventType === 'DELETE') {
             const rawPhone = item.key.replace('chat_conversation_', '');
@@ -69,13 +80,84 @@ export default function AgentManager() {
             setConversations(prev => {
               const exists = prev.some(c => c.phone === conv.phone);
               if (exists) {
-                return prev.map(c => c.phone === conv.phone ? conv : c)
+                return prev.map(c => c.phone === conv.phone ? { ...c, ...conv } : c)
                   .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
               }
               return [conv, ...prev];
             });
+
+            if (selectedPhoneRef.current === conv.phone && Array.isArray(conv.messages)) {
+              setActiveMessages(conv.messages.slice(-20));
+            }
           }
         }
+      })
+      // Ouvinte na tabela relacional de conversas
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_conversations' }, (payload) => {
+        if (payload.eventType === 'DELETE') {
+          const deletedPhone = (payload.old as any)?.phone;
+          if (deletedPhone) {
+            setConversations(prev => prev.filter(c => c.phone !== deletedPhone));
+            if (selectedPhoneRef.current === deletedPhone) {
+              setSelectedPhone(null);
+              setActiveMessages([]);
+            }
+          }
+        } else if (payload.new) {
+          const newConv = payload.new as any;
+          setConversations(prev => {
+            const exists = prev.some(c => c.phone === newConv.phone);
+            if (exists) {
+              return prev.map(c => c.phone === newConv.phone ? {
+                ...c,
+                name: newConv.name || c.name,
+                paused: Boolean(newConv.paused),
+                paused_at: newConv.paused_at,
+                last_message: newConv.last_message || c.last_message,
+                last_sender: newConv.last_sender || c.last_sender,
+                updated_at: newConv.updated_at || new Date().toISOString()
+              } : c).sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
+            }
+            return [{
+              phone: newConv.phone,
+              name: newConv.name || 'Cliente',
+              paused: Boolean(newConv.paused),
+              paused_at: newConv.paused_at,
+              last_message: newConv.last_message,
+              last_sender: newConv.last_sender,
+              updated_at: newConv.updated_at || new Date().toISOString(),
+              messages: []
+            }, ...prev];
+          });
+        }
+      })
+      // Ouvinte na tabela relacional de mensagens (Histórico contínuo sem sobrescrever)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages' }, (payload) => {
+        const newMsg = payload.new as any;
+        if (!newMsg) return;
+
+        // Se for da conversa aberta na tela, adiciona imediatamente
+        if (selectedPhoneRef.current === newMsg.phone) {
+          setActiveMessages(prev => {
+            if (prev.some(m => m.id === newMsg.id)) return prev;
+            return [...prev, {
+              id: newMsg.id,
+              sender: newMsg.sender as 'client' | 'bot' | 'human',
+              text: newMsg.text,
+              timestamp: newMsg.created_at || new Date().toISOString()
+            }].slice(-20);
+          });
+        }
+
+        // Atualiza prévia e sobe a conversa para o topo da barra lateral
+        setConversations(prev => {
+          return prev.map(c => c.phone === newMsg.phone ? {
+            ...c,
+            last_message: newMsg.text,
+            last_sender: newMsg.sender,
+            updated_at: newMsg.created_at || new Date().toISOString()
+          } : c).sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
+        });
       })
       .subscribe();
 
@@ -84,12 +166,21 @@ export default function AgentManager() {
     };
   }, []);
 
-  // Auto-scroll ao receber nova mensagem
+  // Carrega as últimas 20 mensagens quando uma conversa é selecionada
+  useEffect(() => {
+    if (selectedPhone) {
+      loadMessagesForPhone(selectedPhone);
+    } else {
+      setActiveMessages([]);
+    }
+  }, [selectedPhone]);
+
+  // Auto-scroll ao receber nova mensagem ou trocar de conversa
   useEffect(() => {
     if (selectedPhone && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [selectedPhone, conversations]);
+  }, [selectedPhone, activeMessages]);
 
   const fetchBotStatus = async () => {
     try {
@@ -121,15 +212,41 @@ export default function AgentManager() {
   const loadConversations = async () => {
     setLoadingConversations(true);
     try {
-      const { data, error } = await supabase
+      // 1. Tenta carregar da tabela relacional chat_conversations
+      const { data: convData, error: convErr } = await supabase
+        .from('chat_conversations')
+        .select('*')
+        .order('updated_at', { ascending: false });
+
+      if (!convErr && convData && convData.length > 0) {
+        const parsed: ChatConversation[] = convData.map(c => ({
+          phone: c.phone,
+          name: c.name || 'Cliente',
+          paused: Boolean(c.paused),
+          paused_at: c.paused_at,
+          last_message: c.last_message,
+          last_sender: c.last_sender,
+          updated_at: c.updated_at,
+          messages: []
+        }));
+
+        setConversations(parsed);
+        if (!selectedPhone && parsed.length > 0) {
+          setSelectedPhone(parsed[0].phone);
+        }
+        return;
+      }
+
+      // 2. Fallback: carregar da tabela settings
+      const { data: settingsData, error: settingsErr } = await supabase
         .from('settings')
         .select('key, value, updated_at')
         .like('key', 'chat_conversation_%');
 
-      if (error) throw error;
+      if (settingsErr) throw settingsErr;
 
-      if (data) {
-        const parsed: ChatConversation[] = data
+      if (settingsData) {
+        const parsed: ChatConversation[] = settingsData
           .map(d => d.value)
           .filter(Boolean)
           .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime());
@@ -143,6 +260,44 @@ export default function AgentManager() {
       console.error('Erro ao carregar conversas do espelho:', err);
     } finally {
       setLoadingConversations(false);
+    }
+  };
+
+  const loadMessagesForPhone = async (phone: string) => {
+    if (!phone) return;
+    setLoadingMessages(true);
+    try {
+      // 1. Tenta carregar da tabela relacional chat_messages (últimas 20 mensagens)
+      const { data: msgData, error: msgErr } = await supabase
+        .from('chat_messages')
+        .select('id, sender, text, created_at')
+        .eq('phone', phone)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      if (!msgErr && msgData && msgData.length > 0) {
+        // Inverter para ordem cronológica (mais antiga -> mais nova)
+        const chronMsgs: ChatMessage[] = msgData.reverse().map(m => ({
+          id: m.id,
+          sender: m.sender as 'client' | 'bot' | 'human',
+          text: m.text,
+          timestamp: m.created_at
+        }));
+        setActiveMessages(chronMsgs);
+        return;
+      }
+
+      // 2. Fallback: carregar do array salvo no settings
+      const conv = conversations.find(c => c.phone === phone);
+      if (conv && Array.isArray(conv.messages) && conv.messages.length > 0) {
+        setActiveMessages(conv.messages.slice(-20));
+      } else {
+        setActiveMessages([]);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar mensagens:', err);
+    } finally {
+      setLoadingMessages(false);
     }
   };
 
@@ -176,30 +331,45 @@ export default function AgentManager() {
 
   const toggleChatPause = async (phone: string, currentPaused: boolean) => {
     setTogglingChatPause(true);
+    const newPaused = !currentPaused;
+    const nowIso = new Date().toISOString();
+
     try {
+      // 1. Tenta atualizar na tabela relacional chat_conversations
+      try {
+        await supabase
+          .from('chat_conversations')
+          .update({
+            paused: newPaused,
+            paused_at: newPaused ? nowIso : null,
+            updated_at: nowIso
+          })
+          .eq('phone', phone);
+      } catch (e) {
+        console.warn('Aviso relacional toggle:', e);
+      }
+
+      // 2. Atualiza settings (fallback)
       const convKey = `chat_conversation_${phone}`;
       const conv = conversations.find(c => c.phone === phone);
-      if (!conv) return;
+      if (conv) {
+        const updatedValue: ChatConversation = {
+          ...conv,
+          paused: newPaused,
+          paused_at: newPaused ? nowIso : null,
+          updated_at: nowIso
+        };
 
-      const newPaused = !currentPaused;
-      const updatedValue: ChatConversation = {
-        ...conv,
-        paused: newPaused,
-        paused_at: newPaused ? new Date().toISOString() : null,
-        updated_at: new Date().toISOString()
-      };
+        await supabase
+          .from('settings')
+          .upsert({
+            key: convKey,
+            value: updatedValue,
+            updated_at: nowIso
+          }, { onConflict: 'key' });
 
-      const { error } = await supabase
-        .from('settings')
-        .upsert({
-          key: convKey,
-          value: updatedValue,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'key' });
-
-      if (error) throw error;
-
-      setConversations(prev => prev.map(c => c.phone === phone ? updatedValue : c));
+        setConversations(prev => prev.map(c => c.phone === phone ? updatedValue : c));
+      }
     } catch (err) {
       console.error('Erro ao alternar pausa do chat:', err);
       alert('Erro ao atualizar pausa deste chat.');
@@ -215,25 +385,52 @@ export default function AgentManager() {
     const messageText = manualMessage.trim();
     setSendingManual(true);
     setManualMessage('');
+    const nowIso = new Date().toISOString();
+
+    const optimisticMsg: ChatMessage = {
+      id: `temp_${Date.now()}`,
+      sender: 'human',
+      text: messageText,
+      timestamp: nowIso
+    };
+
+    // Atualização otimista na tela (mantendo limite de 20)
+    setActiveMessages(prev => [...prev, optimisticMsg].slice(-20));
 
     try {
+      // 1. Grava na tabela relacional chat_messages e chat_conversations
+      try {
+        await supabase
+          .from('chat_messages')
+          .insert({
+            phone: selectedPhone,
+            sender: 'human',
+            text: messageText
+          });
+
+        await supabase
+          .from('chat_conversations')
+          .upsert({
+            phone: selectedPhone,
+            last_message: messageText,
+            last_sender: 'human',
+            paused: true,
+            paused_at: nowIso,
+            updated_at: nowIso
+          }, { onConflict: 'phone' });
+      } catch (relErr) {
+        console.warn('Aviso gravação relacional manual:', relErr);
+      }
+
+      // 2. Grava no settings (fallback de compatibilidade)
       const conv = conversations.find(c => c.phone === selectedPhone);
       const convKey = `chat_conversation_${selectedPhone}`;
-      const nowIso = new Date().toISOString();
-
-      const newMsg: ChatMessage = {
-        id: `${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        sender: 'human',
-        text: messageText,
-        timestamp: nowIso
-      };
-
-      const updatedMessages = [...(conv?.messages || []), newMsg].slice(-100);
+      const updatedMessages = [...(conv?.messages || []), optimisticMsg].slice(-20);
 
       const updatedConv: ChatConversation = {
         phone: selectedPhone,
         name: conv?.name || 'Cliente',
-        paused: true, // Ao enviar mensagem manual, pausa automaticamente a IA para evitar choque
+        paused: true,
         paused_at: conv?.paused ? conv.paused_at : nowIso,
         last_message: messageText,
         last_sender: 'human',
@@ -241,8 +438,7 @@ export default function AgentManager() {
         messages: updatedMessages
       };
 
-      // Grava no espelho
-      const { error } = await supabase
+      await supabase
         .from('settings')
         .upsert({
           key: convKey,
@@ -250,11 +446,10 @@ export default function AgentManager() {
           updated_at: nowIso
         }, { onConflict: 'key' });
 
-      if (error) throw error;
+      setConversations(prev => prev.map(c => c.phone === selectedPhone ? updatedConv : c)
+        .sort((a, b) => new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime()));
 
-      setConversations(prev => prev.map(c => c.phone === selectedPhone ? updatedConv : c));
-
-      // Dispara envio real para o WhatsApp via Netlify Function / n8n
+      // 3. Dispara envio real para o WhatsApp via Netlify Function
       fetch('/.netlify/functions/whatsapp-send-manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -278,19 +473,26 @@ export default function AgentManager() {
     if (!window.confirm('Tem certeza que deseja excluir esta conversa?')) return;
 
     try {
+      // 1. Exclui de chat_conversations e chat_messages
+      try {
+        await supabase.from('chat_conversations').delete().eq('phone', phone);
+        await supabase.from('chat_messages').delete().eq('phone', phone);
+      } catch (relErr) {
+        console.warn('Aviso delete relacional:', relErr);
+      }
+
+      // 2. Exclui de settings (fallback)
       const convKey = `chat_conversation_${phone}`;
-      
-      const { error } = await supabase
+      await supabase
         .from('settings')
         .delete()
         .eq('key', convKey);
-
-      if (error) throw error;
 
       setConversations(prev => prev.filter(c => c.phone !== phone));
       
       if (selectedPhone === phone) {
         setSelectedPhone(null);
+        setActiveMessages([]);
       }
     } catch (err) {
       console.error('Erro ao excluir conversa:', err);
@@ -521,8 +723,13 @@ export default function AgentManager() {
 
             {/* Mensagens com Balões Padrão WhatsApp (Compacto) */}
             <div className="flex-1 p-3 overflow-y-auto space-y-1.5 relative" style={{ backgroundImage: 'url("https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png")', opacity: 0.9 }}>
-              {selectedConversation.messages && selectedConversation.messages.length > 0 ? (
-                selectedConversation.messages.map((m, idx) => {
+              {loadingMessages ? (
+                <div className="h-full flex flex-col items-center justify-center gap-2 text-stone-400 relative z-10">
+                  <Loader2 size={18} className="animate-spin text-amber-500" />
+                  <span className="text-xs font-mono">Carregando histórico...</span>
+                </div>
+              ) : activeMessages && activeMessages.length > 0 ? (
+                activeMessages.map((m, idx) => {
                   const isClient = m.sender === 'client';
                   const isBot = m.sender === 'bot';
                   const isHuman = m.sender === 'human';
@@ -539,8 +746,6 @@ export default function AgentManager() {
                             : 'bg-[#d9fdd3] text-[#111b21] rounded-tr-sm'
                         }`}
                       >
-                        {/* Rabinho do balão estilo WhatsApp (opcional via CSS, aqui usamos rounded ajustado) */}
-                        
                         {/* Nome do remetente interno */}
                         {!isClient && (
                           <div className={`text-[10.5px] font-medium mb-0.5 leading-none ${isBot ? 'text-emerald-600' : 'text-blue-500'}`}>
@@ -557,7 +762,7 @@ export default function AgentManager() {
 
                         {/* Horário (flutuando à direita inferior ou em linha) */}
                         <div className={`text-[9px] text-[#667781] text-right mt-0.5 -mb-0.5 ${m.text.length < 20 ? 'inline-block ml-3 translate-y-0.5' : 'block'}`}>
-                          {new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          {m.timestamp ? new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
                         </div>
                       </div>
                     </div>

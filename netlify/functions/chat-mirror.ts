@@ -42,7 +42,32 @@ export default async (req: Request) => {
 
     const convKey = `chat_conversation_${rawPhone}`;
 
-    // 1. Buscar histórico atual
+    // 1. Gravar nas tabelas relacionais dedicadas (chat_conversations e chat_messages)
+    try {
+      // Upsert na conversa
+      await supabase
+        .from('chat_conversations')
+        .upsert({
+          phone: rawPhone,
+          name: name && name !== 'Cliente' ? name : undefined,
+          last_message: text,
+          last_sender: sender,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'phone' });
+
+      // Insert na mensagem individual
+      await supabase
+        .from('chat_messages')
+        .insert({
+          phone: rawPhone,
+          sender,
+          text
+        });
+    } catch (dbRelErr) {
+      console.warn('Aviso tabelas relacionais (usando fallback):', dbRelErr);
+    }
+
+    // 2. Buscar histórico atual no settings (fallback de compatibilidade)
     const { data: currentSetting } = await supabase
       .from('settings')
       .select('value')
@@ -81,7 +106,7 @@ export default async (req: Request) => {
         updated_at: new Date().toISOString()
       }, { onConflict: 'key' });
 
-    if (upsertErr) throw upsertErr;
+    if (upsertErr) console.warn('Erro upsert settings fallback:', upsertErr);
 
     return new Response(JSON.stringify({
       success: true,
