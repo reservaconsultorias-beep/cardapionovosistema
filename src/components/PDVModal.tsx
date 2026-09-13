@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useMenu } from '../hooks/useMenu';
+import { useExtras } from '../hooks/useExtras';
 import { MenuItem, ExtraIngredient } from '../data/menu';
 import { findImageForProduct } from '../utils/imageResolver';
 import { categoriesUI } from '../App';
@@ -87,6 +88,7 @@ export default function PDVModal({
   onOrderCreated
 }: PDVModalProps) {
   const { menuItems, categories, loading: menuLoading, usingFallback, refresh: refreshMenu } = useMenu();
+  const availableExtras = useExtras();
 
   // Sempre sincroniza o cardápio ao abrir o PDV para refletir alterações recentes
   useEffect(() => {
@@ -131,7 +133,19 @@ export default function PDVModal({
   const [customIsHalf, setCustomIsHalf] = useState(false);
   const [customSecondFlavor, setCustomSecondFlavor] = useState<MenuItem | null>(null);
   const [customBorda, setCustomBorda] = useState<MenuItem | null>(null);
+  const [customExtras, setCustomExtras] = useState<ExtraIngredient[]>([]);
   const [customNotes, setCustomNotes] = useState('');
+
+  const handleToggleExtra = (extra: ExtraIngredient) => {
+    setCustomExtras(prev => {
+      const exists = prev.some(e => e.id === extra.id);
+      if (exists) {
+        return prev.filter(e => e.id !== extra.id);
+      } else {
+        return [...prev, extra];
+      }
+    });
+  };
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -275,6 +289,28 @@ export default function PDVModal({
     return given - totalAmount;
   }, [paymentMethod, cashAmountGiven, totalAmount]);
 
+  // Preço dinâmico em tempo real dentro do modal de customização
+  const currentPreviewPrice = useMemo(() => {
+    if (!customizingItem) return 0;
+    let basePrice = 0;
+    if (customSize === 'P') basePrice = customizingItem.priceP || (customizingItem.priceM ? customizingItem.priceM - 2 : customizingItem.priceSingle || 0);
+    else if (customSize === 'M') basePrice = customizingItem.priceM || customizingItem.priceSingle || 0;
+    else if (customSize === 'G') basePrice = customizingItem.priceG || customizingItem.priceSingle || 0;
+
+    if (customIsHalf && customSecondFlavor) {
+      let secondPrice = 0;
+      if (customSize === 'P') secondPrice = customSecondFlavor.priceP || (customSecondFlavor.priceM ? customSecondFlavor.priceM - 2 : customSecondFlavor.priceSingle || 0);
+      else if (customSize === 'M') secondPrice = customSecondFlavor.priceM || customSecondFlavor.priceSingle || 0;
+      else if (customSize === 'G') secondPrice = customSecondFlavor.priceG || customSecondFlavor.priceSingle || 0;
+
+      basePrice = Math.max(basePrice, secondPrice);
+    }
+
+    const bordaPrice = customBorda?.priceSingle || 0;
+    const extrasPrice = customExtras.reduce((sum, e) => sum + (e.price || 0), 0);
+    return basePrice + bordaPrice + extrasPrice;
+  }, [customizingItem, customSize, customIsHalf, customSecondFlavor, customBorda, customExtras]);
+
   // Handle direct item click
   const handleProductClick = (item: MenuItem) => {
     const hasMultipleSizes = Boolean(item.priceP || item.priceM || item.priceG);
@@ -285,6 +321,7 @@ export default function PDVModal({
       setCustomIsHalf(false);
       setCustomSecondFlavor(null);
       setCustomBorda(null);
+      setCustomExtras([]);
       setCustomNotes('');
     } else {
       const unitPrice = item.priceSingle || item.priceP || item.priceM || item.priceG || 0;
@@ -318,7 +355,8 @@ export default function PDVModal({
     }
 
     const bordaPrice = customBorda?.priceSingle || 0;
-    const unitPrice = basePrice + bordaPrice;
+    const extrasPrice = customExtras.reduce((sum, e) => sum + (e.price || 0), 0);
+    const unitPrice = basePrice + bordaPrice + extrasPrice;
 
     addToCart({
       id: `${customizingItem.id}-${Date.now()}`,
@@ -327,6 +365,7 @@ export default function PDVModal({
       isHalf: customIsHalf,
       secondFlavor: customIsHalf ? customSecondFlavor : null,
       selectedBorda: customBorda,
+      selectedExtras: customExtras.length > 0 ? customExtras : undefined,
       notes: customNotes.trim() || undefined,
       quantity: 1,
       unitPrice,
@@ -341,12 +380,16 @@ export default function PDVModal({
     setCart(prev => {
       // Find if identical item exists
       const existingIdx = prev.findIndex(item => {
+        const itemExtrasIds = (item.selectedExtras || []).map(e => e.id).sort().join(',');
+        const newItemExtrasIds = (newItem.selectedExtras || []).map(e => e.id).sort().join(',');
+
         return (
           item.menuItem.id === newItem.menuItem.id &&
           item.size === newItem.size &&
           item.isHalf === newItem.isHalf &&
           item.secondFlavor?.id === newItem.secondFlavor?.id &&
           item.selectedBorda?.id === newItem.selectedBorda?.id &&
+          itemExtrasIds === newItemExtrasIds &&
           (item.notes || '') === (newItem.notes || '')
         );
       });
@@ -426,6 +469,9 @@ export default function PDVModal({
         if (item.selectedBorda) {
           name += ` [Borda: ${item.selectedBorda.name}]`;
         }
+        if (item.selectedExtras && item.selectedExtras.length > 0) {
+          name += ` [Extras: ${item.selectedExtras.map(e => e.name).join(', ')}]`;
+        }
 
         return {
           name,
@@ -434,7 +480,7 @@ export default function PDVModal({
           priceCalculated: item.unitPrice,
           basePrice: item.unitPrice,
           notes: item.notes || '',
-          extras: []
+          extras: (item.selectedExtras || []).map(e => ({ name: e.name, price: e.price }))
         };
       });
 
@@ -947,7 +993,7 @@ export default function PDVModal({
                     </div>
 
                     {/* Customizations / Badges */}
-                    {(item.size || item.isHalf || item.selectedBorda || item.notes) && (
+                    {(item.size || item.isHalf || item.selectedBorda || (item.selectedExtras && item.selectedExtras.length > 0) || item.notes) && (
                       <div className="flex flex-wrap items-center gap-0.5 pl-6">
                         {item.size && (
                           <span className="px-1 py-0.2 rounded bg-amber-100/90 text-amber-900 border border-amber-200/80 text-[8.5px] font-mono font-bold">
@@ -964,6 +1010,11 @@ export default function PDVModal({
                             + {item.selectedBorda.name}
                           </span>
                         )}
+                        {item.selectedExtras && item.selectedExtras.map(extra => (
+                          <span key={extra.id} className="px-1 py-0.2 rounded bg-purple-100/90 text-purple-900 border border-purple-200/80 text-[8.5px] font-mono font-bold">
+                            + {extra.name} (€ {extra.price.toFixed(2)})
+                          </span>
+                        ))}
                         {item.notes && (
                           <span className="px-1 py-0.2 rounded bg-stone-200/90 text-stone-700 text-[8.5px] font-medium italic truncate max-w-[150px]">
                             Obs: {item.notes}
@@ -1318,6 +1369,49 @@ export default function PDVModal({
                 </div>
               )}
 
+              {/* Adicionais Extras */}
+              {availableExtras.length > 0 && (
+                <div className="space-y-2 pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400">
+                      Adicionais Extras
+                    </label>
+                    {customExtras.length > 0 && (
+                      <span className="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded-md">
+                        {customExtras.length} selecionado{customExtras.length > 1 ? 's' : ''} (+ € {customExtras.reduce((s, e) => s + e.price, 0).toFixed(2)})
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                    {availableExtras.map(extra => {
+                      const isSelected = customExtras.some(e => e.id === extra.id);
+                      return (
+                        <button
+                          type="button"
+                          key={extra.id}
+                          onClick={() => handleToggleExtra(extra)}
+                          className={`py-2 px-3 rounded-xl text-left border transition-all cursor-pointer shadow-2xs flex items-center justify-between ${
+                            isSelected
+                              ? 'bg-purple-50 border-purple-400 text-purple-950 ring-1 ring-purple-400'
+                              : 'bg-white border-gray-200 text-gray-700 hover:border-purple-200 hover:bg-purple-50/30'
+                          }`}
+                        >
+                          <div className="flex flex-col min-w-0 pr-1">
+                            <span className="text-xs font-bold truncate">{extra.name}</span>
+                            <span className="text-[10px] font-bold text-gray-500 font-mono">+ € {extra.price.toFixed(2)}</span>
+                          </div>
+                          <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected ? 'bg-purple-600 border-purple-600 text-white' : 'border-gray-300 bg-white'
+                          }`}>
+                            {isSelected && <Check size={10} className="stroke-[3]" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="pt-4 border-t border-gray-100">
                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1.5">
                   Observações
@@ -1346,7 +1440,7 @@ export default function PDVModal({
                 className="flex-1 py-2.5 bg-[#fdde58] hover:bg-[#e2c23f] disabled:opacity-50 text-stone-950 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 border border-[#d8ba39]"
               >
                 <Check size={16} className="stroke-[3]" />
-                <span>Confirmar Inclusão</span>
+                <span>Confirmar Inclusão (€ {currentPreviewPrice.toFixed(2)})</span>
               </button>
             </div>
 

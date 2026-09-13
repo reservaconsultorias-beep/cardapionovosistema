@@ -155,7 +155,9 @@ export const pizzaExtras: ExtraIngredient[] = [
   { id: 'ex-3', name: 'Extra Azeitonas', price: 1.00 },
   { id: 'ex-4', name: 'Extra Cebola', price: 1.00 },
   { id: 'ex-5', name: 'Extra Cogumelos', price: 1.00 },
-  { id: 'ex-6', name: 'Extra Fiambre', price: 1.50 }
+  { id: 'ex-6', name: 'Extra Fiambre', price: 1.50 },
+  { id: 'ex-7', name: 'Extra Catupiry', price: 2.00 },
+  { id: 'ex-8', name: 'Extra Milho', price: 1.00 }
 ];
 
 export const menuPizzas = menuData.filter(item => item.id.startsWith('p-'));
