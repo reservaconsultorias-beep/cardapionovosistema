@@ -2234,7 +2234,7 @@ export default function AdminDashboard() {
                                     >
                                       {index + 1}
                                     </span>
-                                    <span className="truncate text-stone-800 font-bold text-[11px] sm:text-xs">
+                                    <span className="text-stone-800 font-bold text-[11px] sm:text-xs leading-snug">
                                       {cat.name}
                                     </span>
                                   </div>
@@ -2283,7 +2283,7 @@ export default function AdminDashboard() {
                                     >
                                       {index + 1}
                                     </span>
-                                    <span className="truncate text-stone-800 font-medium text-[11px] sm:text-xs">
+                                    <span className="text-stone-800 font-medium text-[11px] sm:text-xs leading-snug">
                                       {formatItemNameForPrint({ name: item.name })}
                                     </span>
                                   </div>
@@ -2352,9 +2352,9 @@ export default function AdminDashboard() {
                           .sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0))
                           .slice(0, 3)
                           .map((cat: any, idx: number) => (
-                            <div key={idx} className="flex justify-between items-center text-xs">
-                              <span className="font-mono text-stone-600 capitalize truncate max-w-[120px]">{String(cat.name || '').replace('-', ' ')}</span>
-                              <span className="font-mono font-bold tabular-nums text-stone-900">€ {(Number(cat.value) || 0).toFixed(2)}</span>
+                            <div key={idx} className="flex justify-between items-center gap-2 text-xs">
+                              <span className="font-mono text-stone-600 capitalize leading-snug">{String(cat.name || '').replace('-', ' ')}</span>
+                              <span className="font-mono font-bold tabular-nums text-stone-900 shrink-0">€ {(Number(cat.value) || 0).toFixed(2)}</span>
                             </div>
                           ))
                       )}
@@ -2377,12 +2377,12 @@ export default function AdminDashboard() {
                         <div className="text-center text-stone-400 font-mono text-[11px] py-2">Nenhuma pizza ainda.</div>
                       ) : (
                         (dashboardData?.popularPizzas || []).slice(0, 3).map((product: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-1.5 truncate max-w-[130px]">
+                          <div key={index} className="flex items-center justify-between gap-2 text-xs">
+                            <div className="flex items-center gap-1.5 min-w-0">
                               <span className="w-4 h-4 rounded bg-stone-100 flex items-center justify-center text-[9px] font-mono font-bold text-stone-600 shrink-0">
                                 {index + 1}
                               </span>
-                              <span className="font-semibold text-stone-900 truncate" title={product.name}>
+                              <span className="font-semibold text-stone-900 leading-snug" title={product.name}>
                                 {formatItemNameForPrint({ name: product.name })}
                               </span>
                             </div>
@@ -2449,9 +2449,9 @@ export default function AdminDashboard() {
                           <div className="text-center text-stone-500 font-mono text-xs py-2">Sem dados.</div>
                         ) : (
                           [...(dashboardData?.chartData?.salesByCategory || [])].sort((a, b) => (Number(b.value) || 0) - (Number(a.value) || 0)).slice(0, 3).map((cat: any, idx: number) => (
-                            <div key={idx} className="flex justify-between items-center">
-                              <span className="text-xs font-mono text-stone-600 capitalize">{String(cat.name || '').replace('-', ' ')}</span>
-                              <span className="text-xs font-mono font-bold tabular-nums text-stone-900">€ {(Number(cat.value) || 0).toFixed(2)}</span>
+                            <div key={idx} className="flex justify-between items-center gap-2">
+                              <span className="text-xs font-mono text-stone-600 capitalize leading-snug">{String(cat.name || '').replace('-', ' ')}</span>
+                              <span className="text-xs font-mono font-bold tabular-nums text-stone-900 shrink-0">€ {(Number(cat.value) || 0).toFixed(2)}</span>
                             </div>
                           ))
                         )}
@@ -2473,10 +2473,10 @@ export default function AdminDashboard() {
                           <div className="text-center text-stone-500 font-mono text-xs py-2">Nenhuma pizza registrada.</div>
                         ) : (
                           (dashboardData?.popularPizzas || []).slice(0, 3).map((product: any, index: number) => (
-                            <div key={index} className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 truncate">
+                            <div key={index} className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
                                 <span className="w-5 h-5 rounded bg-stone-100 flex items-center justify-center text-[10px] font-mono font-bold text-stone-600 border border-stone-200 shrink-0">{index + 1}</span>
-                                <span className="text-xs font-semibold text-stone-900 truncate" title={product.name}>{formatItemNameForPrint({ name: product.name })}</span>
+                                <span className="text-xs font-semibold text-stone-900 leading-snug" title={product.name}>{formatItemNameForPrint({ name: product.name })}</span>
                               </div>
                               <span className="text-xs font-mono font-bold tabular-nums text-stone-900 shrink-0">€ {(Number(product.revenue) || 0).toFixed(2)}</span>
                             </div>
@@ -2521,7 +2521,7 @@ export default function AdminDashboard() {
                                       >
                                         {index + 1}
                                       </span>
-                                      <span className="truncate text-stone-800 font-bold text-[11px] sm:text-xs">
+                                      <span className="text-stone-800 font-bold text-[11px] sm:text-xs leading-snug">
                                         {cat.name}
                                       </span>
                                     </div>
@@ -2580,7 +2580,7 @@ export default function AdminDashboard() {
                                       >
                                         {index + 1}
                                       </span>
-                                      <span className="truncate text-stone-800 font-medium text-[11px] sm:text-xs">
+                                      <span className="text-stone-800 font-medium text-[11px] sm:text-xs leading-snug">
                                         {formatItemNameForPrint({ name: item.name })}
                                       </span>
                                     </div>
