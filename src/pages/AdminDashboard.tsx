@@ -2966,14 +2966,21 @@ export default function AdminDashboard() {
                     key={cat.id}
                     href={`#admin-cat-${cat.id}`}
                     onClick={(e) => {
+                      e.preventDefault();
                       setActiveCategory(cat.id);
                       const el = document.getElementById(`admin-cat-${cat.id}`);
-                      const container = document.querySelector('main');
-                      if (el && container) {
-                        e.preventDefault();
-                        const yOffset = -120; // compensate for sticky header
-                        const y = el.getBoundingClientRect().top + container.scrollTop - container.getBoundingClientRect().top + yOffset;
-                        container.scrollTo({ top: y, behavior: "smooth" });
+                      if (el) {
+                        const stickyOffset = 110;
+                        const container = document.querySelector('main');
+                        if (container && (container.scrollHeight > container.clientHeight + 50)) {
+                          const containerTop = container.getBoundingClientRect().top;
+                          const elTop = el.getBoundingClientRect().top;
+                          const scrollTarget = container.scrollTop + (elTop - containerTop) - stickyOffset;
+                          container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+                        } else {
+                          const y = el.getBoundingClientRect().top + window.pageYOffset - stickyOffset;
+                          window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
+                        }
                       }
                     }}
                     className={`py-1 px-3 rounded-full text-xs whitespace-nowrap font-bold transition-all duration-150 active:scale-95 cursor-pointer border ${
@@ -3007,7 +3014,7 @@ export default function AdminDashboard() {
               const allPaused = items.every(item => pausedItems.includes(item.id));
               
               return (
-                <div key={cat.id} id={`admin-cat-${cat.id}`} className="bg-white p-5 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08)] hover:border-[#D4AF6A]/30 transition-all duration-300">
+                <div key={cat.id} id={`admin-cat-${cat.id}`} className="scroll-mt-28 bg-white p-5 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08)] hover:border-[#D4AF6A]/30 transition-all duration-300">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3">
                     <div>
                       <h2 className="text-lg font-bold text-stone-900">{cat.label}</h2>
