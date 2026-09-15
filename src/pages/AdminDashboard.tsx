@@ -3947,8 +3947,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   
   const [selectedProductSearch, setSelectedProductSearch] = useState('');
   const [selectedProductId, setSelectedProductId] = useState('');
-  const [selectedSecondProductSearch, setSelectedSecondProductSearch] = useState('');
-  const [selectedSecondProductId, setSelectedSecondProductId] = useState('');
+  const [customAdditionalFlavors, setCustomAdditionalFlavors] = useState<{id: string; search: string}[]>([]);
   const [selectedSize, setSelectedSize] = useState('priceSingle');
   const [saving, setSaving] = useState(false);
 
@@ -3975,26 +3974,32 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     const menuItem = menuItems.find(m => m.id === selectedProductId);
     if (!menuItem) return;
 
-    const secondMenuItem = selectedSize === 'priceG' && selectedSecondProductId
-      ? menuItems.find(m => m.id === selectedSecondProductId)
-      : null;
+    const extraFlavors = customAdditionalFlavors.filter(f => f.id).map(f => menuItems.find(m => m.id === f.id)).filter(Boolean) as any[];
+    const totalFlavors = 1 + extraFlavors.length;
 
     let price = menuItem.priceSingle || menuItem.priceP || menuItem.priceM || menuItem.priceG || 0;
     let sizeName = 'Único';
     if (selectedSize === 'priceP' && menuItem.priceP) { price = menuItem.priceP; sizeName = 'Pequena (P)'; }
     else if (selectedSize === 'priceM' && menuItem.priceM) { price = menuItem.priceM; sizeName = 'Média (M)'; }
-    else if (selectedSize === 'priceG') { 
-      price = menuItem.priceG || price; 
-      if (secondMenuItem) {
-        const price2 = secondMenuItem.priceG || secondMenuItem.priceSingle || 0;
-        price = Math.max(price, price2);
-      }
-      sizeName = 'Grande (G)'; 
+    else if (selectedSize === 'priceG') {
+      const allPricesG = [menuItem.priceG || 0, ...extraFlavors.map(f => f.priceG || 0)];
+      price = Math.max(...allPricesG) || price;
+      sizeName = 'Grande (G)';
+    } else if (selectedSize === 'priceBig') {
+      const allPricesBig = [menuItem.priceBig || menuItem.priceG || 0, ...extraFlavors.map(f => f.priceBig || f.priceG || 0)];
+      price = Math.max(...allPricesBig) || price;
+      sizeName = 'Big';
+    } else if (selectedSize === 'priceSuperBig') {
+      const allPricesSB = [menuItem.priceSuperBig || menuItem.priceBig || menuItem.priceG || 0, ...extraFlavors.map(f => f.priceSuperBig || f.priceBig || f.priceG || 0)];
+      price = Math.max(...allPricesSB) || price;
+      sizeName = 'Super Big';
     }
 
     let itemName = menuItem.name;
-    if (secondMenuItem) {
-      itemName = `1/2 ${menuItem.id.split('-').pop()} - ${menuItem.name} + 1/2 ${secondMenuItem.id.split('-').pop()} - ${secondMenuItem.name}`;
+    if (extraFlavors.length > 0) {
+      const fraction = `1/${totalFlavors}`;
+      const allNames = [menuItem, ...extraFlavors].map(f => `${fraction} ${f.name}`);
+      itemName = allNames.join(' + ');
     }
 
     const newItem = {
@@ -4288,12 +4293,12 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                       <input
                         type="text"
                         value={selectedProductSearch}
-                        onChange={(e) => setSelectedProductSearch(e.target.value)}
+                        onChange={(e) => { setSelectedProductSearch(e.target.value); setSelectedProductId(''); }}
                         placeholder="Pesquisar sabor ou produto..."
                         className="w-full px-2 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
                       />
-                      {selectedProductSearch && (
-                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-20 max-h-36 overflow-y-auto">
+                      {selectedProductSearch && !selectedProductId && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-30 max-h-36 overflow-y-auto">
                           {filteredMenuItems.map(m => (
                             <div
                               key={m.id}
@@ -4311,33 +4316,57 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                       )}
                     </div>
 
-                    {selectedSize === 'priceG' && (
-                      <div className="relative mt-1">
+                    {customAdditionalFlavors.map((flavorState, i) => (
+                      <div key={i} className="relative mt-1">
                         <input
                           type="text"
-                          value={selectedSecondProductSearch}
-                          onChange={(e) => setSelectedSecondProductSearch(e.target.value)}
-                          placeholder="2º sabor (opcional)..."
+                          value={flavorState.search}
+                          onChange={(e) => {
+                            const newFlavors = [...customAdditionalFlavors];
+                            newFlavors[i].search = e.target.value;
+                            if (e.target.value === '') newFlavors[i].id = '';
+                            setCustomAdditionalFlavors(newFlavors);
+                          }}
+                          placeholder={`${i + 2}º sabor...`}
                           className="w-full px-2 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
                         />
-                        {selectedSecondProductSearch && (
-                          <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-20 max-h-36 overflow-y-auto">
-                            {menuItems.filter(i => i.name.toLowerCase().includes(selectedSecondProductSearch.toLowerCase()) && i.categoryId === menuItems.find(m => m.id === selectedProductId)?.categoryId).map(m => (
+                        {flavorState.search && !flavorState.id && (
+                          <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-30 max-h-36 overflow-y-auto">
+                            {menuItems.filter(item => item.name.toLowerCase().includes(flavorState.search.toLowerCase()) && item.categoryId === menuItems.find(m => m.id === selectedProductId)?.categoryId).map(m => (
                               <div
-                                key={`second-${m.id}`}
+                                key={`extra-${i}-${m.id}`}
                                 onClick={() => {
-                                  setSelectedSecondProductId(m.id);
-                                  setSelectedSecondProductSearch(m.name);
+                                  const newFlavors = [...customAdditionalFlavors];
+                                  newFlavors[i] = { id: m.id, search: m.name };
+                                  setCustomAdditionalFlavors(newFlavors);
                                 }}
-                                className={`p-1.5 text-xs font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 ${selectedSecondProductId === m.id ? 'bg-stone-900 text-white' : 'text-stone-800 hover:bg-stone-50'}`}
+                                className="p-1.5 text-xs font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 text-stone-800 hover:bg-stone-50"
                               >
                                 <span>{m.name}</span>
-                                <span className={selectedSecondProductId === m.id ? 'text-stone-300 font-mono' : 'text-stone-500 font-mono'}>€ {(m.priceG || 0).toFixed(2)}</span>
+                                <span className="text-stone-500 font-mono">
+                                  € {(m.priceSuperBig || m.priceBig || m.priceG || m.priceSingle || 0).toFixed(2)}
+                                </span>
                               </div>
                             ))}
                           </div>
                         )}
                       </div>
+                    ))}
+
+                    {selectedProductId && customAdditionalFlavors.length < 3 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newFlavors = [...customAdditionalFlavors, { id: '', search: '' }];
+                          setCustomAdditionalFlavors(newFlavors);
+                          if (newFlavors.length === 1) setSelectedSize('priceG');
+                          if (newFlavors.length === 2) setSelectedSize('priceBig');
+                          if (newFlavors.length === 3) setSelectedSize('priceSuperBig');
+                        }}
+                        className="mt-1 w-full px-2 py-1 bg-stone-100 border border-stone-200 text-stone-600 hover:bg-stone-200 hover:text-stone-900 text-[10px] font-bold rounded transition-colors"
+                      >
+                        + Adicionar Sabor
+                      </button>
                     )}
                   </div>
 
@@ -4350,7 +4379,9 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                       <option value="priceSingle">Único</option>
                       <option value="priceP">Tam P</option>
                       <option value="priceM">Tam M</option>
-                      <option value="priceG">Tam G</option>
+                      <option value="priceG">Tam G (2 Sab)</option>
+                      <option value="priceBig">Tam Big (3 Sab)</option>
+                      <option value="priceSuperBig">Tam Super Big (4 Sab)</option>
                     </select>
                     <button
                       type="button"
