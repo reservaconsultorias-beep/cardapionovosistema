@@ -42,7 +42,7 @@ export function useMenu() {
 
       const normalizeItem = (it: any): MenuItem => {
         let priceBig = it.price_big ?? it.priceBig;
-        let priceGigante = it.price_gigante ?? it.priceGigante;
+        let priceSuperBig = it.price_super_big ?? it.priceSuperBig;
         
         if (priceBig === undefined || priceBig === null) {
           if (it.category === 'tradicionais') priceBig = 23.99;
@@ -50,10 +50,10 @@ export function useMenu() {
           else if (it.category === 'gourmet') priceBig = 34.99;
         }
 
-        if (priceGigante === undefined || priceGigante === null) {
-          if (it.category === 'tradicionais') priceGigante = 28.99;
-          else if (it.category === 'especiais') priceGigante = 32.99;
-          else if (it.category === 'gourmet') priceGigante = 36.99;
+        if (priceSuperBig === undefined || priceSuperBig === null) {
+          if (it.category === 'tradicionais') priceSuperBig = 28.99;
+          else if (it.category === 'especiais') priceSuperBig = 32.99;
+          else if (it.category === 'gourmet') priceSuperBig = 36.99;
         }
 
         return {
@@ -66,7 +66,7 @@ export function useMenu() {
           priceM: it.price_m ?? it.priceM ?? undefined,
           priceG: it.price_g ?? it.priceG ?? undefined,
           priceBig: priceBig ?? undefined,
-          priceGigante: priceGigante ?? undefined,
+          priceSuperBig: priceSuperBig ?? undefined,
           imageUrl: it.image_url ?? it.imageUrl ?? undefined,
           dayOfWeek: it.day_of_week ?? it.dayOfWeek ?? undefined,
           isBestseller: it.is_bestseller ?? it.isBestseller ?? false,
@@ -84,7 +84,7 @@ export function useMenu() {
       
       const normalizeStaticItem = (it: MenuItem): MenuItem => {
         let priceBig = it.priceBig;
-        let priceGigante = it.priceGigante;
+        let priceSuperBig = it.priceSuperBig;
         
         if (priceBig === undefined || priceBig === null) {
           if (it.category === 'tradicionais') priceBig = 23.99;
@@ -92,16 +92,16 @@ export function useMenu() {
           else if (it.category === 'gourmet') priceBig = 34.99;
         }
 
-        if (priceGigante === undefined || priceGigante === null) {
-          if (it.category === 'tradicionais') priceGigante = 28.99;
-          else if (it.category === 'especiais') priceGigante = 32.99;
-          else if (it.category === 'gourmet') priceGigante = 36.99;
+        if (priceSuperBig === undefined || priceSuperBig === null) {
+          if (it.category === 'tradicionais') priceSuperBig = 28.99;
+          else if (it.category === 'especiais') priceSuperBig = 32.99;
+          else if (it.category === 'gourmet') priceSuperBig = 36.99;
         }
 
         return {
           ...it,
           priceBig,
-          priceGigante
+          priceSuperBig
         };
       };
 
