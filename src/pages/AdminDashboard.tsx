@@ -2966,21 +2966,14 @@ export default function AdminDashboard() {
                     key={cat.id}
                     href={`#admin-cat-${cat.id}`}
                     onClick={(e) => {
-                      e.preventDefault();
                       setActiveCategory(cat.id);
                       const el = document.getElementById(`admin-cat-${cat.id}`);
-                      if (el) {
-                        const stickyOffset = 110;
-                        const container = document.querySelector('main');
-                        if (container && (container.scrollHeight > container.clientHeight + 50)) {
-                          const containerTop = container.getBoundingClientRect().top;
-                          const elTop = el.getBoundingClientRect().top;
-                          const scrollTarget = container.scrollTop + (elTop - containerTop) - stickyOffset;
-                          container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
-                        } else {
-                          const y = el.getBoundingClientRect().top + window.pageYOffset - stickyOffset;
-                          window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
-                        }
+                      const container = document.querySelector('main');
+                      if (el && container) {
+                        e.preventDefault();
+                        const yOffset = -120; // compensate for sticky header
+                        const y = el.getBoundingClientRect().top + container.scrollTop - container.getBoundingClientRect().top + yOffset;
+                        container.scrollTo({ top: y, behavior: "smooth" });
                       }
                     }}
                     className={`py-1 px-3 rounded-full text-xs whitespace-nowrap font-bold transition-all duration-150 active:scale-95 cursor-pointer border ${
@@ -3014,7 +3007,7 @@ export default function AdminDashboard() {
               const allPaused = items.every(item => pausedItems.includes(item.id));
               
               return (
-                <div key={cat.id} id={`admin-cat-${cat.id}`} className="scroll-mt-28 bg-white p-5 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08)] hover:border-[#D4AF6A]/30 transition-all duration-300">
+                <div key={cat.id} id={`admin-cat-${cat.id}`} className="bg-white p-5 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08)] hover:border-[#D4AF6A]/30 transition-all duration-300">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3">
                     <div>
                       <h2 className="text-lg font-bold text-stone-900">{cat.label}</h2>
@@ -3954,7 +3947,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   
   const [selectedProductSearch, setSelectedProductSearch] = useState('');
   const [selectedProductId, setSelectedProductId] = useState('');
-  const [customAdditionalFlavors, setCustomAdditionalFlavors] = useState<any[]>([]);
+  const [customAdditionalFlavors, setCustomAdditionalFlavors] = useState<{id: string; search: string}[]>([]);
   const [selectedSize, setSelectedSize] = useState('priceSingle');
   const [saving, setSaving] = useState(false);
 
@@ -3981,59 +3974,32 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     const menuItem = menuItems.find(m => m.id === selectedProductId);
     if (!menuItem) return;
 
-    const limit = selectedSize === 'priceSuperBig' ? 3 : selectedSize === 'priceBig' ? 2 : selectedSize === 'priceG' ? 1 : 0;
-    const validExtraFlavors = customAdditionalFlavors.slice(0, limit).filter(f => f.id);
-    const extraMenuItems = validExtraFlavors
-      .map(f => menuItems.find(m => m.id === f.id))
-      .filter(Boolean);
+    const extraFlavors = customAdditionalFlavors.filter(f => f.id).map(f => menuItems.find(m => m.id === f.id)).filter(Boolean) as any[];
+    const totalFlavors = 1 + extraFlavors.length;
 
     let price = menuItem.priceSingle || menuItem.priceP || menuItem.priceM || menuItem.priceG || 0;
     let sizeName = 'Único';
-    
     if (selectedSize === 'priceP' && menuItem.priceP) { price = menuItem.priceP; sizeName = 'Pequena (P)'; }
     else if (selectedSize === 'priceM' && menuItem.priceM) { price = menuItem.priceM; sizeName = 'Média (M)'; }
-    else if (selectedSize === 'priceG') { 
-      price = menuItem.priceG || price;
-      extraMenuItems.forEach(extra => {
-        if (extra) {
-           const priceExtra = extra.priceG || extra.priceSingle || 0;
-           price = Math.max(price, priceExtra);
-        }
-      });
-      sizeName = 'Grande (G)'; 
-    }
-    else if (selectedSize === 'priceBig') {
-      price = menuItem.priceBig || price;
-      extraMenuItems.forEach(extra => {
-        if (extra) {
-           const priceExtra = extra.priceBig || extra.priceG || extra.priceSingle || 0;
-           price = Math.max(price, priceExtra);
-        }
-      });
+    else if (selectedSize === 'priceG') {
+      const allPricesG = [menuItem.priceG || 0, ...extraFlavors.map(f => f.priceG || 0)];
+      price = Math.max(...allPricesG) || price;
+      sizeName = 'Grande (G)';
+    } else if (selectedSize === 'priceBig') {
+      const allPricesBig = [menuItem.priceBig || menuItem.priceG || 0, ...extraFlavors.map(f => f.priceBig || f.priceG || 0)];
+      price = Math.max(...allPricesBig) || price;
       sizeName = 'Big';
-    }
-    else if (selectedSize === 'priceSuperBig') {
-      price = menuItem.priceSuperBig || price;
-      extraMenuItems.forEach(extra => {
-        if (extra) {
-           const priceExtra = extra.priceSuperBig || extra.priceBig || extra.priceG || extra.priceSingle || 0;
-           price = Math.max(price, priceExtra);
-        }
-      });
+    } else if (selectedSize === 'priceSuperBig') {
+      const allPricesSB = [menuItem.priceSuperBig || menuItem.priceBig || menuItem.priceG || 0, ...extraFlavors.map(f => f.priceSuperBig || f.priceBig || f.priceG || 0)];
+      price = Math.max(...allPricesSB) || price;
       sizeName = 'Super Big';
     }
 
     let itemName = menuItem.name;
-    const totalFlavors = 1 + extraMenuItems.length;
-    if (totalFlavors > 1) {
-      let fraction = '1/2';
-      if (totalFlavors === 3) fraction = '1/3';
-      else if (totalFlavors === 4) fraction = '1/4';
-      
-      itemName = `${fraction} ${menuItem.name}`;
-      extraMenuItems.forEach(extra => {
-        if (extra) itemName += ` + ${fraction} ${extra.name}`;
-      });
+    if (extraFlavors.length > 0) {
+      const fraction = `1/${totalFlavors}`;
+      const allNames = [menuItem, ...extraFlavors].map(f => `${fraction} ${f.name}`);
+      itemName = allNames.join(' + ');
     }
 
     const newItem = {
@@ -4049,7 +4015,8 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     setItems(prev => [...prev, newItem]);
     setSelectedProductId('');
     setSelectedProductSearch('');
-    setCustomAdditionalFlavors([]);
+    setSelectedSecondProductId('');
+    setSelectedSecondProductSearch('');
   };
 
   const handleUpdateQty = (index: number, delta: number) => {
@@ -4326,12 +4293,12 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                       <input
                         type="text"
                         value={selectedProductSearch}
-                        onChange={(e) => setSelectedProductSearch(e.target.value)}
+                        onChange={(e) => { setSelectedProductSearch(e.target.value); setSelectedProductId(''); }}
                         placeholder="Pesquisar sabor ou produto..."
                         className="w-full px-2 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
                       />
-                      {selectedProductSearch && (
-                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-20 max-h-36 overflow-y-auto">
+                      {selectedProductSearch && !selectedProductId && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-30 max-h-36 overflow-y-auto">
                           {filteredMenuItems.map(m => (
                             <div
                               key={m.id}
@@ -4364,7 +4331,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                           className="w-full px-2 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
                         />
                         {flavorState.search && !flavorState.id && (
-                          <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-20 max-h-36 overflow-y-auto">
+                          <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-30 max-h-36 overflow-y-auto">
                             {menuItems.filter(item => item.name.toLowerCase().includes(flavorState.search.toLowerCase()) && item.categoryId === menuItems.find(m => m.id === selectedProductId)?.categoryId).map(m => (
                               <div
                                 key={`extra-${i}-${m.id}`}
@@ -4385,7 +4352,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                         )}
                       </div>
                     ))}
-                    
+
                     {selectedProductId && customAdditionalFlavors.length < 3 && (
                       <button
                         type="button"
@@ -4403,16 +4370,16 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                     )}
                   </div>
 
-                  <div className="flex gap-1">
+                  <div className="flex flex-col gap-1">
                     <select
                       value={selectedSize}
                       onChange={(e) => setSelectedSize(e.target.value)}
-                      className="flex-1 px-1.5 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none cursor-pointer"
+                      className="w-full px-1.5 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none cursor-pointer"
                     >
                       <option value="priceSingle">Único</option>
                       <option value="priceP">Tam P</option>
                       <option value="priceM">Tam M</option>
-                      <option value="priceG">Tam G</option>
+                      <option value="priceG">Tam G (2 Sab)</option>
                       <option value="priceBig">Tam Big (3 Sab)</option>
                       <option value="priceSuperBig">Tam Super Big (4 Sab)</option>
                     </select>
@@ -4420,7 +4387,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                       type="button"
                       onClick={handleAddItem}
                       disabled={!selectedProductId}
-                      className="px-2.5 py-1 bg-stone-900 hover:bg-stone-950 text-white font-bold rounded text-[11px] transition-colors disabled:opacity-50 cursor-pointer shrink-0 border border-stone-800"
+                      className="w-full px-2.5 py-1.5 bg-stone-900 hover:bg-stone-950 text-white font-bold rounded text-[11px] transition-colors disabled:opacity-50 cursor-pointer border border-stone-800"
                     >
                       Incluir
                     </button>
