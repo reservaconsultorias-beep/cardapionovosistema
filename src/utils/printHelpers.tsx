@@ -18,9 +18,9 @@ export function getItemNameTextForPrint(item: any): string {
     return rawName.replace(/^esfi(?:ha|rra)\s+\d+\s*[-–—]\s*/i, 'Esfirra ');
   }
 
-  // 2. Pizza meio a meio (contém 1/2)
-  if (rawName.includes('1/2')) {
-    let formatted = rawName.replace(/1\/2\s+(?:p-?\d+\s*[-–—]\s*)?(\d+)\s*[-–—]\s*/gi, '1/2 Pizza ');
+  // 2. Pizza multi-sabor (contém 1/2, 1/3, 1/4)
+  if (rawName.match(/1\/(2|3|4)/)) {
+    let formatted = rawName.replace(/1\/(2|3|4)\s+(?:[pe]-?\d+\s*[-–—]\s*)?(\d+)\s*[-–—]\s*/gi, '1/$1 Pizza ');
     if (!formatted.toLowerCase().includes('pizza')) {
       formatted = 'Pizza ' + formatted;
     }
