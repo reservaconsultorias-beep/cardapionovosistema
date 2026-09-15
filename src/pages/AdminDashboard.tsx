@@ -4370,11 +4370,11 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                     )}
                   </div>
 
-                  <div className="flex gap-1">
+                  <div className="flex flex-col gap-1">
                     <select
                       value={selectedSize}
                       onChange={(e) => setSelectedSize(e.target.value)}
-                      className="flex-1 px-1.5 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none cursor-pointer"
+                      className="w-full px-1.5 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none cursor-pointer"
                     >
                       <option value="priceSingle">Único</option>
                       <option value="priceP">Tam P</option>
@@ -4387,7 +4387,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                       type="button"
                       onClick={handleAddItem}
                       disabled={!selectedProductId}
-                      className="px-2.5 py-1 bg-stone-900 hover:bg-stone-950 text-white font-bold rounded text-[11px] transition-colors disabled:opacity-50 cursor-pointer shrink-0 border border-stone-800"
+                      className="w-full px-2.5 py-1.5 bg-stone-900 hover:bg-stone-950 text-white font-bold rounded text-[11px] transition-colors disabled:opacity-50 cursor-pointer border border-stone-800"
                     >
                       Incluir
                     </button>
