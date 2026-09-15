@@ -26,6 +26,7 @@ export interface PDVCartItem {
   size?: 'P' | 'M' | 'G' | 'Big' | 'Super Big';
   isHalf?: boolean;
   secondFlavor?: MenuItem;
+  additionalFlavors?: MenuItem[];
   selectedBorda?: MenuItem | null;
   selectedExtras?: ExtraIngredient[];
   quantity: number;
@@ -33,6 +34,15 @@ export interface PDVCartItem {
   unitPrice: number;
   totalPrice: number;
 }
+
+const getPizzaPriceForSize = (item: MenuItem, size: 'P' | 'M' | 'G' | 'Big' | 'Super Big') => {
+  if (size === 'P') return item.priceP || (item.priceM ? item.priceM - 2 : item.priceSingle || 0);
+  if (size === 'M') return item.priceM || item.priceSingle || 0;
+  if (size === 'G') return item.priceG || item.priceSingle || 0;
+  if (size === 'Big') return item.priceBig || item.priceSingle || 0;
+  if (size === 'Super Big') return item.priceSuperBig || item.priceSingle || 0;
+  return item.priceSingle || 0;
+};
 
 // Componente para resolver imagens do PDV com tentativa de extensões
 const PDVProductImage = ({ product, className }: { product: MenuItem, className?: string }) => {
@@ -131,8 +141,7 @@ export default function PDVModal({
   // Customizer / Size Modal State
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const [customSize, setCustomSize] = useState<'P' | 'M' | 'G' | 'Big' | 'Super Big'>('G');
-  const [customIsHalf, setCustomIsHalf] = useState(false);
-  const [customSecondFlavor, setCustomSecondFlavor] = useState<MenuItem | null>(null);
+  const [customAdditionalFlavors, setCustomAdditionalFlavors] = useState<MenuItem[]>([]);
   const [customBorda, setCustomBorda] = useState<MenuItem | null>(null);
   const [customExtras, setCustomExtras] = useState<ExtraIngredient[]>([]);
   const [customNotes, setCustomNotes] = useState('');
@@ -294,28 +303,21 @@ export default function PDVModal({
   // Preço dinâmico em tempo real dentro do modal de customização
   const currentPreviewPrice = useMemo(() => {
     if (!customizingItem) return 0;
-    let basePrice = 0;
-    if (customSize === 'P') basePrice = customizingItem.priceP || (customizingItem.priceM ? customizingItem.priceM - 2 : customizingItem.priceSingle || 0);
-    else if (customSize === 'M') basePrice = customizingItem.priceM || customizingItem.priceSingle || 0;
-    else if (customSize === 'G') basePrice = customizingItem.priceG || customizingItem.priceSingle || 0;
-    else if (customSize === 'Big') basePrice = customizingItem.priceBig || customizingItem.priceSingle || 0;
-    else if (customSize === 'Super Big') basePrice = customizingItem.priceSuperBig || customizingItem.priceSingle || 0;
+    let basePrice = getPizzaPriceForSize(customizingItem, customSize);
 
-    if (customIsHalf && customSecondFlavor) {
-      let secondPrice = 0;
-      if (customSize === 'P') secondPrice = customSecondFlavor.priceP || (customSecondFlavor.priceM ? customSecondFlavor.priceM - 2 : customSecondFlavor.priceSingle || 0);
-      else if (customSize === 'M') secondPrice = customSecondFlavor.priceM || customSecondFlavor.priceSingle || 0;
-      else if (customSize === 'G') secondPrice = customSecondFlavor.priceG || customSecondFlavor.priceSingle || 0;
-      else if (customSize === 'Big') secondPrice = customSecondFlavor.priceBig || customSecondFlavor.priceSingle || 0;
-      else if (customSize === 'Super Big') secondPrice = customSecondFlavor.priceSuperBig || customSecondFlavor.priceSingle || 0;
-
-      basePrice = Math.max(basePrice, secondPrice);
+    if (customAdditionalFlavors.length > 0) {
+      for (const flavor of customAdditionalFlavors) {
+        const p = getPizzaPriceForSize(flavor, customSize);
+        if (p > basePrice) {
+          basePrice = p;
+        }
+      }
     }
 
     const bordaPrice = customBorda?.priceSingle || 0;
     const extrasPrice = customExtras.reduce((sum, e) => sum + (e.price || 0), 0);
     return basePrice + bordaPrice + extrasPrice;
-  }, [customizingItem, customSize, customIsHalf, customSecondFlavor, customBorda, customExtras]);
+  }, [customizingItem, customSize, customAdditionalFlavors, customBorda, customExtras]);
 
   // Handle direct item click
   const handleProductClick = (item: MenuItem) => {
@@ -345,23 +347,15 @@ export default function PDVModal({
   const handleConfirmCustomization = () => {
     if (!customizingItem) return;
 
-    let basePrice = 0;
-    if (customSize === 'P') basePrice = customizingItem.priceP || (customizingItem.priceM ? customizingItem.priceM - 2 : customizingItem.priceSingle || 0);
-    else if (customSize === 'M') basePrice = customizingItem.priceM || customizingItem.priceSingle || 0;
-    else if (customSize === 'G') basePrice = customizingItem.priceG || customizingItem.priceSingle || 0;
-    else if (customSize === 'Big') basePrice = customizingItem.priceBig || customizingItem.priceSingle || 0;
-    else if (customSize === 'Super Big') basePrice = customizingItem.priceSuperBig || customizingItem.priceSingle || 0;
+    let basePrice = getPizzaPriceForSize(customizingItem, customSize);
 
-    // If half-and-half, take highest price or avg (standard: take highest flavor price)
-    if (customIsHalf && customSecondFlavor) {
-      let secondPrice = 0;
-      if (customSize === 'P') secondPrice = customSecondFlavor.priceP || (customSecondFlavor.priceM ? customSecondFlavor.priceM - 2 : customSecondFlavor.priceSingle || 0);
-      else if (customSize === 'M') secondPrice = customSecondFlavor.priceM || customSecondFlavor.priceSingle || 0;
-      else if (customSize === 'G') secondPrice = customSecondFlavor.priceG || customSecondFlavor.priceSingle || 0;
-      else if (customSize === 'Big') secondPrice = customSecondFlavor.priceBig || customSecondFlavor.priceSingle || 0;
-      else if (customSize === 'Super Big') secondPrice = customSecondFlavor.priceSuperBig || customSecondFlavor.priceSingle || 0;
-
-      basePrice = Math.max(basePrice, secondPrice);
+    if (customAdditionalFlavors.length > 0) {
+      for (const flavor of customAdditionalFlavors) {
+        const p = getPizzaPriceForSize(flavor, customSize);
+        if (p > basePrice) {
+          basePrice = p;
+        }
+      }
     }
 
     const bordaPrice = customBorda?.priceSingle || 0;
@@ -372,8 +366,9 @@ export default function PDVModal({
       id: `${customizingItem.id}-${Date.now()}`,
       menuItem: customizingItem,
       size: customSize,
-      isHalf: customIsHalf,
-      secondFlavor: customIsHalf ? customSecondFlavor : null,
+      isHalf: customAdditionalFlavors.length === 1,
+      secondFlavor: customAdditionalFlavors.length === 1 ? customAdditionalFlavors[0] : undefined,
+      additionalFlavors: customAdditionalFlavors.length > 0 ? customAdditionalFlavors : undefined,
       selectedBorda: customBorda,
       selectedExtras: customExtras.length > 0 ? customExtras : undefined,
       notes: customNotes.trim() || undefined,
@@ -393,11 +388,13 @@ export default function PDVModal({
         const itemExtrasIds = (item.selectedExtras || []).map(e => e.id).sort().join(',');
         const newItemExtrasIds = (newItem.selectedExtras || []).map(e => e.id).sort().join(',');
 
+        const itemFlavorsIds = (item.additionalFlavors || []).map(f => f.id).sort().join(',');
+        const newItemFlavorsIds = (newItem.additionalFlavors || []).map(f => f.id).sort().join(',');
+
         return (
           item.menuItem.id === newItem.menuItem.id &&
           item.size === newItem.size &&
-          item.isHalf === newItem.isHalf &&
-          item.secondFlavor?.id === newItem.secondFlavor?.id &&
+          itemFlavorsIds === newItemFlavorsIds &&
           item.selectedBorda?.id === newItem.selectedBorda?.id &&
           itemExtrasIds === newItemExtrasIds &&
           (item.notes || '') === (newItem.notes || '')
@@ -470,7 +467,11 @@ export default function PDVModal({
     try {
       const formattedItems = cart.map(item => {
         let name = item.menuItem.name;
-        if (item.isHalf && item.secondFlavor) {
+        if (item.additionalFlavors && item.additionalFlavors.length > 0) {
+          const totalFlavors = 1 + item.additionalFlavors.length;
+          const fraction = `1/${totalFlavors}`;
+          name = `${fraction} ${item.menuItem.name} + ` + item.additionalFlavors.map(f => `${fraction} ${f.name}`).join(' + ');
+        } else if (item.isHalf && item.secondFlavor) {
           name = `1/2 ${item.menuItem.name} + 1/2 ${item.secondFlavor.name}`;
         }
         if (item.size) {
@@ -1024,18 +1025,22 @@ export default function PDVModal({
                     </div>
 
                     {/* Customizations / Badges */}
-                    {(item.size || item.isHalf || item.selectedBorda || (item.selectedExtras && item.selectedExtras.length > 0) || item.notes) && (
+                    {(item.size || (item.additionalFlavors && item.additionalFlavors.length > 0) || (item.isHalf && item.secondFlavor) || item.selectedBorda || (item.selectedExtras && item.selectedExtras.length > 0) || item.notes) && (
                       <div className="flex flex-wrap items-center gap-0.5 pl-6">
                         {item.size && (
                           <span className="px-1 py-0.2 rounded bg-amber-100/90 text-amber-900 border border-amber-200/80 text-[8.5px] font-mono font-bold">
                             Tam {item.size}
                           </span>
                         )}
-                        {item.isHalf && item.secondFlavor && (
+                        {item.additionalFlavors && item.additionalFlavors.length > 0 ? (
+                          <span className="px-1 py-0.2 rounded bg-orange-100/90 text-orange-900 border border-orange-200/80 text-[8.5px] font-mono font-bold">
+                            {item.additionalFlavors.length + 1} Sabores (+ {item.additionalFlavors.map(f => f.name).join(', ')})
+                          </span>
+                        ) : item.isHalf && item.secondFlavor ? (
                           <span className="px-1 py-0.2 rounded bg-orange-100/90 text-orange-900 border border-orange-200/80 text-[8.5px] font-mono font-bold">
                             ½ {item.secondFlavor.name}
                           </span>
-                        )}
+                        ) : null}
                         {item.selectedBorda && (
                           <span className="px-1 py-0.2 rounded bg-emerald-100/90 text-emerald-900 border border-emerald-200/80 text-[8.5px] font-mono font-bold">
                             + {item.selectedBorda.name}
@@ -1315,7 +1320,10 @@ export default function PDVModal({
                         key={size}
                         onClick={() => {
                           setCustomSize(size);
-                          if (size !== 'G' && size !== 'Big' && size !== 'Super Big') setCustomAdditionalFlavors([]);
+                          const maxAdditional = size === 'Super Big' ? 3 : size === 'Big' ? 2 : size === 'G' ? 1 : 0;
+                          if (customAdditionalFlavors.length > maxAdditional) {
+                            setCustomAdditionalFlavors(prev => prev.slice(0, maxAdditional));
+                          }
                         }}
                         className={`py-2.5 px-2 rounded-xl flex flex-col items-center gap-0.5 border-2 transition-all cursor-pointer shadow-2xs ${
                           isSelected
@@ -1332,41 +1340,90 @@ export default function PDVModal({
               </div>
 
               {(customSize === 'G' || customSize === 'Big' || customSize === 'Super Big') && (
-                <div className="space-y-2 pt-4 border-t border-gray-100">
-                  <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-200 cursor-pointer" onClick={() => setCustomIsHalf(!customIsHalf)}>
+                <div className="space-y-2.5 pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <label className="text-xs font-black text-gray-900 cursor-pointer">Pizza Meio a Meio</label>
-                      <p className="text-[10px] text-gray-500 font-medium">Escolha um segundo sabor</p>
+                      <label className="text-xs font-black text-gray-900">Sabores da Pizza</label>
+                      <p className="text-[10px] text-gray-500 font-medium">
+                        {customSize === 'Super Big' 
+                          ? 'Até 4 sabores (opcional)' 
+                          : customSize === 'Big' 
+                            ? 'Até 3 sabores (opcional)' 
+                            : 'Até 2 sabores (Meio a Meio)'}
+                      </p>
                     </div>
-                    <div className={`w-10 h-5 rounded-full transition-colors relative ${customIsHalf ? 'bg-green-500' : 'bg-gray-300'}`}>
-                      <div className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${customIsHalf ? 'translate-x-5' : ''}`}></div>
-                    </div>
+                    <span className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
+                      {1 + customAdditionalFlavors.length} de {customSize === 'Super Big' ? 4 : customSize === 'Big' ? 3 : 2} sabores
+                    </span>
                   </div>
 
-                  {customIsHalf && (
-                    <div className="animate-in slide-in-from-top-2">
-                      <select
-                        value={customSecondFlavor?.id || ''}
-                        onChange={e => {
-                          const found = pizzasList.find(p => p.id === e.target.value);
-                          setCustomSecondFlavor(found || null);
+                  {/* 1º Sabor (Base) */}
+                  <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+                    <span className="font-bold text-gray-700">
+                      {customAdditionalFlavors.length === 0 ? '1/1 Sabor Principal:' : `1/${1 + customAdditionalFlavors.length} Sabor:`}{' '}
+                      <span className="text-gray-900 font-extrabold">{customizingItem.name}</span>
+                    </span>
+                    <span className="text-[10px] font-semibold text-gray-500">€ {getPizzaPriceForSize(customizingItem, customSize).toFixed(2)}</span>
+                  </div>
+
+                  {/* Sabores Adicionais */}
+                  {customAdditionalFlavors.map((flavor, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <select
+                          value={flavor.id}
+                          onChange={e => {
+                            const found = pizzasList.find(p => p.id === e.target.value);
+                            if (found) {
+                              const updated = [...customAdditionalFlavors];
+                              updated[idx] = found;
+                              setCustomAdditionalFlavors(updated);
+                            }
+                          }}
+                          className="w-full h-9 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:border-red-500 focus:outline-none"
+                        >
+                          {pizzasList.map(p => {
+                            const sPrice = getPizzaPriceForSize(p, customSize);
+                            return (
+                              <option key={p.id} value={p.id}>
+                                {idx + 2}º Sabor: {p.name} (+ € {sPrice.toFixed(2)})
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomAdditionalFlavors(prev => prev.filter((_, i) => i !== idx));
                         }}
-                        className="w-full h-9 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:border-red-500 focus:outline-none appearance-none"
+                        className="w-9 h-9 flex items-center justify-center bg-red-50 text-red-600 rounded-xl border border-red-200 hover:bg-red-100 transition-colors font-bold text-xs cursor-pointer"
+                        title="Remover sabor"
                       >
-                        <option value="">Selecione o 2º sabor...</option>
-                        {pizzasList.map(p => {
-                          let sPrice = p.priceG || p.priceSingle || 0;
-                          if (customSize === 'Big') sPrice = p.priceBig || p.priceSingle || 0;
-                          if (customSize === 'Super Big') sPrice = p.priceSuperBig || p.priceSingle || 0;
-                          return (
-                            <option key={p.id} value={p.id}>
-                              {p.name} (+ € {sPrice.toFixed(2)})
-                            </option>
-                          );
-                        })}
-                      </select>
+                        ✕
+                      </button>
                     </div>
+                  ))}
+
+                  {/* Botão para adicionar mais sabor */}
+                  {customAdditionalFlavors.length < (customSize === 'Super Big' ? 3 : customSize === 'Big' ? 2 : 1) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const defaultFlavor = pizzasList.find(p => p.id !== customizingItem.id && !customAdditionalFlavors.some(f => f.id === p.id)) || pizzasList[0];
+                        if (defaultFlavor) {
+                          setCustomAdditionalFlavors(prev => [...prev, defaultFlavor]);
+                        }
+                      }}
+                      className="w-full py-2 px-3 border border-dashed border-red-300 bg-red-50/50 hover:bg-red-50 text-red-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <span>+ Adicionar {customAdditionalFlavors.length === 0 ? (customSize === 'G' ? '2º Sabor (Meio a Meio)' : '2º Sabor') : `${customAdditionalFlavors.length + 2}º Sabor`}</span>
+                    </button>
                   )}
+
+                  <p className="text-[10px] text-amber-700 italic">
+                    * Será cobrado o valor do sabor de maior valor entre os escolhidos.
+                  </p>
                 </div>
               )}
 
@@ -1474,7 +1531,7 @@ export default function PDVModal({
               </button>
               <button
                 onClick={handleConfirmCustomization}
-                disabled={customIsHalf && !customSecondFlavor}
+                disabled={customAdditionalFlavors.some(f => !f || !f.id)}
                 className="flex-1 py-2.5 bg-[#fdde58] hover:bg-[#e2c23f] disabled:opacity-50 text-stone-950 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 border border-[#d8ba39]"
               >
                 <Check size={16} className="stroke-[3]" />
