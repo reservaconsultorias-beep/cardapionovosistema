@@ -23,7 +23,7 @@ interface PDVModalProps {
 export interface PDVCartItem {
   id: string;
   menuItem: MenuItem;
-  size?: 'P' | 'M' | 'G';
+  size?: 'P' | 'M' | 'G' | 'Big' | 'Gigante';
   isHalf?: boolean;
   secondFlavor?: MenuItem;
   selectedBorda?: MenuItem | null;
@@ -100,6 +100,7 @@ export default function PDVModal({
   // Order Details States
   const [orderType, setOrderType] = useState<'retirada' | 'mesa' | 'entrega'>('retirada');
   const [customerName, setCustomerName] = useState('');
+  const [customerNif, setCustomerNif] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [tableNumber, setTableNumber] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
@@ -129,7 +130,7 @@ export default function PDVModal({
 
   // Customizer / Size Modal State
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
-  const [customSize, setCustomSize] = useState<'P' | 'M' | 'G'>('G');
+  const [customSize, setCustomSize] = useState<'P' | 'M' | 'G' | 'Big' | 'Gigante'>('G');
   const [customIsHalf, setCustomIsHalf] = useState(false);
   const [customSecondFlavor, setCustomSecondFlavor] = useState<MenuItem | null>(null);
   const [customBorda, setCustomBorda] = useState<MenuItem | null>(null);
@@ -189,6 +190,7 @@ export default function PDVModal({
     if (isOpen) {
       setCart([]);
       setCustomerName('');
+      setCustomerNif('');
       setCustomerPhone('');
       setTableNumber('');
       setDeliveryAddress('');
@@ -296,12 +298,16 @@ export default function PDVModal({
     if (customSize === 'P') basePrice = customizingItem.priceP || (customizingItem.priceM ? customizingItem.priceM - 2 : customizingItem.priceSingle || 0);
     else if (customSize === 'M') basePrice = customizingItem.priceM || customizingItem.priceSingle || 0;
     else if (customSize === 'G') basePrice = customizingItem.priceG || customizingItem.priceSingle || 0;
+    else if (customSize === 'Big') basePrice = customizingItem.priceBig || customizingItem.priceSingle || 0;
+    else if (customSize === 'Gigante') basePrice = customizingItem.priceGigante || customizingItem.priceSingle || 0;
 
     if (customIsHalf && customSecondFlavor) {
       let secondPrice = 0;
       if (customSize === 'P') secondPrice = customSecondFlavor.priceP || (customSecondFlavor.priceM ? customSecondFlavor.priceM - 2 : customSecondFlavor.priceSingle || 0);
       else if (customSize === 'M') secondPrice = customSecondFlavor.priceM || customSecondFlavor.priceSingle || 0;
       else if (customSize === 'G') secondPrice = customSecondFlavor.priceG || customSecondFlavor.priceSingle || 0;
+      else if (customSize === 'Big') secondPrice = customSecondFlavor.priceBig || customSecondFlavor.priceSingle || 0;
+      else if (customSize === 'Gigante') secondPrice = customSecondFlavor.priceGigante || customSecondFlavor.priceSingle || 0;
 
       basePrice = Math.max(basePrice, secondPrice);
     }
@@ -313,7 +319,7 @@ export default function PDVModal({
 
   // Handle direct item click
   const handleProductClick = (item: MenuItem) => {
-    const hasMultipleSizes = Boolean(item.priceP || item.priceM || item.priceG);
+    const hasMultipleSizes = Boolean(item.priceP || item.priceM || item.priceG || item.priceBig || item.priceGigante);
 
     if (hasMultipleSizes) {
       setCustomizingItem(item);
@@ -343,6 +349,8 @@ export default function PDVModal({
     if (customSize === 'P') basePrice = customizingItem.priceP || (customizingItem.priceM ? customizingItem.priceM - 2 : customizingItem.priceSingle || 0);
     else if (customSize === 'M') basePrice = customizingItem.priceM || customizingItem.priceSingle || 0;
     else if (customSize === 'G') basePrice = customizingItem.priceG || customizingItem.priceSingle || 0;
+    else if (customSize === 'Big') basePrice = customizingItem.priceBig || customizingItem.priceSingle || 0;
+    else if (customSize === 'Gigante') basePrice = customizingItem.priceGigante || customizingItem.priceSingle || 0;
 
     // If half-and-half, take highest price or avg (standard: take highest flavor price)
     if (customIsHalf && customSecondFlavor) {
@@ -350,6 +358,8 @@ export default function PDVModal({
       if (customSize === 'P') secondPrice = customSecondFlavor.priceP || (customSecondFlavor.priceM ? customSecondFlavor.priceM - 2 : customSecondFlavor.priceSingle || 0);
       else if (customSize === 'M') secondPrice = customSecondFlavor.priceM || customSecondFlavor.priceSingle || 0;
       else if (customSize === 'G') secondPrice = customSecondFlavor.priceG || customSecondFlavor.priceSingle || 0;
+      else if (customSize === 'Big') secondPrice = customSecondFlavor.priceBig || customSecondFlavor.priceSingle || 0;
+      else if (customSize === 'Gigante') secondPrice = customSecondFlavor.priceGigante || customSecondFlavor.priceSingle || 0;
 
       basePrice = Math.max(basePrice, secondPrice);
     }
@@ -497,7 +507,7 @@ export default function PDVModal({
 
       const payload: any = {
         cash_session_id: activeSessionId || null,
-        customer_name: customerName.trim(),
+        customer_name: customerNif.trim() ? `${customerName.trim()} (NIF: ${customerNif.trim()})` : customerName.trim(),
         customer_phone: customerPhone.trim() || null,
         order_type: dbOrderType,
         payment_method: paymentMethod,
@@ -753,7 +763,7 @@ export default function PDVModal({
                       {/* Multiple sizes badge */}
                       {hasSizes && (
                         <span className="absolute top-1.5 right-1.5 bg-white/95 text-red-600 text-[7.5px] font-black uppercase px-1.5 py-0.5 rounded-full shadow-2xs backdrop-blur-2xs">
-                          P · M · G
+                          P · M · G · B · GG
                         </span>
                       )}
                     </div>
@@ -844,6 +854,13 @@ export default function PDVModal({
                   className="w-full h-7 px-2 bg-white border border-stone-300 rounded-md text-[11px] font-bold text-stone-900 focus:border-red-500 focus:ring-1 focus:ring-red-100 focus:outline-none transition-all placeholder:text-stone-400 placeholder:font-normal"
                 />
                 <input
+                  type="text"
+                  value={customerNif}
+                  onChange={e => setCustomerNif(e.target.value)}
+                  placeholder="NIF (opcional)"
+                  className="w-full h-7 px-2 bg-white border border-stone-300 rounded-md text-[11px] font-medium text-stone-900 focus:border-red-500 focus:ring-1 focus:ring-red-100 focus:outline-none transition-all placeholder:text-stone-400 placeholder:font-normal"
+                />
+                <input
                   type="tel"
                   value={customerPhone}
                   onChange={e => setCustomerPhone(e.target.value)}
@@ -864,6 +881,13 @@ export default function PDVModal({
                 />
                 <input
                   type="text"
+                  value={customerNif}
+                  onChange={e => setCustomerNif(e.target.value)}
+                  placeholder="NIF (opcional)"
+                  className="w-full h-7 px-2 bg-white border border-stone-300 rounded-md text-[11px] font-medium text-stone-900 focus:border-amber-500 focus:ring-1 focus:ring-amber-100 focus:outline-none transition-all placeholder:text-stone-400 placeholder:font-normal"
+                />
+                <input
+                  type="text"
                   value={tableNumber}
                   onChange={e => setTableNumber(e.target.value)}
                   placeholder="Nº Mesa / Comanda *"
@@ -881,6 +905,13 @@ export default function PDVModal({
                     onChange={e => setCustomerName(e.target.value)}
                     placeholder="Nome do Cliente *"
                     className="w-full h-7 px-2 bg-white border border-stone-300 rounded-md text-[11px] font-bold text-stone-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 focus:outline-none transition-all placeholder:text-stone-400 placeholder:font-normal"
+                  />
+                  <input
+                    type="text"
+                    value={customerNif}
+                    onChange={e => setCustomerNif(e.target.value)}
+                    placeholder="NIF (opcional)"
+                    className="w-full h-7 px-2 bg-white border border-stone-300 rounded-md text-[11px] font-medium text-stone-900 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 focus:outline-none transition-all placeholder:text-stone-400 placeholder:font-normal"
                   />
                   <input
                     type="tel"
@@ -1268,12 +1299,14 @@ export default function PDVModal({
                 <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
                   Tamanho
                 </label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['P', 'M', 'G'] as const).map(size => {
+                <div className="grid grid-cols-5 gap-2">
+                  {(['P', 'M', 'G', 'Big', 'Gigante'] as const).map(size => {
                     let p = 0;
                     if (size === 'P') p = customizingItem.priceP || (customizingItem.priceM ? customizingItem.priceM - 2 : 0);
                     if (size === 'M') p = customizingItem.priceM || 0;
                     if (size === 'G') p = customizingItem.priceG || 0;
+                    if (size === 'Big') p = customizingItem.priceBig || 0;
+                    if (size === 'Gigante') p = customizingItem.priceGigante || 0;
                     if (p <= 0) return null;
 
                     const isSelected = customSize === size;
@@ -1282,7 +1315,7 @@ export default function PDVModal({
                         key={size}
                         onClick={() => {
                           setCustomSize(size);
-                          if (size !== 'G') setCustomIsHalf(false);
+                          if (size !== 'G' && size !== 'Big' && size !== 'Gigante') setCustomIsHalf(false);
                         }}
                         className={`py-2.5 px-2 rounded-xl flex flex-col items-center gap-0.5 border-2 transition-all cursor-pointer shadow-2xs ${
                           isSelected
@@ -1290,7 +1323,7 @@ export default function PDVModal({
                             : 'bg-white border-gray-200 text-gray-600 hover:border-yellow-200 hover:bg-yellow-50/50'
                         }`}
                       >
-                        <span className="text-xs font-black">{size === 'P' ? 'Pequena' : size === 'M' ? 'Média' : 'Grande'}</span>
+                        <span className="text-xs font-black">{size === 'P' ? 'Pequena' : size === 'M' ? 'Média' : size === 'G' ? 'Grande' : size}</span>
                         <span className="text-[10px] font-bold text-gray-500">+ € {p.toFixed(2)}</span>
                       </button>
                     );
@@ -1298,7 +1331,7 @@ export default function PDVModal({
                 </div>
               </div>
 
-              {customSize === 'G' && (
+              {(customSize === 'G' || customSize === 'Big' || customSize === 'Gigante') && (
                 <div className="space-y-2 pt-4 border-t border-gray-100">
                   <div className="flex items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-200 cursor-pointer" onClick={() => setCustomIsHalf(!customIsHalf)}>
                     <div>
@@ -1321,11 +1354,16 @@ export default function PDVModal({
                         className="w-full h-9 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:border-red-500 focus:outline-none appearance-none"
                       >
                         <option value="">Selecione o 2º sabor...</option>
-                        {pizzasList.map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} (+ € {p.priceG?.toFixed(2) || '0.00'})
-                          </option>
-                        ))}
+                        {pizzasList.map(p => {
+                          let sPrice = p.priceG || p.priceSingle || 0;
+                          if (customSize === 'Big') sPrice = p.priceBig || p.priceSingle || 0;
+                          if (customSize === 'Gigante') sPrice = p.priceGigante || p.priceSingle || 0;
+                          return (
+                            <option key={p.id} value={p.id}>
+                              {p.name} (+ € {sPrice.toFixed(2)})
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
                   )}

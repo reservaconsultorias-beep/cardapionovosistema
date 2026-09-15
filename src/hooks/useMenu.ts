@@ -40,26 +40,72 @@ export function useMenu() {
         throw new Error('Banco de dados retornou vazio');
       }
 
-      const normalizedItems: MenuItem[] = items.map((it: any) => ({
-        id: it.id,
-        name: it.name,
-        ingredients: it.ingredients,
-        category: it.category,
-        priceSingle: it.price_single ?? undefined,
-        priceP: it.price_p ?? undefined,
-        priceM: it.price_m ?? undefined,
-        priceG: it.price_g ?? undefined,
-        imageUrl: it.image_url ?? undefined,
-        dayOfWeek: it.day_of_week ?? undefined,
-        isBestseller: it.is_bestseller ?? false,
-      }));
+      const normalizeItem = (it: any): MenuItem => {
+        let priceBig = it.price_big ?? it.priceBig;
+        let priceGigante = it.price_gigante ?? it.priceGigante;
+        
+        if (priceBig === undefined || priceBig === null) {
+          if (it.category === 'tradicionais') priceBig = 23.99;
+          else if (it.category === 'especiais') priceBig = 27.99;
+          else if (it.category === 'gourmet') priceBig = 34.99;
+        }
+
+        if (priceGigante === undefined || priceGigante === null) {
+          if (it.category === 'tradicionais') priceGigante = 28.99;
+          else if (it.category === 'especiais') priceGigante = 32.99;
+          else if (it.category === 'gourmet') priceGigante = 36.99;
+        }
+
+        return {
+          id: it.id,
+          name: it.name,
+          ingredients: it.ingredients,
+          category: it.category,
+          priceSingle: it.price_single ?? it.priceSingle ?? undefined,
+          priceP: it.price_p ?? it.priceP ?? undefined,
+          priceM: it.price_m ?? it.priceM ?? undefined,
+          priceG: it.price_g ?? it.priceG ?? undefined,
+          priceBig: priceBig ?? undefined,
+          priceGigante: priceGigante ?? undefined,
+          imageUrl: it.image_url ?? it.imageUrl ?? undefined,
+          dayOfWeek: it.day_of_week ?? it.dayOfWeek ?? undefined,
+          isBestseller: it.is_bestseller ?? it.isBestseller ?? false,
+        };
+      };
+
+      const normalizedItems: MenuItem[] = items.map(normalizeItem);
 
       setMenuItems(normalizedItems);
       setCategories(cats as Category[]);
       setUsingFallback(false);
     } catch (err) {
       console.warn('[useMenu] Não foi possível carregar dados do Supabase, usando cardápio estático de reserva.', err);
-      setMenuItems(ALL_MENU_ITEMS);
+      // If we fall back to static menu, we also inject the new sizes
+      
+      const normalizeStaticItem = (it: MenuItem): MenuItem => {
+        let priceBig = it.priceBig;
+        let priceGigante = it.priceGigante;
+        
+        if (priceBig === undefined || priceBig === null) {
+          if (it.category === 'tradicionais') priceBig = 23.99;
+          else if (it.category === 'especiais') priceBig = 27.99;
+          else if (it.category === 'gourmet') priceBig = 34.99;
+        }
+
+        if (priceGigante === undefined || priceGigante === null) {
+          if (it.category === 'tradicionais') priceGigante = 28.99;
+          else if (it.category === 'especiais') priceGigante = 32.99;
+          else if (it.category === 'gourmet') priceGigante = 36.99;
+        }
+
+        return {
+          ...it,
+          priceBig,
+          priceGigante
+        };
+      };
+
+      setMenuItems(ALL_MENU_ITEMS.map(normalizeStaticItem));
       setCategories([]);
       setUsingFallback(true);
     } finally {

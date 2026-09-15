@@ -1,7 +1,7 @@
 import { MenuItem, ExtraIngredient } from './data/menu';
 export type { MenuItem, ExtraIngredient };
 
-export type PizzaSize = 'P' | 'M' | 'G';
+export type PizzaSize = 'P' | 'M' | 'G' | 'Big' | 'Gigante';
 
 export interface CartItem {
   id: string; // Unique ID for this specific cart entry (e.g., simple timestamp or composite)

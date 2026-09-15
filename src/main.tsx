@@ -1,9 +1,17 @@
 import React, { StrictMode, ReactNode, ErrorInfo } from 'react';
 import { createRoot } from 'react-dom/client';
+
+window.addEventListener('error', (e) => {
+  document.body.innerHTML = `<div style="background:red;color:white;padding:20px;font-size:20px;">Global Error: ${e.message}<br><pre>${e.error?.stack}</pre></div>`;
+});
+window.addEventListener('unhandledrejection', (e) => {
+  document.body.innerHTML = `<div style="background:red;color:white;padding:20px;font-size:20px;">Unhandled Rejection: ${e.reason}</div>`;
+});
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import App from './App.tsx';
 import AdminDashboard from './pages/AdminDashboard.tsx';
 import OrderTracking from './pages/OrderTracking.tsx';
+import InteractiveReport from './pages/InteractiveReport.tsx';
 import './index.css';
 
 interface Props {
@@ -72,6 +80,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="/Admin" element={<AdminDashboard />} />
           <Route path="/Admin/:tab" element={<AdminDashboard />} />
           <Route path="/track/:code" element={<OrderTracking />} />
+          <Route path="/report-2026" element={<InteractiveReport />} />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>

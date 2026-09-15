@@ -1,0 +1,85 @@
+{
+  "totalOrders": 177,
+  "totalRevenue": "5274.98",
+  "deliveryCount": 0,
+  "pickupCount": 0,
+  "totalItemsSold": 813,
+  "uniqueClients": 98,
+  "paymentMethods": [
+    {
+      "name": "MB Way",
+      "value": 116
+    },
+    {
+      "name": "Numerário",
+      "value": 50
+    },
+    {
+      "name": "MBWay",
+      "value": 2
+    },
+    {
+      "name": "Dinheiro",
+      "value": 9
+    }
+  ],
+  "revenueByWeek": [
+    {
+      "label": "Semana 3/8",
+      "total": 1052.0599999999997
+    },
+    {
+      "label": "Semana 4/8",
+      "total": 921.6600000000002
+    },
+    {
+      "label": "Semana 5/8",
+      "total": 504.63
+    },
+    {
+      "label": "Semana 1/9",
+      "total": 1356.7200000000007
+    },
+    {
+      "label": "Semana 2/9",
+      "total": 1439.9100000000005
+    }
+  ],
+  "top5": [
+    {
+      "rank": 1,
+      "name": "Borda de Catupiry",
+      "qty": 4,
+      "cat": "bordas",
+      "img": null
+    },
+    {
+      "rank": 2,
+      "name": "9 - Frango com Catupiry",
+      "qty": 3,
+      "cat": "esfihas-salgadas-tradicionais",
+      "img": null
+    },
+    {
+      "rank": 3,
+      "name": "5 - Carne",
+      "qty": 3,
+      "cat": "esfihas-salgadas-tradicionais",
+      "img": "/65-carne.png"
+    },
+    {
+      "rank": 4,
+      "name": "Ice Tea Pêssego (Lata)",
+      "qty": 2,
+      "cat": "bebidas",
+      "img": "/iceteapessegolata.png"
+    },
+    {
+      "rank": 5,
+      "name": "29 - MM's",
+      "qty": 2,
+      "cat": "esfihas-doces",
+      "img": "/89-mm.png"
+    }
+  ]
+}

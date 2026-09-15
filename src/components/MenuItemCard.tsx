@@ -99,10 +99,10 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
           </div>
         )}
         <div className="p-4 flex flex-col flex-1">
-          <h3 className="font-bold text-[16px] text-gray-900 mb-1 leading-tight">
+          <h3 className={`font-bold ${catId === "mais-pedidos" ? "text-[14px]" : "text-[16px]"} text-gray-900 mb-1 leading-tight`}>
             {item.name}
           </h3>
-          <p className="text-[13px] text-gray-500 line-clamp-3 leading-relaxed mb-4">
+          <p className={`${catId === "mais-pedidos" ? "text-[11px]" : "text-[13px]"} text-gray-500 line-clamp-3 leading-relaxed mb-4`}>
             {item.ingredients}
           </p>
           <div className="mt-auto flex items-center justify-between">
@@ -141,12 +141,12 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
       <div className={`flex-1 flex flex-col justify-between h-full ${hasPhoto ? "min-h-[112px]" : "min-h-[88px]"}`}>
         <div>
           <h3
-            className={`font-bold ${catId === "promocoes" ? "text-lg text-[#8b0000]" : "text-[15px] text-gray-900"} mb-1 break-words pr-2`}
+            className={`font-bold ${catId === "promocoes" ? "text-lg text-[#8b0000]" : catId === "mais-pedidos" ? "text-[13px] text-gray-900" : "text-[15px] text-gray-900"} mb-1 break-words pr-2`}
           >
             {item.name}
           </h3>
           <p
-            className={`text-[13px] ${catId === "promocoes" ? "text-gray-700 font-medium" : "text-gray-500"} line-clamp-2 leading-relaxed pr-2 mt-1`}
+            className={`${catId === "mais-pedidos" ? "text-[11px]" : "text-[13px]"} ${catId === "promocoes" ? "text-gray-700 font-medium" : "text-gray-500"} line-clamp-2 leading-relaxed pr-2 mt-1`}
           >
             {item.ingredients}
           </p>

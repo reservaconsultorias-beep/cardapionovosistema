@@ -1,0 +1,139 @@
+{
+  "totalOrders": 177,
+  "totalRevenue": "5274.98",
+  "totalItemsSold": 813,
+  "uniqueClients": 98,
+  "topCategories": [
+    {
+      "name": "esfihas-salgadas-tradicionais",
+      "value": 355
+    },
+    {
+      "name": "tradicionais",
+      "value": 138
+    },
+    {
+      "name": "bebidas",
+      "value": 98
+    },
+    {
+      "name": "esfihas-salgadas-especiais",
+      "value": 83
+    },
+    {
+      "name": "esfihas-doces",
+      "value": 72
+    }
+  ],
+  "top5General": [
+    {
+      "rank": 1,
+      "name": "5 - Carne",
+      "qty": 94,
+      "cat": "esfihas-salgadas-tradicionais",
+      "img": "/65-carne.png"
+    },
+    {
+      "rank": 2,
+      "name": "9 - Frango com Catupiry",
+      "qty": 68,
+      "cat": "esfihas-salgadas-tradicionais",
+      "img": null
+    },
+    {
+      "rank": 3,
+      "name": "Coca-Cola (Garrafa 1 litro) Normal",
+      "qty": 34,
+      "cat": "bebidas",
+      "img": "https://tipnhvpivhaerumetona.supabase.co/storage/v1/object/public/Cardapio41menus/41menus/produtos/34sokuoe2ro.png"
+    },
+    {
+      "rank": 4,
+      "name": "22 - Queijo",
+      "qty": 26,
+      "cat": "esfihas-salgadas-especiais",
+      "img": "/82-queijo.png"
+    },
+    {
+      "rank": 5,
+      "name": "3 - Calapiry",
+      "qty": 25,
+      "cat": "esfihas-salgadas-tradicionais",
+      "img": "https://tipnhvpivhaerumetona.supabase.co/storage/v1/object/public/Cardapio41menus/41menus/produtos/cnkcifdzgx7.png"
+    }
+  ],
+  "top5Esfihas": [
+    {
+      "rank": 1,
+      "name": "5 - Carne",
+      "qty": 94,
+      "cat": "esfihas-salgadas-tradicionais",
+      "img": "/65-carne.png"
+    },
+    {
+      "rank": 2,
+      "name": "9 - Frango com Catupiry",
+      "qty": 68,
+      "cat": "esfihas-salgadas-tradicionais",
+      "img": null
+    },
+    {
+      "rank": 3,
+      "name": "22 - Queijo",
+      "qty": 26,
+      "cat": "esfihas-salgadas-especiais",
+      "img": "/82-queijo.png"
+    },
+    {
+      "rank": 4,
+      "name": "3 - Calapiry",
+      "qty": 25,
+      "cat": "esfihas-salgadas-tradicionais",
+      "img": "https://tipnhvpivhaerumetona.supabase.co/storage/v1/object/public/Cardapio41menus/41menus/produtos/cnkcifdzgx7.png"
+    },
+    {
+      "rank": 5,
+      "name": "2 - Calabresa",
+      "qty": 22,
+      "cat": "esfihas-salgadas-tradicionais",
+      "img": "/62-calabresa.png"
+    }
+  ],
+  "top5Bebidas": [
+    {
+      "rank": 1,
+      "name": "Coca-Cola (Garrafa 1 litro) Normal",
+      "qty": 34,
+      "cat": "bebidas",
+      "img": "https://tipnhvpivhaerumetona.supabase.co/storage/v1/object/public/Cardapio41menus/41menus/produtos/34sokuoe2ro.png"
+    },
+    {
+      "rank": 2,
+      "name": "Ice Tea Pêssego (Lata)",
+      "qty": 14,
+      "cat": "bebidas",
+      "img": "/iceteapessegolata.png"
+    },
+    {
+      "rank": 3,
+      "name": "Água",
+      "qty": 9,
+      "cat": "bebidas",
+      "img": "/agua.png"
+    },
+    {
+      "rank": 4,
+      "name": "Cerveja Heineken",
+      "qty": 8,
+      "cat": "bebidas",
+      "img": "/cervejaheineken.png"
+    },
+    {
+      "rank": 5,
+      "name": "Coca-Cola (Garrafa 1 litro) Zero",
+      "qty": 8,
+      "cat": "bebidas",
+      "img": "/cocacolagarrafa1litronormalezero.png"
+    }
+  ]
+}
