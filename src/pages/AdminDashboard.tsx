@@ -3047,7 +3047,7 @@ export default function AdminDashboard() {
                           <div className="mt-2 flex flex-col gap-1.5">
                             <div className="flex justify-between items-center gap-1">
                               <span className="font-bold text-xs text-stone-900 font-mono shrink-0">
-                                {item.priceSingle ? `€ ${item.priceSingle.toFixed(2)}` : (item.priceP ? `Pq: € ${item.priceP.toFixed(2)}` : '')}
+                                {item.priceSingle ? `€ ${Number(item.priceSingle).toFixed(2)}` : (item.priceP ? `Pq: € ${Number(item.priceP).toFixed(2)}` : '')}
                               </span>
                               <button
                                 onClick={() => togglePauseItem(item.id)}
@@ -4309,7 +4309,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                               className={`p-1.5 text-xs font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 ${selectedProductId === m.id ? 'bg-stone-900 text-white' : 'text-stone-800 hover:bg-stone-50'}`}
                             >
                               <span>{m.name}</span>
-                              <span className={selectedProductId === m.id ? 'text-stone-300 font-mono' : 'text-stone-500 font-mono'}>€ {(m.priceSingle || m.priceP || m.priceM || 0).toFixed(2)}</span>
+                              <span className={selectedProductId === m.id ? 'text-stone-300 font-mono' : 'text-stone-500 font-mono'}>€ {Number(m.priceSingle || m.priceP || m.priceM || 0).toFixed(2)}</span>
                             </div>
                           ))}
                         </div>
@@ -4332,7 +4332,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                         />
                         {flavorState.search && !flavorState.id && (
                           <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-30 max-h-36 overflow-y-auto">
-                            {menuItems.filter(item => item.name.toLowerCase().includes(flavorState.search.toLowerCase()) && item.categoryId === menuItems.find(m => m.id === selectedProductId)?.categoryId).map(m => (
+                            {menuItems.filter(item => item.name.toLowerCase().includes(flavorState.search.toLowerCase()) && item.category === menuItems.find(m => m.id === selectedProductId)?.category).map(m => (
                               <div
                                 key={`extra-${i}-${m.id}`}
                                 onClick={() => {
@@ -4344,7 +4344,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                               >
                                 <span>{m.name}</span>
                                 <span className="text-stone-500 font-mono">
-                                  € {(m.priceSuperBig || m.priceBig || m.priceG || m.priceSingle || 0).toFixed(2)}
+                                  € {Number(m.priceSuperBig || m.priceBig || m.priceG || m.priceSingle || 0).toFixed(2)}
                                 </span>
                               </div>
                             ))}
