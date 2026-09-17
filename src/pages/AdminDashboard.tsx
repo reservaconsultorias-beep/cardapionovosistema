@@ -34,7 +34,15 @@ import {
   Megaphone,
   Wallet,
   BotMessageSquare,
-  MapPin
+  MapPin,
+  RotateCcw,
+  Edit2,
+  Clock,
+  ArrowRight,
+  Phone,
+  Flame,
+  LayoutGrid,
+  List
 } from "lucide-react";
 import {
   AreaChart,
@@ -70,6 +78,9 @@ import CaixaManager from '../components/CaixaManager';
 import UsersManager from '../components/UsersManager';
 import BannerManager from '../components/BannerManager';
 import AgentManager from '../components/AgentManager';
+import { BillingManager } from '../components/BillingManager';
+import { SubscriptionLockoutOverlay } from '../components/SubscriptionLockoutOverlay';
+import { useSubscription } from '../hooks/useSubscription';
 import { startOfDay, endOfDay } from 'date-fns';
 
 
@@ -143,6 +154,12 @@ const playNotificationSound = () => {
 
 export default function AdminDashboard() {
   const { menuItems, categories: dbCategories, loading: menuLoading, usingFallback } = useMenu();
+  const { 
+    subscription, 
+    statusInfo: subscriptionStatusInfo, 
+    refreshSubscription, 
+    simulateState: simulateSubscriptionState 
+  } = useSubscription();
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [manualClosed, setManualClosed] = useState(false);
@@ -165,6 +182,7 @@ export default function AdminDashboard() {
     'categorias': { title: 'Categorias', subtitle: 'Organize as categorias do cardápio.' },
     'relatorios': { title: 'Relatórios', subtitle: 'Vendas, ticket médio e produtos mais vendidos.' },
     'clientes': { title: 'Clientes', subtitle: 'Histórico e cadastro de clientes.' },
+    'cobranca': { title: 'Cobrança', subtitle: '' },
     'configuracoes': { title: 'Configurações', subtitle: 'Horário, impressão, logo e dados da empresa.' },
     'banner-promocional': { title: 'Banner Promocional', subtitle: 'Configure o pop-up de aviso ou promoção exibido no cardápio.' },
     'agente-ia': { title: 'Agente IA', subtitle: 'Configurações e controles da sua atendente virtual.' },
@@ -214,6 +232,23 @@ export default function AdminDashboard() {
   const [passwordChangeMessage, setPasswordChangeMessage] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<any | null>(null);
+  const [ordersViewMode, setOrdersViewMode] = useState<'cards' | 'table'>('table');
+  const [ordersStatusFilter, setOrdersStatusFilter] = useState<'todos' | 'Pendente' | 'Em Preparo' | 'Saiu para Entrega' | 'Finalizado' | 'Cancelado'>('todos');
+  const [ordersSearchTerm, setOrdersSearchTerm] = useState('');
+
+  const getElapsedTime = (createdAt: string | Date) => {
+    if (!createdAt) return { text: '', minutes: 0, urgency: 'normal' };
+    const d = new Date(createdAt);
+    if (isNaN(d.getTime())) return { text: '', minutes: 0, urgency: 'normal' };
+    const diffMinutes = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (diffMinutes < 1) return { text: 'Agora mesmo', minutes: 0, urgency: 'normal' };
+    if (diffMinutes < 60) {
+      const urgency = diffMinutes >= 35 ? 'danger' : diffMinutes >= 20 ? 'warning' : 'normal';
+      return { text: `há ${diffMinutes} min`, minutes: diffMinutes, urgency };
+    }
+    const diffHours = Math.floor(diffMinutes / 60);
+    return { text: `há ${diffHours}h`, minutes: diffMinutes, urgency: diffMinutes >= 60 ? 'danger' : 'normal' };
+  };
 
   const handleSaveOrderEdit = async (updatedOrder: any) => {
     // 1. Atualização Otimista Imediata no Estado React (Gestor, Comanda e Gráficos atualizam sem recarregar página)
@@ -783,6 +818,28 @@ export default function AdminDashboard() {
     setShowPrintPreview(false);
     setPrintOrder(null);
   };
+
+  // Dismiss on ESC for AdminDashboard modals and mobile drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showPrintPreview) {
+          setShowPrintPreview(false);
+          setPrintOrder(null);
+        } else if (reportModal.isOpen) {
+          setReportModal({ isOpen: false, type: '', title: '' });
+        } else if (isPasswordModalOpen) {
+          setIsPasswordModalOpen(false);
+        } else if (selectedSessionForDetails) {
+          setSelectedSessionForDetails(null);
+        } else if (isMobileMenuOpen) {
+          setIsMobileMenuOpen(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPrintPreview, reportModal.isOpen, isPasswordModalOpen, selectedSessionForDetails, isMobileMenuOpen]);
 
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [showPDVModal, setShowPDVModal] = useState(false);
@@ -1569,6 +1626,12 @@ export default function AdminDashboard() {
                       Configurações
                     </button>
                     <button 
+                      onClick={() => { setActiveTab("cobranca"); setIsMobileMenuOpen(false); }} 
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-semibold transition-colors ${activeTab === 'cobranca' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs' : 'text-stone-300 hover:text-white hover:bg-stone-900'}`}
+                    >
+                      Cobrança & Assinatura
+                    </button>
+                    <button 
                       onClick={() => { setActiveTab("usuarios"); setIsMobileMenuOpen(false); }} 
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-semibold transition-colors ${activeTab === 'usuarios' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs' : 'text-stone-300 hover:text-white hover:bg-stone-900'}`}
                     >
@@ -1599,19 +1662,19 @@ export default function AdminDashboard() {
 
       <div className="min-h-screen bg-stone-50 flex flex-col md:flex-row font-sans no-print">
       {/* Sidebar */}
-      <aside className="w-56 bg-stone-950 text-stone-300 border-r border-stone-800/80 flex-col hidden md:flex sticky top-0 h-screen overflow-hidden shrink-0 select-none">
+      <aside className="w-60 bg-stone-950 text-stone-300 border-r border-stone-800/80 flex-col hidden md:flex sticky top-0 h-screen overflow-hidden shrink-0 select-none">
         {/* Terminal Header */}
-        <div className="py-1 px-2 border-b border-stone-800/80 bg-stone-950 shrink-0">
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-md overflow-hidden bg-black border border-stone-800 shrink-0 flex items-center justify-center shadow-xs">
-              <img src={adminLogoUrl || "/logo.png"} alt="41 Menus" className="w-full h-full object-cover rounded-sm" onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }} />
+        <div className="py-3 px-3.5 border-b border-stone-800/80 bg-stone-950 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl overflow-hidden bg-black border border-stone-800 shrink-0 flex items-center justify-center shadow-sm">
+              <img src={adminLogoUrl || "/logo.png"} alt="41 Menus" className="w-full h-full object-cover rounded-lg" onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }} />
             </div>
             <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1">
-                <h2 className="text-[11px] font-bold text-white tracking-tight leading-none truncate">41 Menu's</h2>
-                <span className="text-[7.5px] font-mono font-bold px-1 py-0 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 leading-none">Online</span>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-extrabold text-white tracking-tight leading-tight truncate">41 Menu's</h2>
+                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 leading-none">Online</span>
               </div>
-              <span className="text-[7.5px] font-mono text-stone-400 uppercase tracking-wider block mt-0.5 leading-none">Pizzas e Esfirras</span>
+              <span className="text-[10px] font-mono text-stone-400 uppercase tracking-wider block mt-1 leading-none">Pizzas e Esfirras</span>
             </div>
           </div>
         </div>
@@ -1782,6 +1845,15 @@ export default function AdminDashboard() {
                   Configurações
                 </button>
               )}
+              {(hasPermission('gerenciar_configuracoes') || isOwner) && (
+                <button 
+                  onClick={() => setActiveTab("cobranca")} 
+                  className={`w-full flex items-center gap-1.5 px-2 py-[3.5px] rounded font-medium transition-colors cursor-pointer ${activeTab === 'cobranca' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-400 hover:text-white hover:bg-stone-900'}`}
+                >
+                  <CreditCard size={12} className={activeTab === 'cobranca' ? 'text-stone-950' : 'text-stone-500'} />
+                  Cobrança & Assinatura
+                </button>
+              )}
               {hasPermission('gerenciar_configuracoes') && (
                 <button 
                   onClick={() => setActiveTab("agente-ia")} 
@@ -1828,6 +1900,32 @@ export default function AdminDashboard() {
             ? 'flex-1 flex flex-col min-h-0' 
             : 'space-y-4'
         }`}>
+
+          {/* Grace Period Warning Banner (dias 17 a 21 sem pagamento) */}
+          {subscriptionStatusInfo.isGracePeriod && !subscriptionStatusInfo.isBlocked && (
+            <div className="bg-gradient-to-r from-amber-500/20 via-amber-600/15 to-stone-900 border border-amber-500/40 rounded-xl p-3.5 sm:p-4 mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md text-amber-200">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-500/20 text-amber-400 rounded-lg shrink-0">
+                  <AlertCircle className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h4 className="text-xs sm:text-sm font-bold text-amber-200">
+                    Aviso de Vencimento da Mensalidade (Carência de {subscriptionStatusInfo.daysPastDue} de 5 dias corridos)
+                  </h4>
+                  <p className="text-[11px] sm:text-xs text-amber-300/80">
+                    A fatura de R$ 490,00 venceu no dia 16. Regularize até o dia 21 para evitar a suspensão temporária do painel no dia 22.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActiveTab("cobranca")}
+                className="px-3.5 py-1.5 bg-[#fdde58] hover:bg-[#ffe373] text-stone-950 font-bold text-xs rounded-lg transition-all shadow-sm active:scale-95 whitespace-nowrap self-start sm:self-auto cursor-pointer"
+              >
+                Pagar com PIX
+              </button>
+            </div>
+          )}
 
           {/* Header Section (Only for Non-Cockpit Views) */}
           {!['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) && (
@@ -1925,6 +2023,12 @@ export default function AdminDashboard() {
               onToggleSound={toggleSound}
               onTestSound={playNotificationSound}
             />
+          </div>
+        )}
+
+        {activeTab === "cobranca" && (
+          <div className="mt-1">
+            <BillingManager />
           </div>
         )}
 
@@ -2643,165 +2747,679 @@ export default function AdminDashboard() {
 
         {/* Pedidos Tab */}
         {activeTab === "pedidos" && (
-          <div className="mt-1">
-            <div className="bg-white p-5 rounded-lg border border-stone-200">
-              <div className="flex justify-between items-center mb-4">
-                <div>
-                  <h2 className="text-sm font-bold text-stone-900">Gestor de Pedidos</h2>
-                  <div className="text-[11px] font-mono text-stone-500">
-                    Total: <span className="font-bold tabular-nums text-stone-900">{dashboardData?.recentOrders?.length || 0}</span> pedidos
+          <div className="mt-1 space-y-3">
+            {(() => {
+              const allRecent = dashboardData?.recentOrders || [];
+              const searchLower = ordersSearchTerm.toLowerCase().trim();
+
+              const filteredList = allRecent.filter((o: any) => {
+                if (ordersStatusFilter !== 'todos' && o.status !== ordersStatusFilter) {
+                  return false;
+                }
+                if (searchLower) {
+                  const idMatch = o.id?.toString().includes(searchLower);
+                  const nameMatch = (o.customerName || '').toLowerCase().includes(searchLower);
+                  const phoneMatch = (o.customerPhone || '').toLowerCase().includes(searchLower);
+                  const addrMatch = (o.deliveryAddress || '').toLowerCase().includes(searchLower);
+                  const nifMatch = (o.nif || '').toLowerCase().includes(searchLower);
+                  const notesMatch = (o.notes || '').toLowerCase().includes(searchLower);
+                  return idMatch || nameMatch || phoneMatch || addrMatch || nifMatch || notesMatch;
+                }
+                return true;
+              });
+
+              const countAll = allRecent.length;
+              const countPendente = allRecent.filter((o: any) => o.status === 'Pendente').length;
+              const countPreparo = allRecent.filter((o: any) => o.status === 'Em Preparo').length;
+              const countEntrega = allRecent.filter((o: any) => o.status === 'Saiu para Entrega').length;
+              const countFinalizado = allRecent.filter((o: any) => o.status === 'Finalizado').length;
+              const countCancelado = allRecent.filter((o: any) => o.status === 'Cancelado').length;
+              const countAtivos = countPendente + countPreparo + countEntrega;
+
+              return (
+                <div className="bg-white p-4 sm:p-5 rounded-xl border border-stone-200 shadow-2xs space-y-4">
+                  {/* Topo do Gestor: Título, Modo de Visão e Botão PDV */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-stone-100">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-black text-stone-900 tracking-tight">Gestor de Pedidos</h2>
+                        {countAtivos > 0 ? (
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                            {countAtivos} em andamento
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-stone-100 text-stone-600 border border-stone-200">
+                            Cozinha em dia
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-stone-500 font-mono mt-0.5">
+                        Total de <span className="font-bold text-stone-800 tabular-nums">{countAll}</span> pedidos no período selecionado
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                      {/* Alternador de Modo: Tabela vs Cards */}
+                      <div className="flex items-center bg-stone-100 rounded-lg p-0.5 border border-stone-200">
+                        <button
+                          type="button"
+                          onClick={() => setOrdersViewMode('table')}
+                          title="Visualização em Tabela (Principal)"
+                          className={`h-7 px-2.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            ordersViewMode === 'table'
+                              ? 'bg-[#fdde58] text-stone-950 shadow-xs border border-[#d8ba39]'
+                              : 'text-stone-500 hover:text-stone-800'
+                          }`}
+                        >
+                          <List size={13} />
+                          <span>Tabela</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setOrdersViewMode('cards')}
+                          title="Visualização em Comandas (Cards)"
+                          className={`h-7 px-2.5 rounded-md text-xs font-mono font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            ordersViewMode === 'cards'
+                              ? 'bg-[#fdde58] text-stone-950 shadow-xs border border-[#d8ba39]'
+                              : 'text-stone-500 hover:text-stone-800'
+                          }`}
+                        >
+                          <LayoutGrid size={13} />
+                          <span>Cards</span>
+                        </button>
+                      </div>
+
+                      {/* Botão Novo Pedido PDV */}
+                      <button
+                        onClick={() => setShowPDVModal(true)}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#fdde58] hover:bg-[#e2c23f] active:bg-[#d8ba39] text-stone-950 rounded-lg text-xs font-black font-mono tracking-wide shadow-xs transition-all cursor-pointer border border-[#d8ba39]"
+                      >
+                        <Plus size={15} className="stroke-[2.5]" />
+                        <span>NOVO PEDIDO (PDV)</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <button
-                  onClick={() => setShowPDVModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-[#fdde58] hover:bg-[#e2c23f] active:bg-[#d8ba39] text-stone-950 rounded-lg text-xs font-bold font-mono tracking-wide shadow-sm hover:shadow transition-all cursor-pointer border border-[#d8ba39]"
-                >
-                  <Plus size={16} className="stroke-[2.5]" />
-                  <span>NOVO PEDIDO (PDV)</span>
-                </button>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left">
-                  <thead>
-                    <tr className="border-b border-stone-200 text-[10px] font-mono font-bold text-stone-500 uppercase tracking-wider bg-stone-50">
-                      <th className="py-3 px-4 rounded-tl-md">Nº / Hora</th>
-                      <th className="py-3 px-4">Cliente</th>
-                      <th className="py-3 px-4">Tipo</th>
-                      <th className="py-3 px-4">Pagamento</th>
-                      <th className="py-3 px-4">Valor</th>
-                      <th className="py-3 px-4 text-center">Status</th>
-                      <th className="py-3 px-4 rounded-tr-md">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="text-xs font-mono">
-                    {(!dashboardData?.recentOrders || dashboardData.recentOrders.length === 0) ? (
-                      <tr>
-                        <td colSpan={7} className="py-12 text-center">
-                          <div className="flex flex-col items-center justify-center text-stone-400">
-                            <ShoppingBag size={32} className="mb-2 opacity-50" />
-                            <p className="font-bold text-stone-600 text-sm">Nenhum pedido no momento</p>
-                            <p className="text-stone-500 font-mono text-xs mt-0.5">Aguardando novos pedidos entrarem pelo cardápio ou WhatsApp.</p>
-                          </div>
-                        </td>
-                      </tr>
-                    ) : (
-                      dashboardData.recentOrders.map((order: any) => (
-                        <tr key={order.id} className="border-b border-stone-100 hover:bg-stone-50 transition-colors">
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-bold text-stone-900 tabular-nums">#{order.id}</span>
-                              {(order.isEdited || order.is_edited) && (
-                                <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 uppercase tracking-wider">EDITADO</span>
+
+                  {/* Barra de Filtros por Status e Campo de Busca (Minimalista Padrão da Empresa) */}
+                  <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
+                    {/* Filtros em Pílulas Clean */}
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+                      <button
+                        type="button"
+                        onClick={() => setOrdersStatusFilter('todos')}
+                        className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer border flex items-center gap-1.5 ${
+                          ordersStatusFilter === 'todos'
+                            ? 'bg-stone-900 text-[#fdde58] border-stone-900 shadow-2xs font-black'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 hover:text-stone-900'
+                        }`}
+                      >
+                        <span>Todos</span>
+                        <span className="opacity-70 tabular-nums font-normal">({countAll})</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setOrdersStatusFilter('Pendente')}
+                        className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer border flex items-center gap-1.5 ${
+                          ordersStatusFilter === 'Pendente'
+                            ? 'bg-stone-900 text-[#fdde58] border-stone-900 shadow-2xs font-black'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 hover:text-stone-900'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                        <span>Pendentes</span>
+                        <span className="opacity-70 tabular-nums font-normal">({countPendente})</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setOrdersStatusFilter('Em Preparo')}
+                        className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer border flex items-center gap-1.5 ${
+                          ordersStatusFilter === 'Em Preparo'
+                            ? 'bg-stone-900 text-[#fdde58] border-stone-900 shadow-2xs font-black'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 hover:text-stone-900'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-stone-700 shrink-0" />
+                        <span>Em Preparo</span>
+                        <span className="opacity-70 tabular-nums font-normal">({countPreparo})</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setOrdersStatusFilter('Saiu para Entrega')}
+                        className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer border flex items-center gap-1.5 ${
+                          ordersStatusFilter === 'Saiu para Entrega'
+                            ? 'bg-stone-900 text-[#fdde58] border-stone-900 shadow-2xs font-black'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 hover:text-stone-900'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-stone-500 shrink-0" />
+                        <span>Em Rota</span>
+                        <span className="opacity-70 tabular-nums font-normal">({countEntrega})</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setOrdersStatusFilter('Finalizado')}
+                        className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer border flex items-center gap-1.5 ${
+                          ordersStatusFilter === 'Finalizado'
+                            ? 'bg-stone-900 text-[#fdde58] border-stone-900 shadow-2xs font-black'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 hover:text-stone-900'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 shrink-0" />
+                        <span>Concluídos</span>
+                        <span className="opacity-70 tabular-nums font-normal">({countFinalizado})</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setOrdersStatusFilter('Cancelado')}
+                        className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all shrink-0 cursor-pointer border flex items-center gap-1.5 ${
+                          ordersStatusFilter === 'Cancelado'
+                            ? 'bg-stone-900 text-[#fdde58] border-stone-900 shadow-2xs font-black'
+                            : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50 hover:text-stone-900'
+                        }`}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                        <span>Cancelados</span>
+                        <span className="opacity-70 tabular-nums font-normal">({countCancelado})</span>
+                      </button>
+                    </div>
+
+                    {/* Busca Inteligente */}
+                    <div className="relative w-full lg:w-72 shrink-0">
+                      <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                      <input
+                        type="text"
+                        value={ordersSearchTerm}
+                        onChange={(e) => setOrdersSearchTerm(e.target.value)}
+                        placeholder="Buscar por Nº, cliente, NIF..."
+                        className="w-full pl-8 pr-7 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-mono text-stone-900 placeholder:text-stone-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-stone-400 transition-all"
+                      />
+                      {ordersSearchTerm && (
+                        <button
+                          onClick={() => setOrdersSearchTerm('')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-0.5 cursor-pointer"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Estado Vazio */}
+                  {filteredList.length === 0 && (
+                    <div className="py-12 text-center flex flex-col items-center justify-center text-stone-400 bg-stone-50/50 rounded-xl border border-dashed border-stone-200">
+                      <ShoppingBag size={36} className="mb-2 opacity-40 text-stone-500" />
+                      <p className="font-bold text-stone-700 text-sm">Nenhum pedido encontrado</p>
+                      <p className="text-stone-500 font-mono text-xs mt-0.5 max-w-sm">
+                        {ordersSearchTerm || ordersStatusFilter !== 'todos'
+                          ? 'Tente ajustar os filtros ou o termo de busca para visualizar os pedidos.'
+                          : 'Aguardando novos pedidos entrarem pelo cardápio digital ou balcão.'}
+                      </p>
+                      {(ordersSearchTerm || ordersStatusFilter !== 'todos') && (
+                        <button
+                          onClick={() => { setOrdersSearchTerm(''); setOrdersStatusFilter('todos'); }}
+                          className="mt-3 px-3 py-1 bg-stone-100 hover:bg-stone-200 text-stone-800 rounded-md text-xs font-mono font-bold transition-colors cursor-pointer border border-stone-200"
+                        >
+                          Limpar Filtros
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* VISUALIZAÇÃO EM CARDS (MINIMALISTA NA PALETA DA EMPRESA) */}
+                  {ordersViewMode === 'cards' && filteredList.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 pt-1">
+                      {filteredList.map((order: any) => {
+                        const elapsed = getElapsedTime(order.createdAt);
+                        const isDelivery = order.orderType === 'entrega' || order.orderType === 'Delivery';
+                        const items = safeParseItems(order.items);
+
+                        return (
+                          <div
+                            key={order.id}
+                            className="bg-white rounded-xl border border-stone-200/90 shadow-sm shadow-stone-200/70 hover:shadow-md hover:border-stone-300 transition-all flex flex-col justify-between overflow-hidden"
+                          >
+                            {/* Topo do Card: ID, Hora, Tempo e Valor */}
+                            <div className="p-3.5 pb-2.5 border-b border-stone-100 space-y-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-mono font-bold text-xs text-stone-900 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
+                                    #{order.id}
+                                  </span>
+                                  <div className="flex items-center gap-1 text-[11px] font-mono text-stone-500">
+                                    <Clock size={11} className="text-stone-400" />
+                                    <span>{new Date(order.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                  </div>
+                                  {order.status !== 'Finalizado' && order.status !== 'Cancelado' && elapsed.text && (
+                                    <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded border border-stone-200 bg-stone-50 text-stone-600">
+                                      {elapsed.text}
+                                    </span>
+                                  )}
+                                  {(order.isEdited || order.is_edited) && (
+                                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-800 border border-stone-200 uppercase tracking-wider">
+                                      EDITADO
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="text-right">
+                                  <span className="font-mono font-black text-base text-stone-900 tabular-nums">
+                                    €{Number(order.totalAmount || 0).toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Badges de Canal, Pagamento e Status (Minimalistas) */}
+                              <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-stone-100 text-stone-700 border border-stone-200">
+                                    {isDelivery ? <Bike size={12} className="text-stone-500" /> : <Store size={12} className="text-stone-500" />}
+                                    <span>{isDelivery ? 'Entrega' : 'Balcão'}</span>
+                                  </span>
+
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-stone-100 text-stone-700 border border-stone-200">
+                                    <CreditCard size={11} className="text-stone-500" />
+                                    <span>{order.paymentMethod || 'Outros'}</span>
+                                  </span>
+                                </div>
+
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-stone-100 text-stone-800 border border-stone-200">
+                                  <span className={`w-1.5 h-1.5 rounded-full ${
+                                    order.status === 'Pendente' ? 'bg-amber-400' :
+                                    order.status === 'Em Preparo' ? 'bg-stone-700' :
+                                    order.status === 'Saiu para Entrega' ? 'bg-stone-500' :
+                                    order.status === 'Cancelado' ? 'bg-rose-500' :
+                                    'bg-emerald-500'
+                                  }`} />
+                                  <span>{order.status}</span>
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Informações do Cliente, Morada e NIF */}
+                            <div className="p-3.5 py-2.5 space-y-1.5 text-xs">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-bold text-stone-900 text-sm truncate">{order.customerName}</span>
+                                {order.customerPhone && (
+                                  <a
+                                    href={`tel:${order.customerPhone}`}
+                                    className="text-stone-600 hover:text-stone-900 font-mono font-medium text-[11px] flex items-center gap-1 shrink-0 bg-stone-50 hover:bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200 transition-colors"
+                                    title="Ligar para cliente"
+                                  >
+                                    <Phone size={10} />
+                                    <span>{order.customerPhone}</span>
+                                  </a>
+                                )}
+                              </div>
+
+                              {order.nif && (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] font-mono font-bold bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded border border-stone-200">
+                                    NIF: {order.nif}
+                                  </span>
+                                </div>
+                              )}
+
+                              {isDelivery && order.deliveryAddress && (
+                                <div className="flex items-start gap-1.5 text-[11px] text-stone-600 bg-stone-50 p-2 rounded-lg border border-stone-200/70">
+                                  <MapPin size={12} className="text-stone-400 shrink-0 mt-0.5" />
+                                  <span className="line-clamp-2 leading-relaxed">
+                                    {order.deliveryAddress}
+                                    {order.deliveryZone ? ` (${order.deliveryZone})` : ''}
+                                  </span>
+                                </div>
+                              )}
+
+                              {order.changeFor && Number(order.changeFor) > 0 && (
+                                <div className="text-[11px] font-mono font-bold text-stone-800 bg-stone-100 px-2 py-0.5 rounded border border-stone-200 inline-block">
+                                  Troco para: €{Number(order.changeFor).toFixed(2)}
+                                </div>
                               )}
                             </div>
-                            <div className="text-[10px] text-stone-500 mt-0.5 tabular-nums">{new Date(order.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="font-semibold text-stone-900">{order.customerName}</div>
-                            {order.customerPhone && (
-                              <div className="text-[10px] text-stone-500 tabular-nums">{order.customerPhone}</div>
-                            )}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-stone-600 bg-stone-100 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold border border-stone-200">
-                              {order.orderType}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold font-mono bg-stone-100 text-stone-800 border border-stone-200">
-                              {order.paymentMethod || order.payment_method || 'Outros'}
-                            </span>
-                          </td>
-                          <td className="py-3 px-4 font-bold tabular-nums text-stone-900">€{order.totalAmount.toFixed(2)}</td>
-                          <td className="py-3 px-4 text-center">
-                            <select
-                              value={order.status}
-                              onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                              className={`px-2 py-1 rounded text-[10px] font-mono font-bold border cursor-pointer outline-none appearance-none hover:opacity-80 transition-opacity
-                                ${order.status === 'Pendente' ? 'bg-stone-100 text-stone-600 border-stone-200' :
-                                  order.status === 'Em Preparo' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                  order.status === 'Saiu para Entrega' ? 'bg-sky-50 text-sky-700 border-sky-200' :
-                                  order.status === 'Cancelado' ? 'bg-red-50 text-red-700 border-red-200' :
-                                  'bg-emerald-50 text-emerald-700 border-emerald-200'}`}
-                              style={{ textAlignLast: 'center' }}
-                              title="Alterar status manualmente"
-                            >
-                              <option value="Pendente">Pendente</option>
-                              <option value="Em Preparo">Em Preparo</option>
-                              <option value="Saiu para Entrega">Saiu para Entrega</option>
-                              <option value="Finalizado">Finalizado</option>
-                              <option value="Cancelado">Cancelado</option>
-                            </select>
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-1.5">
+
+                            {/* Bloco de Itens do Pedido */}
+                            <div className="px-3.5 py-2">
+                              <div className="bg-stone-50 rounded-lg p-2.5 border border-stone-200/80 space-y-1.5 max-h-[160px] overflow-y-auto">
+                                <div className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-wider">
+                                  Itens do Pedido ({items.length})
+                                </div>
+                                {items.map((item: any, idx: number) => {
+                                  const qty = item.quantity || item.qty || 1;
+                                  const isPizza = item.type === 'pizza' || item.isPizza || (item.flavors && item.flavors.length > 0);
+                                  const flavors = item.flavors || [];
+
+                                  return (
+                                    <div key={idx} className="text-xs border-b border-stone-100 last:border-b-0 pb-1.5 last:pb-0">
+                                      <div className="flex items-start justify-between gap-1.5">
+                                        <div className="flex items-start gap-1.5 min-w-0">
+                                          <span className="font-mono font-bold text-stone-900 bg-stone-200/70 px-1 rounded text-[11px] shrink-0">
+                                            {qty}x
+                                          </span>
+                                          <div className="min-w-0">
+                                            <div className="font-bold text-stone-800 leading-tight">
+                                              {item.name || 'Produto'}
+                                            </div>
+                                            {isPizza && flavors.length > 0 && (
+                                              <div className="pl-1 mt-0.5 space-y-0.5 text-[11px] text-stone-600 font-mono">
+                                                {flavors.map((fl: any, fIdx: number) => {
+                                                  const fraction = flavors.length === 2 ? '1/2' : flavors.length === 3 ? '1/3' : flavors.length === 4 ? '1/4' : '1/1';
+                                                  const flName = typeof fl === 'string' ? fl : fl.name;
+                                                  return (
+                                                    <div key={fIdx} className="flex items-center gap-1">
+                                                      <span className="text-stone-500 font-bold">[{fraction}]</span>
+                                                      <span className="truncate">{flName}</span>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            )}
+                                            {(item.crust || item.borda) && (
+                                              <div className="text-[10px] text-stone-600 font-mono font-medium mt-0.5">
+                                                🧀 Borda: {item.crust || item.borda}
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                        <span className="font-mono text-stone-600 text-[11px] font-semibold tabular-nums shrink-0">
+                                          €{Number((item.price || 0) * qty).toFixed(2)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+
+                              {/* Observação Geral com Alerta em Destaque */}
+                              {order.notes && order.notes.trim() && (
+                                <div className="mt-2 bg-stone-50 border-l-3 border-stone-700 px-2.5 py-1.5 rounded-r-md text-xs font-bold text-stone-900 flex items-start gap-1.5 border border-stone-200 border-l-stone-700">
+                                  <AlertCircle size={13} className="text-stone-600 shrink-0 mt-0.5" />
+                                  <span className="break-words leading-tight">
+                                    Obs: {order.notes}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Rodapé do Card: Ações com Paleta da Empresa */}
+                            <div className="p-3.5 pt-2 border-t border-stone-100 bg-stone-50/40 space-y-2">
+                              {/* Botão de Avanço Rápido */}
                               {order.status === 'Pendente' && (
                                 <button
+                                  type="button"
                                   onClick={() => updateOrderStatus(order.id, 'Em Preparo')}
-                                  className="text-[10px] font-mono font-bold px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-xs border border-emerald-700"
+                                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#fdde58] hover:bg-[#e2c23f] active:bg-[#d8ba39] text-stone-950 font-mono font-black text-xs shadow-2xs transition-all cursor-pointer border border-[#d8ba39]"
                                 >
-                                  PREPARAR
+                                  <Flame size={14} />
+                                  <span>AVANÇAR P/ PREPARO</span>
+                                  <ArrowRight size={14} />
                                 </button>
                               )}
+
                               {order.status === 'Em Preparo' && (
                                 <button
-                                  onClick={() => updateOrderStatus(order.id, (order.orderType === 'entrega' || order.orderType === 'Delivery') ? 'Saiu para Entrega' : 'Finalizado')}
-                                  className="text-[10px] font-mono font-bold px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer shadow-xs border border-blue-700"
+                                  type="button"
+                                  onClick={() => updateOrderStatus(order.id, isDelivery ? 'Saiu para Entrega' : 'Finalizado')}
+                                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-stone-900 hover:bg-stone-950 active:bg-black text-[#fdde58] font-mono font-black text-xs shadow-2xs transition-all cursor-pointer border border-stone-800"
                                 >
-                                  {(order.orderType === 'entrega' || order.orderType === 'Delivery') ? 'DESPACHAR' : 'FINALIZAR'}
+                                  {isDelivery ? <Bike size={14} /> : <Check size={14} />}
+                                  <span>{isDelivery ? 'DESPACHAR (MOTOBOY)' : 'FINALIZAR PEDIDO'}</span>
+                                  <ArrowRight size={14} />
                                 </button>
                               )}
+
                               {order.status === 'Saiu para Entrega' && (
                                 <button
+                                  type="button"
                                   onClick={() => updateOrderStatus(order.id, 'Finalizado')}
-                                  className="text-[10px] font-mono font-bold px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-xs border border-emerald-700"
+                                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-stone-900 hover:bg-stone-950 active:bg-black text-white font-mono font-bold text-xs shadow-2xs transition-all cursor-pointer border border-stone-800"
                                 >
-                                  FINALIZAR
+                                  <Check size={14} className="text-[#fdde58]" />
+                                  <span>CONCLUIR PEDIDO</span>
                                 </button>
                               )}
-                              {order.status !== 'Finalizado' && order.status !== 'Cancelado' && (
-                                <button
-                                  onClick={() => {
-                                    if(window.confirm('Deseja realmente CANCELAR este pedido?')) {
-                                      updateOrderStatus(order.id, 'Cancelado');
-                                    }
-                                  }}
-                                  className="p-1.5 text-red-700 hover:text-white bg-red-50 hover:bg-red-600 border border-red-200 rounded-md transition-colors cursor-pointer"
-                                  title="Cancelar Pedido"
-                                >
-                                  <X size={14} />
-                                </button>
+
+                              {order.status === 'Finalizado' && (
+                                <div className="text-center py-1.5 text-xs font-mono font-bold text-stone-600 bg-stone-100 rounded-lg border border-stone-200">
+                                  ✓ PEDIDO CONCLUÍDO
+                                </div>
                               )}
-                              <button
-                                onClick={() => setEditingOrder(order)}
-                                className="p-1.5 text-amber-700 hover:text-white bg-amber-50 hover:bg-amber-600 border border-amber-200 rounded-md transition-colors cursor-pointer"
-                                title="Editar Pedido"
-                              >
-                                <Edit3 size={14} />
-                              </button>
-                              <button
-                                onClick={() => handlePrintOrder(order)}
-                                className="p-1.5 text-stone-600 hover:text-white bg-stone-50 hover:bg-stone-900 border border-stone-200 rounded-md transition-colors cursor-pointer"
-                                title="Imprimir Talão"
-                              >
-                                <Printer size={14} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteOrder(order.id)}
-                                className="p-1.5 text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 rounded-md transition-colors cursor-pointer"
-                                title="Excluir Pedido"
-                              >
-                                <Trash2 size={14} />
-                              </button>
+
+                              {order.status === 'Cancelado' && (
+                                <div className="text-center py-1.5 text-xs font-mono font-bold text-stone-500 bg-stone-100 rounded-lg border border-stone-200">
+                                  ✕ PEDIDO CANCELADO
+                                </div>
+                              )}
+
+                              {/* Linha de Ações Secundárias */}
+                              <div className="flex items-center justify-between gap-1 pt-1">
+                                <select
+                                  value={order.status}
+                                  onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                                  className="text-[11px] font-mono font-semibold px-2 py-1 bg-white rounded border border-stone-200 text-stone-700 cursor-pointer outline-none hover:bg-stone-50 transition-colors"
+                                  title="Mudar status manualmente"
+                                >
+                                  <option value="Pendente">Pendente</option>
+                                  <option value="Em Preparo">Em Preparo</option>
+                                  <option value="Saiu para Entrega">Saiu para Entrega</option>
+                                  <option value="Finalizado">Finalizado</option>
+                                  <option value="Cancelado">Cancelado</option>
+                                </select>
+
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    onClick={() => handlePrintOrder(order)}
+                                    className="p-1.5 text-stone-600 hover:text-stone-950 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors cursor-pointer"
+                                    title="Imprimir Talão Térmico"
+                                  >
+                                    <Printer size={13} />
+                                  </button>
+
+                                  <button
+                                    onClick={() => setEditingOrder(order)}
+                                    className="p-1.5 text-stone-600 hover:text-stone-950 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors cursor-pointer"
+                                    title="Editar Pedido"
+                                  >
+                                    <Edit2 size={13} />
+                                  </button>
+
+                                  {order.status !== 'Finalizado' && order.status !== 'Cancelado' && (
+                                    <button
+                                      onClick={() => {
+                                        if (window.confirm(`Deseja realmente CANCELAR o Pedido #${order.id}?`)) {
+                                          updateOrderStatus(order.id, 'Cancelado');
+                                        }
+                                      }}
+                                      className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 border border-stone-200 hover:border-rose-200 rounded-md transition-colors cursor-pointer"
+                                      title="Cancelar Pedido"
+                                    >
+                                      <X size={13} />
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={() => handleDeleteOrder(order.id)}
+                                    className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-md transition-colors cursor-pointer"
+                                    title="Excluir Permanentemente"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </div>
+                              </div>
                             </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* VISUALIZAÇÃO EM TABELA REFINADA (RELATÓRIO COMPACTO PADRÃO) */}
+                  {ordersViewMode === 'table' && filteredList.length > 0 && (
+                    <div className="overflow-x-auto rounded-lg border border-stone-200">
+                      <table className="min-w-full text-left">
+                        <thead>
+                          <tr className="border-b border-stone-200 text-[11px] font-mono font-bold text-stone-600 uppercase tracking-wider bg-stone-50">
+                            <th className="py-3 px-4">Nº / Hora</th>
+                            <th className="py-3 px-4">Cliente / Contato</th>
+                            <th className="py-3 px-4">Tipo</th>
+                            <th className="py-3 px-4">Pagamento</th>
+                            <th className="py-3 px-4">Valor</th>
+                            <th className="py-3 px-4 text-center">Status</th>
+                            <th className="py-3 px-4 text-right">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody className="text-xs font-mono divide-y divide-stone-100">
+                          {filteredList.map((order: any) => {
+                            const elapsed = getElapsedTime(order.createdAt);
+                            const isDelivery = order.orderType === 'entrega' || order.orderType === 'Delivery';
+
+                            return (
+                              <tr key={order.id} className="hover:bg-stone-50/80 transition-colors">
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-bold text-stone-900 tabular-nums">#{order.id}</span>
+                                    {(order.isEdited || order.is_edited) && (
+                                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-800 border border-stone-200">
+                                        EDITADO
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[11px] text-stone-500 mt-0.5 flex items-center gap-1">
+                                    <span>{new Date(order.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    {order.status !== 'Finalizado' && order.status !== 'Cancelado' && elapsed.text && (
+                                      <span className="text-[10px] text-stone-400">({elapsed.text})</span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <div className="font-bold text-stone-900 text-xs sm:text-sm">{order.customerName}</div>
+                                  <div className="flex items-center gap-2 mt-0.5 text-[11px] text-stone-500">
+                                    {order.customerPhone && <span>{order.customerPhone}</span>}
+                                    {order.nif && (
+                                      <span className="px-1 bg-stone-100 rounded text-[10px] font-bold border border-stone-200">
+                                        NIF: {order.nif}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {isDelivery && order.deliveryAddress && (
+                                    <div className="text-[11px] text-stone-500 line-clamp-1 mt-0.5 max-w-xs">
+                                      📍 {order.deliveryAddress}
+                                    </div>
+                                  )}
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-stone-100 text-stone-700 border border-stone-200">
+                                    {isDelivery ? <Bike size={11} className="text-stone-500" /> : <Store size={11} className="text-stone-500" />}
+                                    <span>{isDelivery ? 'Entrega' : 'Balcão'}</span>
+                                  </span>
+                                </td>
+
+                                <td className="py-3 px-4">
+                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold font-mono bg-stone-100 text-stone-700 border border-stone-200">
+                                    {order.paymentMethod || 'Outros'}
+                                  </span>
+                                </td>
+
+                                <td className="py-3 px-4 font-bold tabular-nums text-stone-900 text-sm">
+                                  €{Number(order.totalAmount || 0).toFixed(2)}
+                                </td>
+
+                                <td className="py-3 px-4 text-center">
+                                  <select
+                                    value={order.status}
+                                    onChange={(e) => updateOrderStatus(order.id, e.target.value)}
+                                    className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold border border-stone-200 bg-white text-stone-800 cursor-pointer outline-none hover:bg-stone-50 transition-all"
+                                    style={{ textAlignLast: 'center' }}
+                                    title="Alterar status"
+                                  >
+                                    <option value="Pendente">Pendente</option>
+                                    <option value="Em Preparo">Em Preparo</option>
+                                    <option value="Saiu para Entrega">Saiu para Entrega</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                    <option value="Cancelado">Cancelado</option>
+                                  </select>
+                                </td>
+
+                                <td className="py-3 px-4 text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {order.status === 'Pendente' && (
+                                      <button
+                                        onClick={() => updateOrderStatus(order.id, 'Em Preparo')}
+                                        className="text-[11px] font-mono font-black px-2.5 py-1 rounded bg-[#fdde58] hover:bg-[#e2c23f] text-stone-950 transition-colors cursor-pointer border border-[#d8ba39] shadow-2xs"
+                                        title="Iniciar Preparo"
+                                      >
+                                        PREPARAR
+                                      </button>
+                                    )}
+                                    {order.status === 'Em Preparo' && (
+                                      <button
+                                        onClick={() => updateOrderStatus(order.id, isDelivery ? 'Saiu para Entrega' : 'Finalizado')}
+                                        className="text-[11px] font-mono font-bold px-2.5 py-1 rounded bg-stone-900 hover:bg-stone-950 text-[#fdde58] transition-colors cursor-pointer border border-stone-800 shadow-2xs"
+                                        title={isDelivery ? 'Despachar Motoboy' : 'Finalizar Pedido'}
+                                      >
+                                        {isDelivery ? 'DESPACHAR' : 'FINALIZAR'}
+                                      </button>
+                                    )}
+                                    {order.status === 'Saiu para Entrega' && (
+                                      <button
+                                        onClick={() => updateOrderStatus(order.id, 'Finalizado')}
+                                        className="text-[11px] font-mono font-bold px-2.5 py-1 rounded bg-stone-900 hover:bg-stone-950 text-white transition-colors cursor-pointer border border-stone-800 shadow-2xs"
+                                        title="Concluir Pedido"
+                                      >
+                                        CONCLUIR
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => handlePrintOrder(order)}
+                                      className="p-1.5 text-stone-600 hover:text-stone-950 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors cursor-pointer"
+                                      title="Imprimir Talão"
+                                    >
+                                      <Printer size={13} />
+                                    </button>
+                                    <button
+                                      onClick={() => setEditingOrder(order)}
+                                      className="p-1.5 text-stone-600 hover:text-stone-950 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors cursor-pointer"
+                                      title="Editar Pedido"
+                                    >
+                                      <Edit2 size={13} />
+                                    </button>
+                                    {order.status !== 'Finalizado' && order.status !== 'Cancelado' && (
+                                      <button
+                                        onClick={() => {
+                                          if (window.confirm(`Deseja cancelar o Pedido #${order.id}?`)) {
+                                            updateOrderStatus(order.id, 'Cancelado');
+                                          }
+                                        }}
+                                        className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 border border-stone-200 hover:border-rose-200 rounded-md transition-colors cursor-pointer"
+                                        title="Cancelar Pedido"
+                                      >
+                                        <X size={13} />
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => handleDeleteOrder(order.id)}
+                                      className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-md transition-colors cursor-pointer"
+                                      title="Excluir Pedido"
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -2961,29 +3579,55 @@ export default function AdminDashboard() {
               
               {/* Category Filter Pills */}
               <div className="flex overflow-x-auto no-scrollbar gap-1.5 items-center">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setActiveCategory('');
+                    const mainEl = document.querySelector('main');
+                    if (mainEl) mainEl.scrollTo({ top: 0, behavior: 'smooth' });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className={`py-1 px-3 rounded-full text-xs whitespace-nowrap font-bold transition-all duration-150 active:scale-95 cursor-pointer border ${
+                    !activeCategory
+                      ? "bg-stone-900 text-[#fdde58] border-stone-900 shadow-2xs"
+                      : "bg-white text-stone-600 border-stone-200 hover:bg-stone-100"
+                  }`}
+                >
+                  TODOS
+                </button>
                 {currentCategoriesUI.map((cat) => (
-                  <a
+                  <button
                     key={cat.id}
-                    href={`#admin-cat-${cat.id}`}
+                    type="button"
                     onClick={(e) => {
+                      e.preventDefault();
                       setActiveCategory(cat.id);
-                      const el = document.getElementById(`admin-cat-${cat.id}`);
-                      const container = document.querySelector('main');
-                      if (el && container) {
-                        e.preventDefault();
-                        const yOffset = -120; // compensate for sticky header
-                        const y = el.getBoundingClientRect().top + container.scrollTop - container.getBoundingClientRect().top + yOffset;
-                        container.scrollTo({ top: y, behavior: "smooth" });
+                      if (cardapioSearchTerm) {
+                        setCardapioSearchTerm('');
                       }
+                      setTimeout(() => {
+                        const el = document.getElementById(`admin-cat-${cat.id}`);
+                        if (el) {
+                          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          const mainEl = document.querySelector('main');
+                          if (mainEl && mainEl.scrollHeight > mainEl.clientHeight) {
+                            const topY = el.getBoundingClientRect().top + mainEl.scrollTop - mainEl.getBoundingClientRect().top - 130;
+                            mainEl.scrollTo({ top: Math.max(0, topY), behavior: 'smooth' });
+                          }
+                          const windowY = el.getBoundingClientRect().top + window.pageYOffset - 130;
+                          window.scrollTo({ top: Math.max(0, windowY), behavior: 'smooth' });
+                        }
+                      }, 40);
                     }}
                     className={`py-1 px-3 rounded-full text-xs whitespace-nowrap font-bold transition-all duration-150 active:scale-95 cursor-pointer border ${
                       activeCategory === cat.id
-                        ? "bg-[#8b0000] text-white border-[#8b0000] shadow-2xs"
+                        ? "bg-stone-900 text-[#fdde58] border-stone-900 shadow-2xs"
                         : "bg-white text-stone-600 border-stone-200 hover:bg-stone-100"
-                    } ${cat.id === "promocoes" && activeCategory !== cat.id ? "animate-pulse text-[#8b0000] border-[#8b0000]" : ""}`}
+                    } ${cat.id === "promocoes" && activeCategory !== cat.id ? "animate-pulse text-[#fdde58] border-stone-800" : ""}`}
                   >
                     {cat.label}
-                  </a>
+                  </button>
                 ))}
               </div>
             </div>
@@ -3007,7 +3651,7 @@ export default function AdminDashboard() {
               const allPaused = items.every(item => pausedItems.includes(item.id));
               
               return (
-                <div key={cat.id} id={`admin-cat-${cat.id}`} className="bg-white p-5 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08)] hover:border-[#D4AF6A]/30 transition-all duration-300">
+                <div key={cat.id} id={`admin-cat-${cat.id}`} className="scroll-mt-36 bg-white p-5 rounded-xl border border-[#E7E5E1] shadow-[0_1px_2px_rgba(28,25,23,0.04),0_1px_8px_rgba(28,25,23,0.04)] hover:shadow-[0_4px_12px_rgba(28,25,23,0.08)] hover:border-[#D4AF6A]/30 transition-all duration-300">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5 gap-3">
                     <div>
                       <h2 className="text-lg font-bold text-stone-900">{cat.label}</h2>
@@ -3101,6 +3745,15 @@ export default function AdminDashboard() {
       </main>
     </div>
     
+      {/* Subscription Lockout Overlay (quando o acesso estiver bloqueado após carência) */}
+      {subscriptionStatusInfo.isBlocked && (
+        <SubscriptionLockoutOverlay
+          subscription={subscription}
+          statusInfo={subscriptionStatusInfo}
+          onRefresh={refreshSubscription}
+          onSimulateState={simulateSubscriptionState}
+        />
+      )}
     
       {/* PDV Modal */}
       <PDVModal
@@ -3113,8 +3766,14 @@ export default function AdminDashboard() {
       />
 
       {isPasswordModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+        <div 
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setIsPasswordModalOpen(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative"
+            onClick={(e) => e.stopPropagation()}
+          >
             <button onClick={() => setIsPasswordModalOpen(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
               <X size={24} />
             </button>
@@ -3163,8 +3822,14 @@ export default function AdminDashboard() {
 
       {/* Modal Popup para Relatórios */}
       {reportModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-stone-200 relative">
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setReportModal({isOpen: false, type: '', title: ''})}
+        >
+          <div 
+            className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden border border-stone-200 relative"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-5 border-b border-stone-200 flex justify-between items-center bg-stone-50">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 bg-amber-500/10 text-amber-700 rounded-xl border border-amber-500/20">
@@ -3618,8 +4283,15 @@ export default function AdminDashboard() {
 
       {/* Print Preview Modal */}
       {showPrintPreview && printOrder && (
-        <div className="no-print" style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-          <div style={{ backgroundColor: '#fff', borderRadius: '12px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0,0,0,0.4)', width: '340px' }}>
+        <div 
+          className="no-print" 
+          style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.7)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+          onClick={handleClosePrintPreview}
+        >
+          <div 
+            style={{ backgroundColor: '#fff', borderRadius: '12px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 60px rgba(0,0,0,0.4)', width: '340px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <span style={{ fontWeight: 'bold', fontSize: '16px', color: '#111', display: 'flex', alignItems: 'center', gap: '8px' }}><Printer size={18} /> Pré-visualização do Talão</span>
@@ -3924,7 +4596,13 @@ export default function AdminDashboard() {
 }
 
 function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, menuItems: any[], onClose: () => void, onSave: (updatedOrder: any) => Promise<void> }) {
-  const [customerName, setCustomerName] = useState(order.customerName || order.customer_name || '');
+  const rawCustomerName = (order.customerName || order.customer_name || '').toString();
+  const nifMatch = rawCustomerName.match(/\(NIF:\s*([^)]+)\)/i);
+  const initialNif = (order.nif || (nifMatch ? nifMatch[1] : '')).toString().trim();
+  const cleanName = rawCustomerName.replace(/\s*\(NIF:\s*[^)]+\)/i, '').trim();
+
+  const [customerName, setCustomerName] = useState(cleanName);
+  const [customerNif, setCustomerNif] = useState(initialNif);
   const [customerPhone, setCustomerPhone] = useState(order.customerPhone || order.customer_phone || '');
   const [deliveryAddress, setDeliveryAddress] = useState(order.deliveryAddress || order.delivery_address || '');
   const [deliveryZone, setDeliveryZone] = useState(order.deliveryZone || order.delivery_zone || '');
@@ -3947,7 +4625,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   
   const [selectedProductSearch, setSelectedProductSearch] = useState('');
   const [selectedProductId, setSelectedProductId] = useState('');
-  const [customAdditionalFlavors, setCustomAdditionalFlavors] = useState<{id: string; search: string}[]>([]);
+  const [customAdditionalFlavors, setCustomAdditionalFlavors] = useState<{ id: string; search: string }[]>([]);
   const [selectedSize, setSelectedSize] = useState('priceSingle');
   const [saving, setSaving] = useState(false);
 
@@ -3969,28 +4647,244 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     return Math.max(0, cashProvided - finalTotal);
   }, [paymentMethod, cashProvided, finalTotal]);
 
-  const handleAddItem = () => {
-    if (!selectedProductId) return;
-    const menuItem = menuItems.find(m => m.id === selectedProductId);
-    if (!menuItem) return;
+  // Smart Search & Editing States (CRM Pattern)
+  const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'pizzas' | 'esfihas' | 'bebidas' | 'outros'>('all');
+  const [searchingFlavorSlot, setSearchingFlavorSlot] = useState<number | null>(null);
+  const [flavorSearchQuery, setFlavorSearchQuery] = useState('');
+  const [isProductSearchOpen, setIsProductSearchOpen] = useState(false);
+  const productSearchContainerRef = useRef<HTMLDivElement>(null);
+  const flavorSearchInputRef = useRef<HTMLInputElement>(null);
 
-    const extraFlavors = customAdditionalFlavors.filter(f => f.id).map(f => menuItems.find(m => m.id === f.id)).filter(Boolean) as any[];
+  useEffect(() => {
+    if (searchingFlavorSlot !== null) {
+      const timer = setTimeout(() => {
+        flavorSearchInputRef.current?.focus();
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [searchingFlavorSlot]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (productSearchContainerRef.current && !productSearchContainerRef.current.contains(e.target as Node)) {
+        setIsProductSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Dismiss on ESC inside OrderEditorModal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (searchingFlavorSlot !== null) {
+          setSearchingFlavorSlot(null);
+          setFlavorSearchQuery('');
+        } else if (isProductSearchOpen) {
+          setIsProductSearchOpen(false);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchingFlavorSlot, isProductSearchOpen, onClose]);
+
+  const isPizzaItem = (m: any) => {
+    if (!m) return false;
+    const id = (m.id || '').toLowerCase();
+    const cat = (m.category || '').toLowerCase();
+    return (
+      id.startsWith('p-') ||
+      cat.includes('pizza') ||
+      ['tradicionais', 'especiais', 'gourmet', 'doces'].includes(cat) ||
+      Boolean(m.priceG || m.priceBig || m.priceSuperBig)
+    );
+  };
+
+  const isEsfihaItem = (m: any) => {
+    if (!m) return false;
+    const id = (m.id || '').toLowerCase();
+    const cat = (m.category || '').toLowerCase();
+    return id.startsWith('e-') || cat.includes('esfiha') || cat.includes('esfirra');
+  };
+
+  const isBebidaItem = (m: any) => {
+    if (!m) return false;
+    const id = (m.id || '').toLowerCase();
+    const cat = (m.category || '').toLowerCase();
+    return cat.includes('bebida') || cat.includes('refrigerante') || cat.includes('cerveja') || cat.includes('suco');
+  };
+
+  const pizzasList = React.useMemo(() => {
+    return menuItems.filter(isPizzaItem);
+  }, [menuItems]);
+
+  const selectedBaseMenuItem = React.useMemo(() => {
+    return menuItems.find(m => m.id === selectedProductId) || null;
+  }, [menuItems, selectedProductId]);
+
+  const isCurrentSelectionPizza = React.useMemo(() => {
+    return isPizzaItem(selectedBaseMenuItem) || ['priceP', 'priceM', 'priceG', 'priceBig', 'priceSuperBig'].includes(selectedSize);
+  }, [selectedBaseMenuItem, selectedSize]);
+
+  const maxAdditionalFlavors = React.useMemo(() => {
+    if (selectedSize === 'priceSuperBig') return 3;
+    if (selectedSize === 'priceBig') return 2;
+    if (selectedSize === 'priceG') return 1;
+    return 0;
+  }, [selectedSize]);
+
+  const totalFlavors = 1 + customAdditionalFlavors.length;
+
+  const getPizzaPriceForSize = (item: any, sizeKey: string) => {
+    if (!item) return 0;
+    if (sizeKey === 'priceP') return item.priceP || (item.priceM ? item.priceM - 2 : 0) || item.priceSingle || 0;
+    if (sizeKey === 'priceM') return item.priceM || item.priceSingle || 0;
+    if (sizeKey === 'priceG') return item.priceG || item.priceM || item.priceSingle || 0;
+    if (sizeKey === 'priceBig') return item.priceBig || item.priceG || item.priceSingle || 0;
+    if (sizeKey === 'priceSuperBig') return item.priceSuperBig || item.priceBig || item.priceG || item.priceSingle || 0;
+    return item.priceSingle || item.price || 0;
+  };
+
+  const handleSelectSize = (sizeKey: string) => {
+    setSelectedSize(sizeKey);
+    let maxAdd = 0;
+    if (sizeKey === 'priceSuperBig') maxAdd = 3;
+    else if (sizeKey === 'priceBig') maxAdd = 2;
+    else if (sizeKey === 'priceG') maxAdd = 1;
+
+    if (customAdditionalFlavors.length > maxAdd) {
+      setCustomAdditionalFlavors(prev => prev.slice(0, maxAdd));
+    }
+  };
+
+  const handleSelectProduct = (m: any) => {
+    setSelectedProductId(m.id);
+    setSelectedProductSearch(m.name);
+    setIsProductSearchOpen(false);
+
+    if (isPizzaItem(m)) {
+      if (selectedSize === 'priceSingle') {
+        setSelectedSize(m.priceG ? 'priceG' : m.priceM ? 'priceM' : 'priceP');
+      }
+    } else {
+      setSelectedSize('priceSingle');
+      setCustomAdditionalFlavors([]);
+    }
+    setSearchingFlavorSlot(null);
+  };
+
+  const handleStartEditItem = (idx: number) => {
+    const item = items[idx];
+    if (!item) return;
+    setEditingItemIndex(idx);
+
+    const sz = (item.size || '').toLowerCase();
+    let sizeKey = 'priceSingle';
+    if (sz.includes('super big') || sz.includes('4 sab')) sizeKey = 'priceSuperBig';
+    else if (sz.includes('big') || sz.includes('3 sab')) sizeKey = 'priceBig';
+    else if (sz.includes('grande') || sz.includes('(g)') || sz === 'g' || sz.includes('2 sab')) sizeKey = 'priceG';
+    else if (sz.includes('média') || sz.includes('media') || sz.includes('(m)') || sz === 'm') sizeKey = 'priceM';
+    else if (sz.includes('pequena') || sz.includes('(p)') || sz === 'p') sizeKey = 'priceP';
+
+    setSelectedSize(sizeKey);
+
+    let baseItem = item.menuItem;
+    const rawName = item.name || '';
+    const extraFlavorsFound: { id: string; search: string }[] = [];
+
+    if (!baseItem) {
+      if (rawName.includes('+')) {
+        const parts = rawName.split('+').map((p: string) => p.replace(/1\/\d+/g, '').replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '').replace(/^pizza\s+/i, '').replace(/^esfi(?:ha|rra)\s+/i, '').trim());
+        if (parts[0]) {
+          baseItem = menuItems.find(m => m.name.toLowerCase().includes(parts[0].toLowerCase()) || parts[0].toLowerCase().includes(m.name.toLowerCase()));
+        }
+        for (let pIdx = 1; pIdx < parts.length; pIdx++) {
+          const pName = parts[pIdx];
+          const matchExtra = menuItems.find(m => m.name.toLowerCase().includes(pName.toLowerCase()) || pName.toLowerCase().includes(m.name.toLowerCase()));
+          if (matchExtra) {
+            extraFlavorsFound.push({ id: matchExtra.id, search: matchExtra.name });
+          } else if (pName) {
+            extraFlavorsFound.push({ id: `custom-${pIdx}`, search: pName });
+          }
+        }
+      } else {
+        const cleanName = rawName.replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '').replace(/^pizza\s+/i, '').replace(/^esfi(?:ha|rra)\s+/i, '').trim();
+        baseItem = menuItems.find(m => m.name.toLowerCase().includes(cleanName.toLowerCase()) || cleanName.toLowerCase().includes(m.name.toLowerCase()));
+      }
+    } else {
+      if (item.additionalFlavors && Array.isArray(item.additionalFlavors)) {
+        item.additionalFlavors.forEach((af: any) => {
+          extraFlavorsFound.push({ id: af.id || af.name, search: af.name });
+        });
+      } else if (item.secondFlavor) {
+        extraFlavorsFound.push({ id: item.secondFlavor.id || item.secondFlavor.name, search: item.secondFlavor.name });
+      }
+    }
+
+    if (baseItem) {
+      setSelectedProductId(baseItem.id);
+      setSelectedProductSearch(baseItem.name);
+    } else {
+      setSelectedProductId(item.id || 'custom');
+      setSelectedProductSearch(rawName);
+    }
+
+    setCustomAdditionalFlavors(extraFlavorsFound);
+    setSearchingFlavorSlot(null);
+    setFlavorSearchQuery('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingItemIndex(null);
+    setSelectedProductId('');
+    setSelectedProductSearch('');
+    setCustomAdditionalFlavors([]);
+    setSelectedSize('priceSingle');
+    setSearchingFlavorSlot(null);
+    setFlavorSearchQuery('');
+  };
+
+  const getFractionText = (slotIndex: number, total: number) => {
+    if (total === 1) return '1/1 Único';
+    if (total === 2) return `${slotIndex + 1}/2 Metade`;
+    if (total === 3) return `${slotIndex + 1}/3 Terço`;
+    if (total === 4) return `${slotIndex + 1}/4 Quarto`;
+    return `${slotIndex + 1}º Sabor`;
+  };
+
+  const handleAddItem = () => {
+    if (!selectedProductId && !selectedProductSearch.trim()) return;
+    const menuItem = menuItems.find(m => m.id === selectedProductId) || {
+      id: selectedProductId || `custom-${Date.now()}`,
+      name: selectedProductSearch.trim(),
+      priceSingle: 0
+    };
+
+    const extraFlavors = customAdditionalFlavors
+      .filter(f => f.id || f.search)
+      .map(f => menuItems.find(m => m.id === f.id) || { id: f.id, name: f.search, priceSingle: 0 });
+
     const totalFlavors = 1 + extraFlavors.length;
 
-    let price = menuItem.priceSingle || menuItem.priceP || menuItem.priceM || menuItem.priceG || 0;
+    let price = getPizzaPriceForSize(menuItem, selectedSize);
     let sizeName = 'Único';
-    if (selectedSize === 'priceP' && menuItem.priceP) { price = menuItem.priceP; sizeName = 'Pequena (P)'; }
-    else if (selectedSize === 'priceM' && menuItem.priceM) { price = menuItem.priceM; sizeName = 'Média (M)'; }
+    if (selectedSize === 'priceP') { price = getPizzaPriceForSize(menuItem, 'priceP'); sizeName = 'Pequena (P)'; }
+    else if (selectedSize === 'priceM') { price = getPizzaPriceForSize(menuItem, 'priceM'); sizeName = 'Média (M)'; }
     else if (selectedSize === 'priceG') {
-      const allPricesG = [menuItem.priceG || 0, ...extraFlavors.map(f => f.priceG || 0)];
+      const allPricesG = [getPizzaPriceForSize(menuItem, 'priceG'), ...extraFlavors.map(f => getPizzaPriceForSize(f, 'priceG'))];
       price = Math.max(...allPricesG) || price;
       sizeName = 'Grande (G)';
     } else if (selectedSize === 'priceBig') {
-      const allPricesBig = [menuItem.priceBig || menuItem.priceG || 0, ...extraFlavors.map(f => f.priceBig || f.priceG || 0)];
+      const allPricesBig = [getPizzaPriceForSize(menuItem, 'priceBig'), ...extraFlavors.map(f => getPizzaPriceForSize(f, 'priceBig'))];
       price = Math.max(...allPricesBig) || price;
       sizeName = 'Big';
     } else if (selectedSize === 'priceSuperBig') {
-      const allPricesSB = [menuItem.priceSuperBig || menuItem.priceBig || menuItem.priceG || 0, ...extraFlavors.map(f => f.priceSuperBig || f.priceBig || f.priceG || 0)];
+      const allPricesSB = [getPizzaPriceForSize(menuItem, 'priceSuperBig'), ...extraFlavors.map(f => getPizzaPriceForSize(f, 'priceSuperBig'))];
       price = Math.max(...allPricesSB) || price;
       sizeName = 'Super Big';
     }
@@ -4005,18 +4899,35 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     const newItem = {
       menuItem: menuItem,
       name: itemName,
-      quantity: 1,
+      quantity: editingItemIndex !== null ? (items[editingItemIndex]?.quantity || 1) : 1,
       size: sizeName,
       priceCalculated: price,
       basePrice: price,
-      price: price
+      price: price,
+      additionalFlavors: extraFlavors
     };
 
-    setItems(prev => [...prev, newItem]);
+    if (editingItemIndex !== null) {
+      setItems(prev => {
+        const copy = [...prev];
+        copy[editingItemIndex] = {
+          ...copy[editingItemIndex],
+          ...newItem,
+          quantity: copy[editingItemIndex].quantity || 1
+        };
+        return copy;
+      });
+      setEditingItemIndex(null);
+    } else {
+      setItems(prev => [...prev, newItem]);
+    }
+
     setSelectedProductId('');
     setSelectedProductSearch('');
-    setSelectedSecondProductId('');
-    setSelectedSecondProductSearch('');
+    setCustomAdditionalFlavors([]);
+    setSelectedSize('priceSingle');
+    setSearchingFlavorSlot(null);
+    setFlavorSearchQuery('');
   };
 
   const handleUpdateQty = (index: number, delta: number) => {
@@ -4038,9 +4949,15 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
+    const finalCustomerName = customerNif.trim() 
+      ? `${customerName.trim()} (NIF: ${customerNif.trim()})`
+      : customerName.trim();
+
     const updatedPayload = {
       ...order,
-      customer_name: customerName,
+      customer_name: finalCustomerName,
+      customerName: finalCustomerName,
+      nif: customerNif.trim() || null,
       customer_phone: customerPhone,
       order_type: orderType,
       payment_method: paymentMethod,
@@ -4067,14 +4984,43 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   };
 
   const filteredMenuItems = React.useMemo(() => {
-    if (!selectedProductSearch.trim()) return menuItems.slice(0, 20);
-    const term = selectedProductSearch.toLowerCase();
-    return menuItems.filter(m => m.name.toLowerCase().includes(term));
-  }, [menuItems, selectedProductSearch]);
+    const q = selectedProductSearch.toLowerCase().trim();
+    return menuItems.filter(m => {
+      if (categoryFilter === 'pizzas' && !isPizzaItem(m)) return false;
+      if (categoryFilter === 'esfihas' && !isEsfihaItem(m)) return false;
+      if (categoryFilter === 'bebidas' && !isBebidaItem(m)) return false;
+      if (categoryFilter === 'outros' && (isPizzaItem(m) || isEsfihaItem(m) || isBebidaItem(m))) return false;
+
+      // When a pizza size is active, only allow pizzas!
+      if (['priceP', 'priceM', 'priceG', 'priceBig', 'priceSuperBig'].includes(selectedSize) && !isPizzaItem(m)) {
+        return false;
+      }
+
+      if (!q) return true;
+      return m.name.toLowerCase().includes(q) || (m.ingredients && m.ingredients.toLowerCase().includes(q));
+    });
+  }, [menuItems, selectedProductSearch, categoryFilter, selectedSize]);
+
+  const filteredSlotPizzas = React.useMemo(() => {
+    const q = flavorSearchQuery.toLowerCase().trim();
+    return pizzasList.filter(p => {
+      if (p.id === selectedProductId) return false;
+      const isAlreadyChosen = customAdditionalFlavors.some((f, idx) => idx !== searchingFlavorSlot && f.id === p.id);
+      if (isAlreadyChosen) return false;
+      if (!q) return true;
+      return p.name.toLowerCase().includes(q) || (p.ingredients && p.ingredients.toLowerCase().includes(q));
+    });
+  }, [pizzasList, selectedProductId, customAdditionalFlavors, searchingFlavorSlot, flavorSearchQuery]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/70 backdrop-blur-xs">
-      <div className="bg-stone-100 rounded-xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-stone-800">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 bg-black/70 backdrop-blur-xs"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-stone-100 rounded-xl w-full max-w-xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border border-stone-800"
+        onClick={(e) => e.stopPropagation()}
+      >
         
         {/* Header Compacto */}
         <div className="px-3.5 py-2 bg-stone-950 text-white flex justify-between items-center shrink-0">
@@ -4124,7 +5070,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
             {/* Section 1: Customer Info Compacto */}
             <div className="bg-white p-2 rounded-lg border border-stone-200/90 shadow-2xs space-y-1.5">
               <h4 className="text-[9px] font-mono font-bold text-stone-400 uppercase tracking-wider">Cliente & Entrega</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                 <div className="space-y-0.5">
                   <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">Nome</label>
                   <input
@@ -4142,6 +5088,16 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
                     className="w-full px-2 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
+                  />
+                </div>
+                <div className="space-y-0.5">
+                  <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">NIF (Opcional)</label>
+                  <input
+                    type="text"
+                    value={customerNif}
+                    onChange={(e) => setCustomerNif(e.target.value)}
+                    placeholder="Ex: 123456789"
+                    className="w-full px-2 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors font-mono"
                   />
                 </div>
                 <div className="space-y-0.5">
@@ -4165,9 +5121,6 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                   >
                     <option value="Dinheiro">Dinheiro</option>
                     <option value="MB Way">MB Way</option>
-                    <option value="Cartão">Cartão</option>
-                    <option value="Multibanco">Multibanco</option>
-                    <option value="Pix">Pix</option>
                   </select>
                 </div>
               </div>
@@ -4270,14 +5223,31 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                             € {(price * qty).toFixed(2)}
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(idx)}
-                            className="p-0.5 text-stone-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
-                            title="Remover Item"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditItem(idx)}
+                              className={`p-1 rounded transition-colors cursor-pointer ${
+                                editingItemIndex === idx
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                  : 'text-stone-400 hover:text-amber-600 hover:bg-amber-50'
+                              }`}
+                              title="Editar este item"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (editingItemIndex === idx) handleCancelEdit();
+                                handleRemoveItem(idx);
+                              }}
+                              className="p-1 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                              title="Remover Item"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
                         </div>
                       );
                     })}
@@ -4285,114 +5255,413 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                 )}
               </div>
 
-              {/* Add New Product Block Compacto */}
-              <div className="p-1.5 bg-stone-50/80 border border-stone-200/80 rounded space-y-1">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-                  <div className="sm:col-span-2 relative">
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={selectedProductSearch}
-                        onChange={(e) => { setSelectedProductSearch(e.target.value); setSelectedProductId(''); }}
-                        placeholder="Pesquisar sabor ou produto..."
-                        className="w-full px-2 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
-                      />
-                      {selectedProductSearch && !selectedProductId && (
-                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-30 max-h-36 overflow-y-auto">
-                          {filteredMenuItems.map(m => (
-                            <div
-                              key={m.id}
-                              onClick={() => {
-                                setSelectedProductId(m.id);
-                                setSelectedProductSearch(m.name);
-                              }}
-                              className={`p-1.5 text-xs font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 ${selectedProductId === m.id ? 'bg-stone-900 text-white' : 'text-stone-800 hover:bg-stone-50'}`}
-                            >
-                              <span>{m.name}</span>
-                              <span className={selectedProductId === m.id ? 'text-stone-300 font-mono' : 'text-stone-500 font-mono'}>€ {Number(m.priceSingle || m.priceP || m.priceM || 0).toFixed(2)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+              {/* Add/Edit Product Block CRM Style */}
+              <div className="p-2 bg-stone-50 rounded-lg border border-stone-200/90 space-y-2">
+                {/* Active Edit Banner */}
+                {editingItemIndex !== null && (
+                  <div className="flex items-center justify-between px-2 py-1 bg-amber-100 border border-amber-300 rounded text-amber-900 text-[11px] font-bold">
+                    <span className="flex items-center gap-1.5">
+                      <Edit2 size={12} className="text-amber-700" />
+                      Editando Item #{editingItemIndex + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="text-[10px] text-amber-800 hover:text-amber-950 font-bold underline cursor-pointer"
+                    >
+                      Cancelar Edição
+                    </button>
+                  </div>
+                )}
 
-                    {customAdditionalFlavors.map((flavorState, i) => (
-                      <div key={i} className="relative mt-1">
-                        <input
-                          type="text"
-                          value={flavorState.search}
-                          onChange={(e) => {
-                            const newFlavors = [...customAdditionalFlavors];
-                            newFlavors[i].search = e.target.value;
-                            if (e.target.value === '') newFlavors[i].id = '';
-                            setCustomAdditionalFlavors(newFlavors);
-                          }}
-                          placeholder={`${i + 2}º sabor...`}
-                          className="w-full px-2 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 transition-colors"
-                        />
-                        {flavorState.search && !flavorState.id && (
-                          <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded shadow-lg z-30 max-h-36 overflow-y-auto">
-                            {menuItems.filter(item => item.name.toLowerCase().includes(flavorState.search.toLowerCase()) && item.category === menuItems.find(m => m.id === selectedProductId)?.category).map(m => (
-                              <div
-                                key={`extra-${i}-${m.id}`}
-                                onClick={() => {
-                                  const newFlavors = [...customAdditionalFlavors];
-                                  newFlavors[i] = { id: m.id, search: m.name };
-                                  setCustomAdditionalFlavors(newFlavors);
-                                }}
-                                className="p-1.5 text-xs font-bold cursor-pointer flex justify-between border-b border-stone-100 last:border-0 text-stone-800 hover:bg-stone-50"
-                              >
-                                <span>{m.name}</span>
-                                <span className="text-stone-500 font-mono">
-                                  € {Number(m.priceSuperBig || m.priceBig || m.priceG || m.priceSingle || 0).toFixed(2)}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                {/* Category Filter Pills */}
+                <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
+                  {[
+                    { id: 'all', label: 'Todos' },
+                    { id: 'pizzas', label: '🍕 Pizzas' },
+                    { id: 'esfihas', label: '🥟 Esfihas' },
+                    { id: 'bebidas', label: '🥤 Bebidas' },
+                    { id: 'outros', label: '🍟 Outros' }
+                  ].map(cat => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setCategoryFilter(cat.id as any)}
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all shrink-0 cursor-pointer border ${
+                        categoryFilter === cat.id
+                          ? 'bg-stone-900 text-white border-stone-900 shadow-xs'
+                          : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-100'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
 
-                    {selectedProductId && customAdditionalFlavors.length < 3 && (
+                {/* Smart Product Search Combobox */}
+                <div ref={productSearchContainerRef} className="relative">
+                  <div className="relative">
+                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                    <input
+                      type="text"
+                      value={selectedProductSearch}
+                      onFocus={() => setIsProductSearchOpen(true)}
+                      onChange={(e) => {
+                        setSelectedProductSearch(e.target.value);
+                        setIsProductSearchOpen(true);
+                        if (!e.target.value) {
+                          setSelectedProductId('');
+                        }
+                      }}
+                      placeholder={categoryFilter === 'pizzas' ? "Buscar pizza por nome ou número..." : "Pesquisar sabor ou produto..."}
+                      className="w-full pl-7 pr-7 py-1.5 bg-white rounded-lg border border-stone-200 text-xs font-bold text-stone-900 outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all"
+                    />
+                    {selectedProductSearch && (
                       <button
                         type="button"
                         onClick={() => {
-                          const newFlavors = [...customAdditionalFlavors, { id: '', search: '' }];
-                          setCustomAdditionalFlavors(newFlavors);
-                          if (newFlavors.length === 1) setSelectedSize('priceG');
-                          if (newFlavors.length === 2) setSelectedSize('priceBig');
-                          if (newFlavors.length === 3) setSelectedSize('priceSuperBig');
+                          setSelectedProductSearch('');
+                          setSelectedProductId('');
+                          setIsProductSearchOpen(false);
                         }}
-                        className="mt-1 w-full px-2 py-1 bg-stone-100 border border-stone-200 text-stone-600 hover:bg-stone-200 hover:text-stone-900 text-[10px] font-bold rounded transition-colors"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 text-xs font-bold"
                       >
-                        + Adicionar Sabor
+                        ✕
                       </button>
                     )}
                   </div>
 
-                  <div className="flex flex-col gap-1">
-                    <select
-                      value={selectedSize}
-                      onChange={(e) => setSelectedSize(e.target.value)}
-                      className="w-full px-1.5 py-1 bg-white rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none cursor-pointer"
-                    >
-                      <option value="priceSingle">Único</option>
-                      <option value="priceP">Tam P</option>
-                      <option value="priceM">Tam M</option>
-                      <option value="priceG">Tam G (2 Sab)</option>
-                      <option value="priceBig">Tam Big (3 Sab)</option>
-                      <option value="priceSuperBig">Tam Super Big (4 Sab)</option>
-                    </select>
-                    <button
-                      type="button"
-                      onClick={handleAddItem}
-                      disabled={!selectedProductId}
-                      className="w-full px-2.5 py-1.5 bg-stone-900 hover:bg-stone-950 text-white font-bold rounded text-[11px] transition-colors disabled:opacity-50 cursor-pointer border border-stone-800"
-                    >
-                      Incluir
-                    </button>
-                  </div>
+                  {/* Autocomplete dropdown */}
+                  {isProductSearchOpen && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded-lg shadow-xl z-40 max-h-48 overflow-y-auto divide-y divide-stone-100">
+                      {filteredMenuItems.length === 0 ? (
+                        <div className="p-2.5 text-center text-xs text-stone-400">
+                          Nenhum produto encontrado.
+                        </div>
+                      ) : (
+                        filteredMenuItems.map(m => {
+                          const isP = isPizzaItem(m);
+                          const displayPrice = isP
+                            ? (m.priceG || m.priceM || m.priceSingle || 0)
+                            : (m.priceSingle || m.price || 0);
+                          return (
+                            <div
+                              key={m.id}
+                              onClick={() => handleSelectProduct(m)}
+                              className={`p-2 text-xs cursor-pointer flex items-center justify-between hover:bg-stone-50 transition-colors ${
+                                selectedProductId === m.id ? 'bg-amber-50/60 font-bold' : ''
+                              }`}
+                            >
+                              <div className="flex-1 min-w-0 pr-2">
+                                <div className="font-bold text-stone-900 truncate flex items-center gap-1.5">
+                                  {isP && <span className="text-[10px]">🍕</span>}
+                                  <span>{m.name}</span>
+                                </div>
+                                {m.ingredients && (
+                                  <div className="text-[10px] text-stone-400 truncate">{m.ingredients}</div>
+                                )}
+                              </div>
+                              <span className="text-[11px] font-mono font-bold text-stone-600 shrink-0">
+                                {isP ? `a partir de € ${displayPrice.toFixed(2)}` : `€ ${displayPrice.toFixed(2)}`}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                {/* Size Selection */}
+                {isCurrentSelectionPizza ? (
+                  <div className="space-y-1 pt-1 border-t border-stone-200/60">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[9px] font-mono font-bold text-stone-400 uppercase tracking-wider">
+                        Tamanho da Pizza
+                      </label>
+                      <span className="text-[9px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">
+                        {selectedSize === 'priceSuperBig' ? 'Até 4 Sabores' : selectedSize === 'priceBig' ? 'Até 3 Sabores' : selectedSize === 'priceG' ? 'Até 2 Sabores' : '1 Sabor'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-5 gap-1">
+                      {[
+                        { key: 'priceP', label: 'P', sub: '1 Sab' },
+                        { key: 'priceM', label: 'M', sub: '1 Sab' },
+                        { key: 'priceG', label: 'G', sub: '2 Sab' },
+                        { key: 'priceBig', label: 'Big', sub: '3 Sab' },
+                        { key: 'priceSuperBig', label: 'Super Big', sub: '4 Sab' }
+                      ].map(sz => {
+                        const isSelected = selectedSize === sz.key;
+                        const szPrice = selectedBaseMenuItem ? getPizzaPriceForSize(selectedBaseMenuItem, sz.key) : 0;
+                        return (
+                          <button
+                            key={sz.key}
+                            type="button"
+                            onClick={() => handleSelectSize(sz.key)}
+                            className={`py-1.5 px-1 rounded-md flex flex-col items-center justify-center transition-all cursor-pointer border text-center ${
+                              isSelected
+                                ? 'bg-amber-400 text-stone-950 font-black border-amber-500 shadow-xs'
+                                : 'bg-white text-stone-700 font-bold border-stone-200 hover:bg-stone-50'
+                            }`}
+                          >
+                            <span className="text-[10px] leading-tight">{sz.label}</span>
+                            <span className="text-[8px] opacity-75 leading-tight">{sz.sub}</span>
+                            {szPrice > 0 && (
+                              <span className="text-[8.5px] font-mono mt-0.5 leading-none">
+                                €{szPrice.toFixed(1)}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  selectedProductId && (
+                    <div className="flex items-center justify-between px-2 py-1 bg-stone-100 rounded text-xs font-bold text-stone-700 border border-stone-200">
+                      <span className="text-[10px] font-mono text-stone-500 uppercase">Item Simples</span>
+                      <span className="font-mono text-stone-900">
+                        € {(selectedBaseMenuItem?.priceSingle || selectedBaseMenuItem?.price || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  )
+                )}
+
+                {/* Multi-Flavor Pizza Manager (G, Big, Super Big) */}
+                {isCurrentSelectionPizza && ['priceG', 'priceBig', 'priceSuperBig'].includes(selectedSize) && selectedProductId && (
+                  <div className="space-y-1.5 pt-1.5 border-t border-stone-200/60">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[9px] font-mono font-bold text-stone-400 uppercase tracking-wider">
+                        Sabores Selecionados ({totalFlavors} de {maxAdditionalFlavors + 1})
+                      </span>
+                      <span className="text-[9px] text-stone-500 font-medium">
+                        Cálculo pelo maior valor
+                      </span>
+                    </div>
+
+                    {/* 1º Sabor (Base) */}
+                    <div className="flex items-center justify-between p-1.5 bg-white rounded-md border border-stone-200 text-xs">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-mono text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200 shrink-0">
+                          {getFractionText(0, totalFlavors)}
+                        </span>
+                        <span className="font-bold text-stone-900 truncate">
+                          {selectedBaseMenuItem?.name || selectedProductSearch}
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold text-stone-500 shrink-0">
+                        € {getPizzaPriceForSize(selectedBaseMenuItem, selectedSize).toFixed(2)}
+                      </span>
+                    </div>
+
+                    {/* Sabores Adicionais já selecionados */}
+                    {customAdditionalFlavors.map((flavor, idx) => {
+                      const matchingItem = menuItems.find(m => m.id === flavor.id);
+                      const sPrice = matchingItem ? getPizzaPriceForSize(matchingItem, selectedSize) : 0;
+                      const isSearchingThis = searchingFlavorSlot === idx;
+
+                      if (isSearchingThis) {
+                        return (
+                          <div key={idx} className="p-2 bg-amber-50/70 border-2 border-amber-400 rounded-lg space-y-1.5 shadow-sm">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-black text-amber-900 flex items-center gap-1">
+                                <Search size={11} className="text-amber-700" />
+                                Trocar {idx + 2}º Sabor (Somente Pizzas):
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => { setSearchingFlavorSlot(null); setFlavorSearchQuery(''); }}
+                                className="text-stone-400 hover:text-stone-700 text-[10px] font-bold"
+                              >
+                                Cancelar ✕
+                              </button>
+                            </div>
+                            <input
+                              ref={flavorSearchInputRef}
+                              type="text"
+                              value={flavorSearchQuery}
+                              onChange={e => setFlavorSearchQuery(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && filteredSlotPizzas.length > 0) {
+                                  e.preventDefault();
+                                  const chosen = filteredSlotPizzas[0];
+                                  const next = [...customAdditionalFlavors];
+                                  next[idx] = { id: chosen.id, search: chosen.name };
+                                  setCustomAdditionalFlavors(next);
+                                  setSearchingFlavorSlot(null);
+                                  setFlavorSearchQuery('');
+                                } else if (e.key === 'Escape') {
+                                  setSearchingFlavorSlot(null);
+                                }
+                              }}
+                              placeholder="Nome ou número da pizza..."
+                              className="w-full px-2 py-1 bg-white border border-stone-300 rounded text-xs font-bold text-stone-900 outline-none focus:border-amber-500"
+                            />
+                            <div className="max-h-32 overflow-y-auto divide-y divide-stone-100 bg-white rounded border border-stone-200">
+                              {filteredSlotPizzas.length === 0 ? (
+                                <div className="p-2 text-center text-[10px] text-stone-400">Nenhuma pizza encontrada.</div>
+                              ) : (
+                                filteredSlotPizzas.map(p => (
+                                  <div
+                                    key={p.id}
+                                    onClick={() => {
+                                      const next = [...customAdditionalFlavors];
+                                      next[idx] = { id: p.id, search: p.name };
+                                      setCustomAdditionalFlavors(next);
+                                      setSearchingFlavorSlot(null);
+                                      setFlavorSearchQuery('');
+                                    }}
+                                    className="p-1.5 text-xs font-bold text-stone-800 hover:bg-amber-50 cursor-pointer flex justify-between items-center"
+                                  >
+                                    <span className="truncate">{p.name}</span>
+                                    <span className="text-[10px] font-mono text-stone-500 shrink-0">
+                                      € {getPizzaPriceForSize(p, selectedSize).toFixed(2)}
+                                    </span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={idx} className="flex items-center justify-between p-1.5 bg-white rounded-md border border-stone-200 text-xs">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-mono text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200 shrink-0">
+                              {getFractionText(idx + 1, totalFlavors)}
+                            </span>
+                            <span className="font-bold text-stone-900 truncate">
+                              {flavor.search || flavor.id}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {sPrice > 0 && (
+                              <span className="text-[10px] font-mono font-bold text-stone-500 mr-0.5">
+                                € {sPrice.toFixed(2)}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSearchingFlavorSlot(idx);
+                                setFlavorSearchQuery('');
+                              }}
+                              className="px-1.5 py-0.5 bg-stone-50 hover:bg-amber-50 text-amber-900 border border-stone-200 rounded text-[9.5px] font-bold flex items-center gap-1 cursor-pointer"
+                              title="Trocar este sabor"
+                            >
+                              <RotateCcw size={10} />
+                              <span>Trocar</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCustomAdditionalFlavors(prev => prev.filter((_, i) => i !== idx));
+                              }}
+                              className="w-5 h-5 flex items-center justify-center text-stone-400 hover:text-rose-600 rounded hover:bg-rose-50 cursor-pointer transition-colors text-xs font-bold"
+                              title="Remover este sabor"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Novo slot de busca ativo para adicionar sabor */}
+                    {searchingFlavorSlot === customAdditionalFlavors.length && (
+                      <div className="p-2 bg-amber-50/70 border-2 border-amber-400 rounded-lg space-y-1.5 shadow-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-amber-900 flex items-center gap-1">
+                            <Search size={11} className="text-amber-700" />
+                            Adicionar {customAdditionalFlavors.length + 2}º Sabor (Somente Pizzas):
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => { setSearchingFlavorSlot(null); setFlavorSearchQuery(''); }}
+                            className="text-stone-400 hover:text-stone-700 text-[10px] font-bold"
+                          >
+                            Cancelar ✕
+                          </button>
+                        </div>
+                        <input
+                          ref={flavorSearchInputRef}
+                          type="text"
+                          value={flavorSearchQuery}
+                          onChange={e => setFlavorSearchQuery(e.target.value)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && filteredSlotPizzas.length > 0) {
+                              e.preventDefault();
+                              const chosen = filteredSlotPizzas[0];
+                              setCustomAdditionalFlavors(prev => [...prev, { id: chosen.id, search: chosen.name }]);
+                              setSearchingFlavorSlot(null);
+                              setFlavorSearchQuery('');
+                            } else if (e.key === 'Escape') {
+                              setSearchingFlavorSlot(null);
+                            }
+                          }}
+                          placeholder="Digite o nome ou número da pizza..."
+                          className="w-full px-2 py-1 bg-white border border-stone-300 rounded text-xs font-bold text-stone-900 outline-none focus:border-amber-500"
+                        />
+                        <div className="max-h-32 overflow-y-auto divide-y divide-stone-100 bg-white rounded border border-stone-200">
+                          {filteredSlotPizzas.length === 0 ? (
+                            <div className="p-2 text-center text-[10px] text-stone-400">Nenhuma pizza encontrada.</div>
+                          ) : (
+                            filteredSlotPizzas.map(p => (
+                              <div
+                                key={p.id}
+                                onClick={() => {
+                                  setCustomAdditionalFlavors(prev => [...prev, { id: p.id, search: p.name }]);
+                                  setSearchingFlavorSlot(null);
+                                  setFlavorSearchQuery('');
+                                }}
+                                className="p-1.5 text-xs font-bold text-stone-800 hover:bg-amber-50 cursor-pointer flex justify-between items-center"
+                              >
+                                <span className="truncate">{p.name}</span>
+                                <span className="text-[10px] font-mono text-stone-500 shrink-0">
+                                  € {getPizzaPriceForSize(p, selectedSize).toFixed(2)}
+                                </span>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Botão para abrir o combobox de sabor adicional */}
+                    {searchingFlavorSlot === null && customAdditionalFlavors.length < maxAdditionalFlavors && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchingFlavorSlot(customAdditionalFlavors.length);
+                          setFlavorSearchQuery('');
+                        }}
+                        className="w-full py-1.5 px-2 border border-dashed border-amber-400 hover:border-amber-500 bg-amber-50/50 hover:bg-amber-50 text-amber-950 rounded-md text-[11px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Plus size={12} className="text-amber-700 stroke-[3]" />
+                        <span>
+                          + Adicionar {customAdditionalFlavors.length === 0 ? (selectedSize === 'priceG' ? '2º Sabor (Meio a Meio)' : '2º Sabor') : `${customAdditionalFlavors.length + 2}º Sabor`}
+                        </span>
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Button to Include or Update Item */}
+                <button
+                  type="button"
+                  onClick={handleAddItem}
+                  disabled={!selectedProductId && !selectedProductSearch.trim()}
+                  className={`w-full py-2 px-3 rounded-lg text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer ${
+                    editingItemIndex !== null
+                      ? 'bg-amber-500 hover:bg-amber-600 text-stone-950'
+                      : 'bg-stone-950 hover:bg-stone-900 text-white'
+                  } disabled:opacity-40 disabled:cursor-not-allowed`}
+                >
+                  <Check size={14} className="stroke-[2.5]" />
+                  <span>{editingItemIndex !== null ? 'Salvar Alteração no Pedido' : 'Incluir no Pedido'}</span>
+                </button>
               </div>
             </div>
 

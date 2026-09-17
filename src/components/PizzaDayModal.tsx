@@ -10,11 +10,26 @@ interface PizzaDayModalProps {
 }
 
 export default function PizzaDayModal({ isOpen, onClose, onAction }: PizzaDayModalProps) {
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm transition-opacity">
-      <div className="bg-white text-[#1a1a1a] rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl relative flex flex-col transform transition-all scale-100 animate-in fade-in zoom-in-95 duration-300">
+    <div 
+      className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm transition-opacity"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white text-[#1a1a1a] rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl relative flex flex-col transform transition-all scale-100 animate-in fade-in zoom-in-95 duration-300"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-2 bg-black/40 backdrop-blur-md rounded-full text-white hover:bg-black/60 z-20 transition-colors shadow-lg"

@@ -11,6 +11,15 @@ interface MenuDoDiaModalProps {
 }
 
 export default function MenuDoDiaModal({ isOpen, onClose, onSelectItem, menuItems }: MenuDoDiaModalProps) {
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
   
   const now = getLisbonDate();
@@ -19,8 +28,14 @@ export default function MenuDoDiaModal({ isOpen, onClose, onSelectItem, menuItem
   const todaysPromos = menuItems.filter(i => (i.category === 'promocoes' || (i as any).groupOverride === 'promocoes') && i.dayOfWeek === todayDayOfWeek);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
-      <div className="bg-white text-[#1a1a1a] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl relative flex flex-col">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white text-[#1a1a1a] rounded-2xl w-full max-w-lg max-h-[90vh] overflow-hidden shadow-2xl relative flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
           <h3 className="font-extrabold text-2xl text-[#8b0000]">
             📢 PROMOÇÃO DO DIA!

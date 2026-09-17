@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Plus } from "lucide-react";
 import { MenuItem } from "../types";
 import { getLisbonDate } from "../utils/date";
 import { findImageForProduct } from "../utils/imageResolver";
+import { hapticLight } from "../utils/haptics";
 
 interface MenuItemCardProps {
   item: MenuItem & { isMaisPedido?: boolean; groupOverride?: string };
@@ -49,7 +50,13 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
   }
 
   const [imgAttempt, setImgAttempt] = React.useState(0);
+  const [imgLoaded, setImgLoaded] = useState(false);
   const exts = ['.png', '.jpg', '.jpeg', '.webp'];
+
+  const handleCardClick = () => {
+    hapticLight();
+    onClick();
+  };
 
   let photoSrc = item.imageUrl ? item.imageUrl.replace(/^\//, '') : "";
   if (photoSrc === 'none') {
@@ -79,15 +86,19 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
   if (item.id.startsWith('promo-dia-da-pizza') || catId === 'promocoes') {
     return (
       <div
-        onClick={onClick}
-        className="w-full h-full flex flex-col overflow-hidden rounded-xl cursor-pointer group shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 bg-white"
+        onClick={handleCardClick}
+        className="w-full h-full flex flex-col overflow-hidden rounded-xl cursor-pointer group shadow-sm hover:shadow-md transition-all duration-200 border border-gray-200 bg-white active:scale-[0.99]"
       >
         {hasPhoto && (
-          <div className="w-full aspect-[4/5] overflow-hidden bg-gray-50 relative flex items-center justify-center">
+          <div className="w-full aspect-[4/5] overflow-hidden bg-stone-100 relative flex items-center justify-center">
+            {!imgLoaded && !failedImage && (
+              <div className="absolute inset-0 bg-stone-200 animate-pulse" />
+            )}
             <img
               src={currentSrc}
               alt={item.name}
-              className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500"
+              onLoad={() => setImgLoaded(true)}
+              className={`w-full h-full object-contain object-center transition-all duration-300 ${imgLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} group-hover:scale-105`}
               onError={() => {
                 if (imgAttempt < exts.length) {
                   setImgAttempt(prev => prev + 1);
@@ -120,55 +131,55 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
 
   return (
     <div
-      onClick={onClick}
-      className={`${catId === "promocoes" ? "bg-[#8b0000]/10 border-[#8b0000]" : (catId === "menu-do-dia" && item.dayOfWeek === getLisbonDate().getDay() ? "bg-green-50 border-green-500" : "bg-white border-gray-200")} border rounded-xl p-4 flex items-start justify-between gap-4 cursor-pointer hover:shadow transition-shadow duration-200 group relative bg-white`}
+      onClick={handleCardClick}
+      className={`${catId === "promocoes" ? "bg-[#8b0000]/10 border-[#8b0000]" : (catId === "menu-do-dia" && item.dayOfWeek === getLisbonDate().getDay() ? "bg-green-50 border-green-500" : "bg-white border-gray-200")} border rounded-xl p-3 sm:p-4 flex items-start justify-between gap-3 sm:gap-4 cursor-pointer hover:shadow-md active:scale-[0.99] transition-all duration-200 group relative bg-white`}
     >
       {catId === "promocoes" && (
-        <div className="absolute top-0 right-0 bg-[#8b0000] text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider z-10">
+        <div className="absolute top-0 right-0 bg-[#8b0000] text-white text-[9px] sm:text-[10px] font-bold px-2.5 py-0.5 sm:py-1 rounded-bl-lg uppercase tracking-wider z-10">
           Destaque
         </div>
       )}
       {catId === "menu-do-dia" && item.dayOfWeek === getLisbonDate().getDay() && (
-        <div className="absolute top-0 right-0 bg-green-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider z-10 shadow-sm animate-pulse">
+        <div className="absolute top-0 right-0 bg-green-600 text-white text-[9px] sm:text-[10px] font-bold px-2.5 py-0.5 sm:py-1 rounded-bl-lg uppercase tracking-wider z-10 shadow-sm animate-pulse">
           🔥 HOJE
         </div>
       )}
       {item.isMaisPedido && catId === "mais-pedidos" && (
-        <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg uppercase tracking-wider z-10">
+        <div className="absolute top-0 right-0 bg-red-500 text-white text-[9px] sm:text-[10px] font-bold px-2.5 py-0.5 sm:py-1 rounded-bl-lg uppercase tracking-wider z-10">
           🔥 Popular
         </div>
       )}
-      <div className={`flex-1 flex flex-col justify-between h-full ${hasPhoto ? "min-h-[112px]" : "min-h-[88px]"}`}>
+      <div className={`flex-1 flex flex-col justify-between h-full ${hasPhoto ? "min-h-[92px] sm:min-h-[112px]" : "min-h-[76px] sm:min-h-[88px]"}`}>
         <div>
           <h3
-            className={`font-bold ${catId === "promocoes" ? "text-lg text-[#8b0000]" : catId === "mais-pedidos" ? "text-[13px] text-gray-900" : "text-[15px] text-gray-900"} mb-1 break-words pr-2`}
+            className={`font-bold ${catId === "promocoes" ? "text-base sm:text-lg text-[#8b0000]" : catId === "mais-pedidos" ? "text-xs sm:text-[13px] text-gray-900" : "text-sm sm:text-[15px] text-gray-900"} mb-0.5 sm:mb-1 break-words pr-1.5 leading-snug`}
           >
             {item.name}
           </h3>
           <p
-            className={`${catId === "mais-pedidos" ? "text-[11px]" : "text-[13px]"} ${catId === "promocoes" ? "text-gray-700 font-medium" : "text-gray-500"} line-clamp-2 leading-relaxed pr-2 mt-1`}
+            className={`${catId === "mais-pedidos" ? "text-[10.5px] sm:text-[11px]" : "text-[11.5px] sm:text-[13px]"} ${catId === "promocoes" ? "text-gray-700 font-medium" : "text-gray-500"} line-clamp-2 leading-relaxed pr-1.5 mt-0.5`}
           >
             {item.ingredients}
           </p>
         </div>
-        <div className="mt-4 flex justify-between items-center pr-2">
+        <div className="mt-2.5 sm:mt-4 flex justify-between items-center pr-1.5">
           {priceDisplay}
-          <button className="w-7 h-7 bg-gray-100 text-gray-700 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors shrink-0">
-            <Plus className="w-4 h-4" />
+          <button className="w-6 h-6 sm:w-7 sm:h-7 bg-[#8b0000]/10 text-[#8b0000] hover:bg-[#8b0000] hover:text-white rounded-full flex items-center justify-center transition-colors shrink-0">
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
           </button>
         </div>
       </div>
-      {/* Foto do produto Estilo iFood */}
+      {/* Foto do produto Estilo iFood Compacto com Shimmer */}
       {hasPhoto && (
-        <div className="w-[112px] h-[112px] shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shadow-sm relative flex items-center justify-center">
+        <div className="w-[92px] h-[92px] sm:w-[112px] sm:h-[112px] shrink-0 rounded-xl overflow-hidden bg-stone-100 border border-gray-200 shadow-2xs relative flex items-center justify-center">
+          {!imgLoaded && !failedImage && (
+            <div className="absolute inset-0 bg-stone-200 animate-pulse" />
+          )}
           <img
             src={currentSrc}
             alt={item.name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            onClick={(e) => {
-              e.stopPropagation();
-              onZoom(currentSrc);
-            }}
+            onLoad={() => setImgLoaded(true)}
+            className={`w-full h-full object-cover transition-all duration-300 ${imgLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} group-hover:scale-105`}
             onError={() => {
               if (imgAttempt < exts.length) {
                 setImgAttempt(prev => prev + 1);

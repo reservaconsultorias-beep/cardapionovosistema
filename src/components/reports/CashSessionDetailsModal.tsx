@@ -47,6 +47,22 @@ export default function CashSessionDetailsModal({ session, onClose }: CashSessio
     }
   }, [session]);
 
+  // Dismiss on ESC (closes submodal receipt first if open, or modal itself)
+  useEffect(() => {
+    if (!session) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (selectedReceiptOrder) {
+          setSelectedReceiptOrder(null);
+        } else {
+          onClose();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [session, selectedReceiptOrder, onClose]);
+
   const loadSessionDetails = async (sessionId: string) => {
     setLoading(true);
 

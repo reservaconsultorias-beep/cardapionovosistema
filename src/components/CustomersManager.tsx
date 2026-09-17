@@ -233,6 +233,14 @@ export default function CustomersManager() {
 }
 
 function CustomerModal({ customer, orders, loadingOrders, onClose, onSave }: any) {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const [activeTab, setActiveTab] = useState<'history' | 'edit'>('history');
   
   // Edit form state
@@ -251,8 +259,14 @@ function CustomerModal({ customer, orders, loadingOrders, onClose, onSave }: any
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-      <div className="bg-white rounded-xl w-full max-w-lg shadow-2xl border border-[#E7E5E1] overflow-hidden flex flex-col max-h-[85vh]">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-xl w-full max-w-lg shadow-2xl border border-[#E7E5E1] overflow-hidden flex flex-col max-h-[85vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-4 border-b border-[#E7E5E1] flex justify-between items-start bg-[#FAFAF9] flex-shrink-0">
           <div>
             <h3 className="font-bold text-lg text-[#1C1917]">{customer.name || 'Sem nome'}</h3>

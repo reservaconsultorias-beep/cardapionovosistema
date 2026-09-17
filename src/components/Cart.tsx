@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import confetti from "canvas-confetti";
 import { supabase } from '../lib/supabase';
 import { CartItem } from "../types";
+import { hapticLight, hapticMedium, hapticSuccess } from "../utils/haptics";
 import {
   RESTAURANT_WHATSAPP_PHONE,
   ALL_MENU_ITEMS,
@@ -49,6 +50,18 @@ export default function Cart({
   // Navigation Steps: 'items' (Meu Pedido) | 'checkout' (Dados de Entrega & Pagamento)
   const [currentStep, setCurrentStep] = useState<'items' | 'checkout'>('items');
   const [showNifInput, setShowNifInput] = useState(false);
+
+  // Dismiss on ESC when mobile cart drawer is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   // Form State
   const [name, setName] = useState("");
@@ -173,6 +186,7 @@ export default function Cart({
   useEffect(() => {
     if (subtotal >= freeDeliveryThreshold && !hasShownParty) {
       setHasShownParty(true);
+      hapticSuccess();
       try {
         const fireConfetti = typeof confetti === 'function' ? confetti : (confetti ? (confetti as any).default : null);
         if (typeof fireConfetti === 'function') {
@@ -482,7 +496,7 @@ export default function Cart({
           <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
             <div
               className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity"
-              onClick={() => {}}
+              onClick={onClose}
             />
             <div className="relative bg-white w-full rounded-t-3xl overflow-hidden shadow-2xl flex flex-col items-center justify-center p-6 text-center">
               <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-2.5">
@@ -563,6 +577,34 @@ export default function Cart({
             >
               <span>2. Entrega ➔</span>
             </button>
+          </div>
+        )}
+
+        {/* FREE DELIVERY PROGRESS BAR IN CART */}
+        {items.length > 0 && (
+          <div className="mt-2.5 pt-2 border-t border-gray-100">
+            <div className="flex justify-between items-center text-[11px] font-bold mb-1">
+              {subtotal >= freeDeliveryThreshold ? (
+                <span className="text-emerald-700 flex items-center gap-1">
+                  🎉 <strong>Entrega Grátis garantida!</strong>
+                </span>
+              ) : (
+                <span className="text-stone-600">
+                  Falta <strong className="text-[#8b0000]">€{(freeDeliveryThreshold - subtotal).toFixed(2)}</strong> para <strong>Entrega Grátis</strong> 🛵
+                </span>
+              )}
+              <span className="text-stone-400 font-medium text-[10px]">Meta: €{freeDeliveryThreshold.toFixed(2)}</span>
+            </div>
+            <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden border border-stone-200/60">
+              <div
+                className={`h-full transition-all duration-500 rounded-full ${
+                  subtotal >= freeDeliveryThreshold
+                    ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                    : "bg-gradient-to-r from-amber-400 to-[#d4af37]"
+                }`}
+                style={{ width: `${Math.min(100, Math.round((subtotal / freeDeliveryThreshold) * 100))}%` }}
+              />
+            </div>
           </div>
         )}
       </div>

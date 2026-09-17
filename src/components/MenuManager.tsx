@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { MenuItem, ALL_MENU_ITEMS } from '../data/menu';
-import { Plus, Edit2, Trash2, Save, X, Image as ImageIcon, Search } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X, Image as ImageIcon, Search, ChevronDown, Check } from 'lucide-react';
 
 export default function MenuManager() {
   const [categories, setCategories] = useState<any[]>([]);
@@ -13,6 +13,36 @@ export default function MenuManager() {
   const [searchTerm, setSearchTerm] = useState('');
   const [feedback, setFeedback] = useState("");
   const [pausedItems, setPausedItems] = useState<string[]>([]);
+
+  // Category dropdown combobox state
+  const [isCatDropdownOpen, setIsCatDropdownOpen] = useState(false);
+  const catDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (catDropdownRef.current && !catDropdownRef.current.contains(e.target as Node)) {
+        setIsCatDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Dismiss on ESC
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (isCatDropdownOpen) {
+          setIsCatDropdownOpen(false);
+        } else {
+          setIsModalOpen(false);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isModalOpen, isCatDropdownOpen]);
 
   const loadData = async () => {
     setLoading(true);
@@ -161,15 +191,25 @@ export default function MenuManager() {
       finalImageUrl = `https://tipnhvpivhaerumetona.supabase.co/storage/v1/object/public/Cardapio41menus/${finalImageUrl}`;
     }
 
+    const isPizza = ['pizzas', 'tradicionais', 'especiais', 'gourmet', 'doces'].includes(editingItem.category) || editingItem.id?.startsWith('p-');
+
+    const parseNum = (val: any) => {
+      if (val === undefined || val === null || val === '') return null;
+      const parsed = parseFloat(String(val).replace(',', '.'));
+      return isNaN(parsed) ? null : parsed;
+    };
+
     const dbItem = {
       id: editingItem.id || `item-${Date.now()}`,
       name: editingItem.name,
       ingredients: editingItem.ingredients,
       category: editingItem.category,
-      price_single: editingItem.price_single || null,
-      price_p: editingItem.price_p || null,
-      price_m: editingItem.price_m || null,
-      price_g: editingItem.price_g || null,
+      price_single: isPizza ? null : parseNum(editingItem.price_single),
+      price_p: isPizza ? parseNum(editingItem.price_p) : null,
+      price_m: isPizza ? parseNum(editingItem.price_m) : null,
+      price_g: isPizza ? parseNum(editingItem.price_g) : null,
+      price_big: isPizza ? parseNum(editingItem.price_big) : null,
+      price_super_big: isPizza ? parseNum(editingItem.price_super_big) : null,
       image_url: finalImageUrl,
       day_of_week: editingItem.day_of_week || null,
       is_active: editingItem.is_active !== undefined ? editingItem.is_active : true,
@@ -234,9 +274,15 @@ export default function MenuManager() {
       ingredients: '',
       category: categories[0]?.id || '',
       price_single: '',
+      price_p: '',
+      price_m: '',
+      price_g: '',
+      price_big: '',
+      price_super_big: '',
       image_url: '',
       is_bestseller: false
     });
+    setIsCatDropdownOpen(false);
     setIsModalOpen(true);
   };
 
@@ -265,8 +311,9 @@ export default function MenuManager() {
       </div>
 
       {feedback && (
-        <div className="mb-4 p-3 bg-blue-50 text-blue-700 rounded-lg text-sm border border-blue-100">
-          {feedback}
+        <div className="fixed bottom-6 right-6 z-50 bg-stone-900 text-white px-4 py-2.5 rounded-xl shadow-2xl border border-stone-700 text-xs font-bold flex items-center gap-2.5 animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          <span>{feedback}</span>
         </div>
       )}
 
@@ -411,8 +458,14 @@ export default function MenuManager() {
 
       {/* Editor Modal */}
       {isModalOpen && editingItem && (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-          <div className="bg-stone-50 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-800">
+        <div 
+          className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div 
+            className="bg-stone-50 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-stone-800"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="sticky top-0 bg-stone-950 p-4 sm:p-5 flex justify-between items-center z-10 border-b border-stone-800">
               <h2 className="text-lg font-extrabold text-white tracking-tight">
                 {editingItem.id.startsWith('item-') && !editingItem.name ? 'Novo Produto' : 'Editar Produto'}
@@ -429,11 +482,42 @@ export default function MenuManager() {
                   <input required type="text" value={editingItem.name} onChange={e => setEditingItem({...editingItem, name: e.target.value})} className="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" placeholder="Ex: 61 - Bacon" />
                 </div>
 
-                <div className="space-y-1 md:col-span-1">
+                <div ref={catDropdownRef} className="space-y-1 md:col-span-1 relative">
                   <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Categoria</label>
-                  <select required value={editingItem.category} onChange={e => setEditingItem({...editingItem, category: e.target.value})} className="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors cursor-pointer">
-                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <button
+                    type="button"
+                    onClick={() => setIsCatDropdownOpen(!isCatDropdownOpen)}
+                    className="w-full px-3 py-2 bg-stone-50 border border-stone-200 rounded-md text-xs font-bold text-stone-900 flex items-center justify-between hover:bg-stone-100/70 cursor-pointer transition-colors shadow-2xs"
+                  >
+                    <span className="truncate">
+                      {categories.find(c => c.id === editingItem.category)?.name || editingItem.category || 'Selecione...'}
+                    </span>
+                    <ChevronDown size={14} className={`text-stone-400 shrink-0 ml-1 transition-transform ${isCatDropdownOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {isCatDropdownOpen && (
+                    <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-200 rounded-lg shadow-xl z-50 py-1 max-h-52 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                      {categories.map(c => {
+                        const isSelected = editingItem.category === c.id;
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            onClick={() => {
+                              setEditingItem({ ...editingItem, category: c.id });
+                              setIsCatDropdownOpen(false);
+                            }}
+                            className={`w-full px-3 py-2 text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                              isSelected ? 'bg-amber-50 text-amber-950 font-black' : 'text-stone-800 hover:bg-stone-50 font-bold'
+                            }`}
+                          >
+                            <span>{c.name}</span>
+                            {isSelected && <Check size={12} className="text-amber-700" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -476,25 +560,82 @@ export default function MenuManager() {
               </div>
 
               <div className="border-t border-stone-100 pt-2.5">
-                <h3 className="text-[10px] font-black text-stone-400 uppercase tracking-wider mb-2">Preços (Deixe em branco se não se aplicar)</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-mono font-bold text-emerald-700 uppercase tracking-wider">Único (€)</label>
-                    <input type="number" step="0.01" value={editingItem.price_single || ''} onChange={e => setEditingItem({...editingItem, price_single: e.target.value})} className="w-full px-3 py-1.5 bg-emerald-50/30 border border-emerald-200 rounded-md text-sm font-extrabold text-emerald-900 outline-none focus:border-emerald-500 transition-colors" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Pizzas (P)</label>
-                    <input type="number" step="0.01" value={editingItem.price_p || ''} onChange={e => setEditingItem({...editingItem, price_p: e.target.value})} className="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-extrabold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Pizzas (M)</label>
-                    <input type="number" step="0.01" value={editingItem.price_m || ''} onChange={e => setEditingItem({...editingItem, price_m: e.target.value})} className="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-extrabold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="block text-[10px] font-mono font-bold text-stone-600 uppercase tracking-wider">Pizzas (G)</label>
-                    <input type="number" step="0.01" value={editingItem.price_g || ''} onChange={e => setEditingItem({...editingItem, price_g: e.target.value})} className="w-full px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-md text-sm font-extrabold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors" />
-                  </div>
-                </div>
+                {(() => {
+                  const isPizza = ['pizzas', 'tradicionais', 'especiais', 'gourmet', 'doces'].includes(editingItem.category) || editingItem.id?.startsWith('p-');
+
+                  if (isPizza) {
+                    return (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-[10px] font-black text-stone-700 uppercase tracking-wider flex items-center gap-1">
+                            🍕 Preços por Tamanho da Pizza
+                          </h3>
+                          <span className="text-[9.5px] font-mono text-stone-400">Preencha os tamanhos disponíveis</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                          <div className="p-2 rounded-lg bg-stone-50 border border-stone-200 space-y-1">
+                            <label className="block text-[9.5px] font-mono font-bold text-stone-600 uppercase">Pequena (P)</label>
+                            <div className="flex items-center gap-0.5">
+                              <span className="text-xs font-mono font-bold text-stone-400">€</span>
+                              <input type="number" step="0.01" value={editingItem.price_p ?? ''} onChange={e => setEditingItem({...editingItem, price_p: e.target.value})} placeholder="0.00" className="w-full bg-white px-2 py-1 text-xs font-mono font-bold border border-stone-300 rounded focus:border-amber-500 outline-none" />
+                            </div>
+                          </div>
+                          <div className="p-2 rounded-lg bg-stone-50 border border-stone-200 space-y-1">
+                            <label className="block text-[9.5px] font-mono font-bold text-stone-600 uppercase">Média (M)</label>
+                            <div className="flex items-center gap-0.5">
+                              <span className="text-xs font-mono font-bold text-stone-400">€</span>
+                              <input type="number" step="0.01" value={editingItem.price_m ?? ''} onChange={e => setEditingItem({...editingItem, price_m: e.target.value})} placeholder="0.00" className="w-full bg-white px-2 py-1 text-xs font-mono font-bold border border-stone-300 rounded focus:border-amber-500 outline-none" />
+                            </div>
+                          </div>
+                          <div className="p-2 rounded-lg bg-amber-50/50 border border-amber-300 space-y-1">
+                            <label className="block text-[9.5px] font-mono font-bold text-amber-900 uppercase">Grande (G) *</label>
+                            <div className="flex items-center gap-0.5">
+                              <span className="text-xs font-mono font-bold text-amber-700">€</span>
+                              <input type="number" step="0.01" value={editingItem.price_g ?? ''} onChange={e => setEditingItem({...editingItem, price_g: e.target.value})} placeholder="0.00" className="w-full bg-white px-2 py-1 text-xs font-mono font-bold border border-amber-400 rounded focus:border-amber-600 outline-none" />
+                            </div>
+                          </div>
+                          <div className="p-2 rounded-lg bg-stone-50 border border-stone-200 space-y-1">
+                            <label className="block text-[9.5px] font-mono font-bold text-stone-600 uppercase">Big (Família)</label>
+                            <div className="flex items-center gap-0.5">
+                              <span className="text-xs font-mono font-bold text-stone-400">€</span>
+                              <input type="number" step="0.01" value={editingItem.price_big ?? ''} onChange={e => setEditingItem({...editingItem, price_big: e.target.value})} placeholder="0.00" className="w-full bg-white px-2 py-1 text-xs font-mono font-bold border border-stone-300 rounded focus:border-amber-500 outline-none" />
+                            </div>
+                          </div>
+                          <div className="p-2 rounded-lg bg-stone-50 border border-stone-200 space-y-1">
+                            <label className="block text-[9.5px] font-mono font-bold text-stone-600 uppercase">Super Big (GG)</label>
+                            <div className="flex items-center gap-0.5">
+                              <span className="text-xs font-mono font-bold text-stone-400">€</span>
+                              <input type="number" step="0.01" value={editingItem.price_super_big ?? ''} onChange={e => setEditingItem({...editingItem, price_super_big: e.target.value})} placeholder="0.00" className="w-full bg-white px-2 py-1 text-xs font-mono font-bold border border-stone-300 rounded focus:border-amber-500 outline-none" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="p-3 bg-emerald-50/40 border border-emerald-200 rounded-xl space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-[10px] font-mono font-bold text-emerald-800 uppercase tracking-wider">
+                          Preço do Produto (€)
+                        </label>
+                        <span className="text-[9.5px] font-mono text-emerald-700">Valor único para venda individual</span>
+                      </div>
+                      <div className="relative max-w-xs">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-emerald-700 text-sm">€</span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          required
+                          value={editingItem.price_single ?? ''}
+                          onChange={e => setEditingItem({...editingItem, price_single: e.target.value})}
+                          placeholder="0.00"
+                          className="w-full pl-8 pr-3 py-2 bg-white border border-emerald-300 rounded-lg text-sm font-black font-mono text-emerald-950 focus:border-emerald-600 focus:ring-1 focus:ring-emerald-200 outline-none shadow-2xs"
+                        />
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="pt-2 flex justify-between items-center border-t border-stone-100">

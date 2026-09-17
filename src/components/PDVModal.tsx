@@ -10,7 +10,7 @@ import {
   DollarSign, CreditCard, Smartphone, Check, 
   Percent, ArrowRight, User, Phone, MapPin, 
   Tag, Utensils, Bike, Store, AlertCircle, 
-  RotateCcw, Sparkles, ChevronRight, Hash
+  RotateCcw, Sparkles, ChevronRight, Hash, Edit2, ChevronDown
 } from 'lucide-react';
 
 interface PDVModalProps {
@@ -116,7 +116,7 @@ export default function PDVModal({
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [deliveryReference, setDeliveryReference] = useState('');
   const [deliveryZone, setDeliveryZone] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'Numerário' | 'Cartão' | 'MB Way'>('MB Way');
+  const [paymentMethod, setPaymentMethod] = useState<'Numerário' | 'MB Way'>('MB Way');
   const [cashAmountGiven, setCashAmountGiven] = useState<string>('');
 
   // Search & Navigation
@@ -146,6 +146,18 @@ export default function PDVModal({
   const [customExtras, setCustomExtras] = useState<ExtraIngredient[]>([]);
   const [customNotes, setCustomNotes] = useState('');
 
+  // Editing existing item in cart
+  const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null);
+
+  // Slot-based interactive flavor search (like modern CRM combobox)
+  const [searchingFlavorSlot, setSearchingFlavorSlot] = useState<number | null>(null);
+  const [flavorSearchQuery, setFlavorSearchQuery] = useState('');
+  const flavorSearchInputRef = useRef<HTMLInputElement>(null);
+
+  // Delivery Zone custom dropdown state
+  const [isZoneDropdownOpen, setIsZoneDropdownOpen] = useState(false);
+  const zoneDropdownRef = useRef<HTMLDivElement>(null);
+
   const handleToggleExtra = (extra: ExtraIngredient) => {
     setCustomExtras(prev => {
       const exists = prev.some(e => e.id === extra.id);
@@ -160,6 +172,74 @@ export default function PDVModal({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const cardsRef = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // Focus flavor search input when opening slot
+  useEffect(() => {
+    if (searchingFlavorSlot !== null) {
+      const timer = setTimeout(() => {
+        flavorSearchInputRef.current?.focus();
+      }, 60);
+      return () => clearTimeout(timer);
+    }
+  }, [searchingFlavorSlot]);
+
+  // Click outside to close delivery zone dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (zoneDropdownRef.current && !zoneDropdownRef.current.contains(e.target as Node)) {
+        setIsZoneDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Global Keyboard Shortcuts (F2 or '/' to search, ESC to dismiss)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement as HTMLElement;
+      const isInputActive = activeEl && ['INPUT', 'TEXTAREA', 'SELECT'].includes(activeEl.tagName);
+
+      if (e.key === 'F2' || (e.key === '/' && !isInputActive)) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
+      if (e.key === 'Escape') {
+        if (searchingFlavorSlot !== null) {
+          e.preventDefault();
+          setSearchingFlavorSlot(null);
+          setFlavorSearchQuery('');
+          return;
+        }
+        if (isZoneDropdownOpen) {
+          e.preventDefault();
+          setIsZoneDropdownOpen(false);
+          return;
+        }
+        if (customizingItem) {
+          e.preventDefault();
+          setCustomizingItem(null);
+          setEditingCartIndex(null);
+          return;
+        }
+        if (searchQuery) {
+          e.preventDefault();
+          setSearchQuery('');
+          return;
+        }
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, searchingFlavorSlot, isZoneDropdownOpen, customizingItem, searchQuery, onClose]);
 
 
   // History interception for mobile back button removed to prevent modal crashing/blinking and closing unintentionally
@@ -319,8 +399,43 @@ export default function PDVModal({
     return basePrice + bordaPrice + extrasPrice;
   }, [customizingItem, customSize, customAdditionalFlavors, customBorda, customExtras]);
 
+  // Select flavor for slot
+  const handleSelectFlavor = (slotIndex: number, flavor: MenuItem) => {
+    setCustomAdditionalFlavors(prev => {
+      const updated = [...prev];
+      if (slotIndex < updated.length) {
+        updated[slotIndex] = flavor;
+      } else {
+        updated.push(flavor);
+      }
+      return updated;
+    });
+    setSearchingFlavorSlot(null);
+    setFlavorSearchQuery('');
+  };
+
+  // Edit an item already in the cart
+  const handleEditCartItem = (idx: number) => {
+    const item = cart[idx];
+    if (!item) return;
+
+    setEditingCartIndex(idx);
+    setCustomizingItem(item.menuItem);
+    setCustomSize(item.size || 'G');
+    const flavors = item.additionalFlavors || (item.secondFlavor ? [item.secondFlavor] : []);
+    setCustomAdditionalFlavors(flavors);
+    setCustomBorda(item.selectedBorda || null);
+    setCustomExtras(item.selectedExtras || []);
+    setCustomNotes(item.notes || '');
+    setSearchingFlavorSlot(null);
+    setFlavorSearchQuery('');
+  };
+
   // Handle direct item click
   const handleProductClick = (item: MenuItem) => {
+    setEditingCartIndex(null);
+    setSearchingFlavorSlot(null);
+    setFlavorSearchQuery('');
     const hasMultipleSizes = Boolean(item.priceP || item.priceM || item.priceG || item.priceBig || item.priceSuperBig);
 
     if (hasMultipleSizes) {
@@ -343,7 +458,7 @@ export default function PDVModal({
     }
   };
 
-  // Add customized item from modal
+  // Add or update customized item from modal
   const handleConfirmCustomization = () => {
     if (!customizingItem) return;
 
@@ -362,22 +477,47 @@ export default function PDVModal({
     const extrasPrice = customExtras.reduce((sum, e) => sum + (e.price || 0), 0);
     const unitPrice = basePrice + bordaPrice + extrasPrice;
 
-    addToCart({
-      id: `${customizingItem.id}-${Date.now()}`,
-      menuItem: customizingItem,
-      size: customSize,
-      isHalf: customAdditionalFlavors.length === 1,
-      secondFlavor: customAdditionalFlavors.length === 1 ? customAdditionalFlavors[0] : undefined,
-      additionalFlavors: customAdditionalFlavors.length > 0 ? customAdditionalFlavors : undefined,
-      selectedBorda: customBorda,
-      selectedExtras: customExtras.length > 0 ? customExtras : undefined,
-      notes: customNotes.trim() || undefined,
-      quantity: 1,
-      unitPrice,
-      totalPrice: unitPrice
-    });
+    if (editingCartIndex !== null && editingCartIndex >= 0 && editingCartIndex < cart.length) {
+      setCart(prev => {
+        const updated = [...prev];
+        const existing = updated[editingCartIndex];
+        const qty = existing.quantity;
+        updated[editingCartIndex] = {
+          ...existing,
+          menuItem: customizingItem,
+          size: customSize,
+          isHalf: customAdditionalFlavors.length === 1,
+          secondFlavor: customAdditionalFlavors.length === 1 ? customAdditionalFlavors[0] : undefined,
+          additionalFlavors: customAdditionalFlavors.length > 0 ? customAdditionalFlavors : undefined,
+          selectedBorda: customBorda,
+          selectedExtras: customExtras.length > 0 ? customExtras : undefined,
+          notes: customNotes.trim() || undefined,
+          unitPrice,
+          totalPrice: unitPrice * qty
+        };
+        return updated;
+      });
+      setEditingCartIndex(null);
+    } else {
+      addToCart({
+        id: `${customizingItem.id}-${Date.now()}`,
+        menuItem: customizingItem,
+        size: customSize,
+        isHalf: customAdditionalFlavors.length === 1,
+        secondFlavor: customAdditionalFlavors.length === 1 ? customAdditionalFlavors[0] : undefined,
+        additionalFlavors: customAdditionalFlavors.length > 0 ? customAdditionalFlavors : undefined,
+        selectedBorda: customBorda,
+        selectedExtras: customExtras.length > 0 ? customExtras : undefined,
+        notes: customNotes.trim() || undefined,
+        quantity: 1,
+        unitPrice,
+        totalPrice: unitPrice
+      });
+    }
 
     setCustomizingItem(null);
+    setSearchingFlavorSlot(null);
+    setFlavorSearchQuery('');
   };
 
   // Cart operations
@@ -935,20 +1075,45 @@ export default function PDVModal({
 
                 <div className="grid grid-cols-2 gap-1">
                   {zones.length > 0 && (
-                    <select
-                      value={deliveryZone}
-                      onChange={e => setDeliveryZone(e.target.value)}
-                      className="w-full h-7 px-1.5 bg-white border border-stone-300 rounded-md text-[11px] font-bold text-stone-800 focus:border-blue-500 focus:outline-none cursor-pointer shadow-2xs"
-                    >
-                      {zones.map(z => {
-                        const feeDisplay = isFreeDelivery ? 'Grátis!' : `+€${z.fee.toFixed(2)}`;
-                        return (
-                          <option key={z.name} value={z.name}>
-                            {z.name} ({feeDisplay})
-                          </option>
-                        );
-                      })}
-                    </select>
+                    <div ref={zoneDropdownRef} className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsZoneDropdownOpen(!isZoneDropdownOpen)}
+                        className="w-full h-7 px-2 bg-white border border-stone-300 rounded-md text-[11px] font-bold text-stone-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 focus:outline-none cursor-pointer shadow-2xs flex items-center justify-between text-left"
+                      >
+                        <span className="truncate flex-1">
+                          {deliveryZone || 'Selecione a Zona'}
+                        </span>
+                        <ChevronDown size={11} className={`text-stone-400 shrink-0 ml-1 transition-transform ${isZoneDropdownOpen ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {isZoneDropdownOpen && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-200 rounded-lg shadow-xl z-50 py-1 max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-100">
+                          {zones.map(z => {
+                            const isSelected = deliveryZone === z.name;
+                            const feeDisplay = isFreeDelivery ? 'Grátis!' : `+€${z.fee.toFixed(2)}`;
+                            return (
+                              <button
+                                key={z.name}
+                                type="button"
+                                onClick={() => {
+                                  setDeliveryZone(z.name);
+                                  setIsZoneDropdownOpen(false);
+                                }}
+                                className={`w-full px-2 py-1.5 text-left text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                                  isSelected ? 'bg-blue-50 text-blue-900 font-bold' : 'text-stone-800 hover:bg-stone-50'
+                                }`}
+                              >
+                                <span className="truncate">{z.name}</span>
+                                <span className={`text-[10px] font-mono shrink-0 ml-2 ${isFreeDelivery ? 'text-emerald-600 font-bold' : 'text-stone-500'}`}>
+                                  {feeDisplay}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   )}
                   <input
                     type="text"
@@ -1004,10 +1169,18 @@ export default function PDVModal({
               </div>
             ) : (
               <div className="space-y-1">
-                {cart.map((item, idx) => (
+                {cart.map((item, idx) => {
+                  const isCustomizable = Boolean(item.menuItem.priceP || item.menuItem.priceM || item.menuItem.priceG || item.menuItem.priceBig || item.menuItem.priceSuperBig);
+                  const isBeingEdited = editingCartIndex === idx;
+
+                  return (
                   <div 
                     key={item.id} 
-                    className="bg-stone-50/90 hover:bg-stone-50 border border-stone-200/80 rounded-lg p-1.5 shadow-2xs transition-all flex flex-col gap-0.5"
+                    className={`rounded-lg p-1.5 shadow-2xs transition-all flex flex-col gap-0.5 border ${
+                      isBeingEdited 
+                        ? 'bg-amber-50/60 border-amber-400 ring-2 ring-amber-300/50' 
+                        : 'bg-stone-50/90 hover:bg-stone-50 border-stone-200/80'
+                    }`}
                   >
                     {/* Top Row: Qty Badge, Product Name, and Item Total */}
                     <div className="flex items-start justify-between gap-1">
@@ -1015,7 +1188,13 @@ export default function PDVModal({
                         <span className="w-4.5 h-4.5 rounded bg-stone-200 text-stone-800 font-mono font-bold text-[10px] flex items-center justify-center shrink-0">
                           {item.quantity}x
                         </span>
-                        <h4 className="font-bold text-[11px] text-stone-900 truncate leading-tight" title={item.menuItem.name}>
+                        <h4 
+                          onClick={() => {
+                            if (isCustomizable) handleEditCartItem(idx);
+                          }}
+                          className={`font-bold text-[11px] text-stone-900 truncate leading-tight ${isCustomizable ? 'hover:text-amber-800 cursor-pointer' : ''}`} 
+                          title={isCustomizable ? "Clique para editar esta pizza" : item.menuItem.name}
+                        >
                           {item.menuItem.name}
                         </h4>
                       </div>
@@ -1086,16 +1265,33 @@ export default function PDVModal({
                         </span>
                       </div>
 
-                      <button
-                        onClick={() => removeCartItem(idx)}
-                        className="p-0.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
-                        title="Remover item"
-                      >
-                        <Trash2 size={11} />
-                      </button>
+                      <div className="flex items-center gap-1">
+                        {isCustomizable && (
+                          <button
+                            type="button"
+                            onClick={() => handleEditCartItem(idx)}
+                            className={`p-1 rounded transition-colors cursor-pointer ${
+                              isBeingEdited 
+                                ? 'text-amber-800 bg-amber-100' 
+                                : 'text-stone-400 hover:text-amber-700 hover:bg-amber-50'
+                            }`}
+                            title="Editar este item"
+                          >
+                            <Edit2 size={10} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => removeCartItem(idx)}
+                          className="p-0.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-colors cursor-pointer"
+                          title="Remover item"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                ))}
+                );
+              })}
               </div>
             )}
           </div>
@@ -1181,17 +1377,6 @@ export default function PDVModal({
               >
                 <DollarSign size={12} className={paymentMethod === 'Numerário' ? 'text-emerald-600' : 'text-stone-400'} />
                 <span>Dinheiro</span>
-              </button>
-              <button
-                onClick={() => setPaymentMethod('Cartão')}
-                className={`flex-1 min-w-[70px] py-1.5 px-2 rounded-[var(--pdv-radius-md)] text-[10.5px] font-mono font-bold flex items-center justify-center gap-1 transition-all cursor-pointer border ${
-                  paymentMethod === 'Cartão'
-                    ? 'border-blue-500 bg-blue-50 text-blue-800 shadow-[var(--pdv-shadow-sm)]'
-                    : 'border-[var(--pdv-border)] bg-[var(--pdv-surface)] text-[var(--pdv-text-secondary)] hover:bg-[var(--pdv-surface-hover)] hover:text-[var(--pdv-text-primary)]'
-                }`}
-              >
-                <CreditCard size={12} className={paymentMethod === 'Cartão' ? 'text-blue-600' : 'text-stone-400'} />
-                <span>Cartão</span>
               </button>
             </div>
 
@@ -1290,10 +1475,22 @@ export default function PDVModal({
             
             <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
               <div>
-                <h3 className="font-black text-base text-gray-900">{customizingItem.name}</h3>
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Personalize seu pedido</p>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-black text-base text-gray-900">{customizingItem.name}</h3>
+                  {editingCartIndex !== null && (
+                    <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full">
+                      Editando Item do Carrinho
+                    </span>
+                  )}
+                </div>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                  {editingCartIndex !== null ? 'Modifique os sabores, bordas ou observações deste item' : 'Personalize seu pedido'}
+                </p>
               </div>
-              <button onClick={() => setCustomizingItem(null)} className="p-1.5 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-900 cursor-pointer transition-colors">
+              <button 
+                onClick={() => { setCustomizingItem(null); setEditingCartIndex(null); setSearchingFlavorSlot(null); }} 
+                className="p-1.5 rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300 hover:text-gray-900 cursor-pointer transition-colors"
+              >
                 <X size={16} className="stroke-[2.5]" />
               </button>
             </div>
@@ -1339,93 +1536,284 @@ export default function PDVModal({
                 </div>
               </div>
 
-              {(customSize === 'G' || customSize === 'Big' || customSize === 'Super Big') && (
-                <div className="space-y-2.5 pt-4 border-t border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <label className="text-xs font-black text-gray-900">Sabores da Pizza</label>
-                      <p className="text-[10px] text-gray-500 font-medium">
-                        {customSize === 'Super Big' 
-                          ? 'Até 4 sabores (opcional)' 
-                          : customSize === 'Big' 
-                            ? 'Até 3 sabores (opcional)' 
-                            : 'Até 2 sabores (Meio a Meio)'}
-                      </p>
-                    </div>
-                    <span className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
-                      {1 + customAdditionalFlavors.length} de {customSize === 'Super Big' ? 4 : customSize === 'Big' ? 3 : 2} sabores
-                    </span>
-                  </div>
+              {(customSize === 'G' || customSize === 'Big' || customSize === 'Super Big') && (() => {
+                const maxAdditional = customSize === 'Super Big' ? 3 : customSize === 'Big' ? 2 : 1;
+                const totalFlavors = 1 + customAdditionalFlavors.length;
+                const maxAllowedTotal = maxAdditional + 1;
 
-                  {/* 1º Sabor (Base) */}
-                  <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs">
-                    <span className="font-bold text-gray-700">
-                      {customAdditionalFlavors.length === 0 ? '1/1 Sabor Principal:' : `1/${1 + customAdditionalFlavors.length} Sabor:`}{' '}
-                      <span className="text-gray-900 font-extrabold">{customizingItem.name}</span>
-                    </span>
-                    <span className="text-[10px] font-semibold text-gray-500">€ {getPizzaPriceForSize(customizingItem, customSize).toFixed(2)}</span>
-                  </div>
+                const getFractionText = (slotIndex: number, total: number) => {
+                  if (total === 1) return '1/1 Único';
+                  if (total === 2) return `${slotIndex + 1}/2 Metade`;
+                  if (total === 3) return `${slotIndex + 1}/3 Terço`;
+                  if (total === 4) return `${slotIndex + 1}/4 Quarto`;
+                  return `${slotIndex + 1}º Sabor`;
+                };
 
-                  {/* Sabores Adicionais */}
-                  {customAdditionalFlavors.map((flavor, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <select
-                          value={flavor.id}
-                          onChange={e => {
-                            const found = pizzasList.find(p => p.id === e.target.value);
-                            if (found) {
-                              const updated = [...customAdditionalFlavors];
-                              updated[idx] = found;
-                              setCustomAdditionalFlavors(updated);
-                            }
-                          }}
-                          className="w-full h-9 px-3 bg-white border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:border-red-500 focus:outline-none"
-                        >
-                          {pizzasList.map(p => {
-                            const sPrice = getPizzaPriceForSize(p, customSize);
-                            return (
-                              <option key={p.id} value={p.id}>
-                                {idx + 2}º Sabor: {p.name} (+ € {sPrice.toFixed(2)})
-                              </option>
-                            );
-                          })}
-                        </select>
+                // Filter available pizzas for search
+                const getFilteredPizzas = (currentSlot: number) => {
+                  const q = flavorSearchQuery.toLowerCase().trim();
+                  return pizzasList.filter(p => {
+                    // Exclude base pizza
+                    if (p.id === customizingItem.id) return false;
+                    // Exclude other chosen flavors, except the one in currentSlot if replacing
+                    const isAlreadyChosen = customAdditionalFlavors.some((f, i) => i !== currentSlot && f.id === p.id);
+                    if (isAlreadyChosen) return false;
+                    if (!q) return true;
+                    return p.name.toLowerCase().includes(q) || (p.ingredients && p.ingredients.toLowerCase().includes(q));
+                  });
+                };
+
+                return (
+                  <div className="space-y-2.5 pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-xs font-black text-gray-900">Sabores da Pizza</label>
+                        <p className="text-[10px] text-gray-500 font-medium">
+                          {customSize === 'Super Big' 
+                            ? 'Até 4 sabores (1/4 cada)' 
+                            : customSize === 'Big' 
+                              ? 'Até 3 sabores (1/3 cada)' 
+                              : 'Até 2 sabores (Meio a Meio)'}
+                        </p>
                       </div>
+                      <span className="text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-full">
+                        {totalFlavors} de {maxAllowedTotal} sabores
+                      </span>
+                    </div>
+
+                    {/* 1º Sabor (Base) */}
+                    <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-[9.5px] font-black uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-200 shrink-0">
+                          {getFractionText(0, totalFlavors)}
+                        </span>
+                        <span className="font-extrabold text-gray-900 truncate">{customizingItem.name}</span>
+                      </div>
+                      <span className="text-[11px] font-bold font-mono text-gray-500 shrink-0">
+                        € {getPizzaPriceForSize(customizingItem, customSize).toFixed(2)}
+                      </span>
+                    </div>
+
+                    {/* Sabores Adicionais */}
+                    {customAdditionalFlavors.map((flavor, idx) => {
+                      const isSearchingThisSlot = searchingFlavorSlot === idx;
+                      const sPrice = getPizzaPriceForSize(flavor, customSize);
+
+                      if (isSearchingThisSlot) {
+                        const matchingPizzas = getFilteredPizzas(idx);
+                        return (
+                          <div key={idx} className="p-3 bg-white border-2 border-amber-400 rounded-2xl shadow-lg space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+                                <Search size={13} className="text-amber-600" />
+                                Escolher {idx + 2}º Sabor:
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSearchingFlavorSlot(null);
+                                  setFlavorSearchQuery('');
+                                }}
+                                className="text-gray-400 hover:text-gray-700 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-gray-100"
+                              >
+                                Cancelar ✕
+                              </button>
+                            </div>
+
+                            <div className="relative">
+                              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                              <input
+                                ref={flavorSearchInputRef}
+                                type="text"
+                                value={flavorSearchQuery}
+                                onChange={e => setFlavorSearchQuery(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter' && matchingPizzas.length > 0) {
+                                    e.preventDefault();
+                                    handleSelectFlavor(idx, matchingPizzas[0]);
+                                  } else if (e.key === 'Escape') {
+                                    e.preventDefault();
+                                    setSearchingFlavorSlot(null);
+                                  }
+                                }}
+                                placeholder="Digite o nome ou número da pizza..."
+                                className="w-full h-8 pl-8 pr-3 text-xs bg-gray-50 border border-gray-200 rounded-lg font-bold text-gray-900 focus:bg-white focus:border-amber-500 focus:outline-none"
+                              />
+                            </div>
+
+                            <div className="max-h-44 overflow-y-auto space-y-1 custom-scrollbar pr-0.5">
+                              {matchingPizzas.length === 0 ? (
+                                <p className="text-center text-gray-400 text-xs py-3">Nenhuma pizza encontrada.</p>
+                              ) : (
+                                matchingPizzas.map(p => {
+                                  const pizzaPrice = getPizzaPriceForSize(p, customSize);
+                                  return (
+                                    <button
+                                      key={p.id}
+                                      type="button"
+                                      onClick={() => handleSelectFlavor(idx, p)}
+                                      className="w-full text-left p-2 rounded-xl border border-gray-100 hover:border-amber-300 hover:bg-amber-50/60 transition-all flex items-center justify-between gap-2 group cursor-pointer"
+                                    >
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-extrabold text-xs text-gray-900 group-hover:text-amber-900 truncate">
+                                          {p.name}
+                                        </div>
+                                        <div className="text-[10px] text-gray-400 truncate">
+                                          {p.ingredients || ''}
+                                        </div>
+                                      </div>
+                                      <span className="text-[11px] font-bold font-mono text-gray-600 group-hover:text-amber-900 shrink-0">
+                                        € {pizzaPrice.toFixed(2)}
+                                      </span>
+                                    </button>
+                                  );
+                                })
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div key={idx} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-200 text-xs hover:border-gray-300 transition-colors">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-mono text-[9.5px] font-black uppercase px-2 py-0.5 rounded bg-orange-100 text-orange-900 border border-orange-200 shrink-0">
+                              {getFractionText(idx + 1, totalFlavors)}
+                            </span>
+                            <span className="font-extrabold text-gray-900 truncate">{flavor.name}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className="text-[11px] font-bold font-mono text-gray-500 mr-1">
+                              € {sPrice.toFixed(2)}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSearchingFlavorSlot(idx);
+                                setFlavorSearchQuery('');
+                              }}
+                              className="px-2 py-1 bg-white hover:bg-amber-50 text-amber-800 border border-gray-200 hover:border-amber-300 rounded-lg text-[10.5px] font-bold transition-all flex items-center gap-1 cursor-pointer"
+                              title="Trocar este sabor"
+                            >
+                              <RotateCcw size={11} />
+                              <span>Trocar</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCustomAdditionalFlavors(prev => prev.filter((_, i) => i !== idx));
+                              }}
+                              className="w-6 h-6 flex items-center justify-center bg-white text-red-500 hover:bg-red-50 border border-gray-200 hover:border-red-200 rounded-lg transition-colors font-bold text-xs cursor-pointer"
+                              title="Remover este sabor"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* New Flavor Search Combobox */}
+                    {searchingFlavorSlot === customAdditionalFlavors.length && (() => {
+                      const targetSlot = customAdditionalFlavors.length;
+                      const matchingPizzas = getFilteredPizzas(targetSlot);
+                      return (
+                        <div className="p-3 bg-white border-2 border-amber-400 rounded-2xl shadow-lg space-y-2 animate-in fade-in zoom-in-95 duration-150">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-amber-900 flex items-center gap-1.5">
+                              <Search size={13} className="text-amber-600" />
+                              Adicionar {targetSlot + 2}º Sabor:
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSearchingFlavorSlot(null);
+                                setFlavorSearchQuery('');
+                              }}
+                              className="text-gray-400 hover:text-gray-700 text-xs font-bold px-1.5 py-0.5 rounded hover:bg-gray-100"
+                            >
+                              Cancelar ✕
+                            </button>
+                          </div>
+
+                          <div className="relative">
+                            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                            <input
+                              ref={flavorSearchInputRef}
+                              type="text"
+                              value={flavorSearchQuery}
+                              onChange={e => setFlavorSearchQuery(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter' && matchingPizzas.length > 0) {
+                                  e.preventDefault();
+                                  handleSelectFlavor(targetSlot, matchingPizzas[0]);
+                                } else if (e.key === 'Escape') {
+                                  e.preventDefault();
+                                  setSearchingFlavorSlot(null);
+                                }
+                              }}
+                              placeholder="Digite o nome ou número da pizza..."
+                              className="w-full h-8 pl-8 pr-3 text-xs bg-gray-50 border border-gray-200 rounded-lg font-bold text-gray-900 focus:bg-white focus:border-amber-500 focus:outline-none"
+                            />
+                          </div>
+
+                          <div className="max-h-44 overflow-y-auto space-y-1 custom-scrollbar pr-0.5">
+                            {matchingPizzas.length === 0 ? (
+                              <p className="text-center text-gray-400 text-xs py-3">Nenhuma pizza encontrada com este nome.</p>
+                            ) : (
+                              matchingPizzas.map(p => {
+                                const pizzaPrice = getPizzaPriceForSize(p, customSize);
+                                return (
+                                  <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => handleSelectFlavor(targetSlot, p)}
+                                    className="w-full text-left p-2 rounded-xl border border-gray-100 hover:border-amber-300 hover:bg-amber-50/60 transition-all flex items-center justify-between gap-2 group cursor-pointer"
+                                  >
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-extrabold text-xs text-gray-900 group-hover:text-amber-900 truncate">
+                                        {p.name}
+                                      </div>
+                                      <div className="text-[10px] text-gray-400 truncate">
+                                        {p.ingredients || ''}
+                                      </div>
+                                    </div>
+                                    <span className="text-[11px] font-bold font-mono text-gray-600 group-hover:text-amber-900 shrink-0">
+                                      € {pizzaPrice.toFixed(2)}
+                                    </span>
+                                  </button>
+                                );
+                              })
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Button to add new flavor */}
+                    {searchingFlavorSlot === null && customAdditionalFlavors.length < maxAdditional && (
                       <button
                         type="button"
                         onClick={() => {
-                          setCustomAdditionalFlavors(prev => prev.filter((_, i) => i !== idx));
+                          setSearchingFlavorSlot(customAdditionalFlavors.length);
+                          setFlavorSearchQuery('');
                         }}
-                        className="w-9 h-9 flex items-center justify-center bg-red-50 text-red-600 rounded-xl border border-red-200 hover:bg-red-100 transition-colors font-bold text-xs cursor-pointer"
-                        title="Remover sabor"
+                        className="w-full py-2.5 px-3 border-2 border-dashed border-amber-300 hover:border-amber-400 bg-amber-50/40 hover:bg-amber-50 text-amber-900 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
                       >
-                        ✕
+                        <Plus size={13} className="text-amber-700 stroke-[3]" />
+                        <span>
+                          + Adicionar {customAdditionalFlavors.length === 0 ? (customSize === 'G' ? '2º Sabor (Meio a Meio)' : '2º Sabor') : `${customAdditionalFlavors.length + 2}º Sabor`}
+                        </span>
                       </button>
-                    </div>
-                  ))}
+                    )}
 
-                  {/* Botão para adicionar mais sabor */}
-                  {customAdditionalFlavors.length < (customSize === 'Super Big' ? 3 : customSize === 'Big' ? 2 : 1) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const defaultFlavor = pizzasList.find(p => p.id !== customizingItem.id && !customAdditionalFlavors.some(f => f.id === p.id)) || pizzasList[0];
-                        if (defaultFlavor) {
-                          setCustomAdditionalFlavors(prev => [...prev, defaultFlavor]);
-                        }
-                      }}
-                      className="w-full py-2 px-3 border border-dashed border-red-300 bg-red-50/50 hover:bg-red-50 text-red-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                    >
-                      <span>+ Adicionar {customAdditionalFlavors.length === 0 ? (customSize === 'G' ? '2º Sabor (Meio a Meio)' : '2º Sabor') : `${customAdditionalFlavors.length + 2}º Sabor`}</span>
-                    </button>
-                  )}
-
-                  <p className="text-[10px] text-amber-700 italic">
-                    * Será cobrado o valor do sabor de maior valor entre os escolhidos.
-                  </p>
-                </div>
-              )}
+                    <p className="text-[10px] text-amber-800/80 italic font-medium">
+                      * Será cobrado o valor do sabor de maior valor entre os escolhidos.
+                    </p>
+                  </div>
+                );
+              })()}
 
               {bordas.length > 0 && (
                 <div className="space-y-2 pt-4 border-t border-gray-100">
@@ -1524,7 +1912,7 @@ export default function PDVModal({
 
             <div className="p-3 border-t border-gray-100 bg-gray-50 flex items-center gap-2">
               <button
-                onClick={() => setCustomizingItem(null)}
+                onClick={() => { setCustomizingItem(null); setEditingCartIndex(null); setSearchingFlavorSlot(null); }}
                 className="w-1/3 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold rounded-xl text-xs cursor-pointer transition-colors"
               >
                 Cancelar
@@ -1535,7 +1923,9 @@ export default function PDVModal({
                 className="flex-1 py-2.5 bg-[#fdde58] hover:bg-[#e2c23f] disabled:opacity-50 text-stone-950 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 border border-[#d8ba39]"
               >
                 <Check size={16} className="stroke-[3]" />
-                <span>Confirmar Inclusão (€ {currentPreviewPrice.toFixed(2)})</span>
+                <span>
+                  {editingCartIndex !== null ? 'Salvar Alterações' : 'Confirmar Inclusão'} (€ {currentPreviewPrice.toFixed(2)})
+                </span>
               </button>
             </div>
 

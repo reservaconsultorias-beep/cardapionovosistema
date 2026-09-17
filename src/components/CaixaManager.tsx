@@ -38,6 +38,19 @@ export default function CaixaManager({ refreshSignal }: CaixaManagerProps = {}) 
   const totalSuprimentos = movements.filter(m => m.type === 'suprimento').reduce((acc, m) => acc + Number(m.amount), 0);
   const currentExpected = session ? Number(session.opening_amount) + summary.numerario + totalSuprimentos - totalSangrias : 0;
 
+  // Dismiss on ESC
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (showMovementModal) setShowMovementModal(false);
+        else if (showCloseModal) setShowCloseModal(false);
+        else if (showOpenModal) setShowOpenModal(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showMovementModal, showCloseModal, showOpenModal]);
+
   const loadSession = async () => {
     setLoading(true);
     const { data } = await supabase
@@ -822,8 +835,14 @@ export default function CaixaManager({ refreshSignal }: CaixaManagerProps = {}) 
 
       {/* Modal de Fechamento de Caixa */}
       {showCloseModal && session && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-md border border-slate-200 shadow-2xl overflow-hidden">
+        <div 
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4"
+          onClick={() => setShowCloseModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl w-full max-w-md border border-slate-200 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-4 border-b border-slate-200 bg-slate-800 text-white flex justify-between items-center">
               <div>
                 <h3 className="text-base font-bold flex items-center gap-2 tracking-tight">
@@ -913,8 +932,14 @@ export default function CaixaManager({ refreshSignal }: CaixaManagerProps = {}) 
 
       {/* Modal de Movimentação */}
       {showMovementModal && session && (
-        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-[2px] flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-md border border-slate-200 shadow-2xl overflow-hidden">
+        <div 
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-[2px] flex items-center justify-center z-50 p-4"
+          onClick={() => setShowMovementModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl w-full max-w-md border border-slate-200 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-4 border-b border-slate-200 bg-slate-800 text-white flex justify-between items-center">
               <div>
                 <h3 className="text-sm font-semibold flex items-center gap-2 tracking-tight">
@@ -1006,8 +1031,14 @@ export default function CaixaManager({ refreshSignal }: CaixaManagerProps = {}) 
 
       {/* Modal de Abertura de Caixa */}
       {showOpenModal && (
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl w-full max-w-sm border border-slate-200 shadow-2xl overflow-hidden">
+        <div 
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-[1px] flex items-center justify-center z-50 p-4"
+          onClick={() => setShowOpenModal(false)}
+        >
+          <div 
+            className="bg-white rounded-xl w-full max-w-sm border border-slate-200 shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="p-4 border-b border-slate-200 bg-slate-800 text-white flex justify-between items-center">
               <div>
                 <h3 className="text-base font-bold flex items-center gap-2 tracking-tight">

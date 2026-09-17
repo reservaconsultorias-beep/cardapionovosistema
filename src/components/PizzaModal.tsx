@@ -3,6 +3,7 @@ import { MenuItem, ExtraIngredient } from '../data/menu';
 import { CartItem } from '../types';
 import { X, Check, ShoppingBag } from 'lucide-react';
 import { useExtras } from '../hooks/useExtras';
+import { hapticLight, hapticMedium } from '../utils/haptics';
 
 interface PizzaModalProps {
   item: MenuItem | null;
@@ -51,6 +52,17 @@ export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initial
     }
   }, [isOpen, item, initialSize]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !item) return null;
 
   const isMondayPromoPizza = item.id === 'md-1-pizza';
@@ -87,6 +99,7 @@ export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initial
   }
 
   const handleToggleExtra = (extra: ExtraIngredient) => {
+    hapticLight();
     setSelectedExtras(prev => {
       const isSelected = prev.some(e => e.id === extra.id);
       if (isSelected) {
@@ -98,6 +111,7 @@ export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initial
   };
 
   const handleAdd = (openCart: boolean) => {
+    hapticMedium();
     let finalExtras = [...selectedExtras];
     if (selectedBorda) {
       finalExtras.unshift({ id: selectedBorda.id, name: selectedBorda.name, price: selectedBorda.priceSingle! });
@@ -134,8 +148,14 @@ export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initial
   const isEsfirrasIncomplete = isTuesdayPromoEsfirra && (esfihaTradicionais.some(f => !f) || esfihaDoces.some(f => !f));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-[#1a1a1a] flex flex-col max-h-[90vh]">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-opacity"
+      onClick={onClose}
+    >
+      <div 
+        className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-[#1a1a1a] flex flex-col max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
           <h3 className="font-bold text-lg">{item.name}</h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-200 rounded-full text-gray-500 transition-colors">
@@ -282,7 +302,7 @@ export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initial
                 <h4 className="font-bold mb-3 text-sm uppercase tracking-wide text-gray-800">Escolha o Tamanho:</h4>
                 <div className="flex flex-col gap-3">
                    {calculatedPriceP !== undefined && <button 
-                     onClick={() => setSelectedSize('P')}
+                     onClick={() => { hapticLight(); setSelectedSize('P'); }}
                      disabled={pausedItems?.includes(`${item?.id}-P`)}
                      className={`p-3 rounded-xl border-2 text-left transition-all ${pausedItems?.includes(`${item?.id}-P`) ? 'opacity-50 grayscale cursor-not-allowed bg-gray-100' : (selectedSize === 'P' ? 'border-[#8b0000] bg-[#8b0000]/5' : 'border-gray-200 hover:border-gray-300 bg-white')}`}
                    >
@@ -297,7 +317,7 @@ export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initial
                    </button>}
 
                    <button 
-                     onClick={() => { setSelectedSize('M'); setIsHalf(false); }}
+                     onClick={() => { hapticLight(); setSelectedSize('M'); setIsHalf(false); }}
                      disabled={pausedItems?.includes(`${item?.id}-M`)}
                      className={`p-3 rounded-xl border-2 text-left transition-all ${pausedItems?.includes(`${item?.id}-M`) ? 'opacity-50 grayscale cursor-not-allowed bg-gray-100' : (selectedSize === 'M' ? 'border-[#8b0000] bg-[#8b0000]/5' : 'border-gray-200 hover:border-gray-300 bg-white')}`}
                    >
@@ -312,7 +332,7 @@ export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initial
                    </button>
 
                    <button 
-                     onClick={() => setSelectedSize('G')}
+                     onClick={() => { hapticLight(); setSelectedSize('G'); }}
                      disabled={pausedItems?.includes(`${item?.id}-G`)}
                      className={`p-3 rounded-xl border-2 text-left transition-all ${pausedItems?.includes(`${item?.id}-G`) ? 'opacity-50 grayscale cursor-not-allowed bg-gray-100' : (selectedSize === 'G' ? 'border-[#8b0000] bg-[#8b0000]/5' : 'border-gray-200 hover:border-gray-300 bg-white')}`}
                    >
@@ -484,14 +504,20 @@ export default function PizzaModal({ item, isOpen, onClose, onAddToCart, initial
            <div className="mb-6 flex justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-100">
              <div className="flex items-center gap-4">
                <button 
-                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                 onClick={() => {
+                   hapticLight();
+                   setQuantity(Math.max(1, quantity - 1));
+                 }}
                  className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#8b0000] font-bold text-xl hover:bg-gray-100 active:scale-95 transition-all shadow-sm"
                >
                  -
                </button>
                <span className="font-bold text-xl w-6 text-center text-gray-800">{quantity}</span>
                <button 
-                 onClick={() => setQuantity(quantity + 1)}
+                 onClick={() => {
+                   hapticLight();
+                   setQuantity(quantity + 1);
+                 }}
                  className="w-10 h-10 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[#8b0000] font-bold text-xl hover:bg-gray-100 active:scale-95 transition-all shadow-sm"
                >
                  +

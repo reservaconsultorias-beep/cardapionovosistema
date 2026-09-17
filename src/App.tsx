@@ -18,8 +18,8 @@ import {
 import { CartItem } from "./types";
 import { playVictorySound } from "./utils/sound";
 import { getLisbonDate } from "./utils/date";
-// from "./utils/sound";
-import { Search, Plus, ShoppingBag, X, Instagram, MapPin, ChevronDown } from "lucide-react";
+import { hapticLight, hapticMedium, hapticSuccess } from "./utils/haptics";
+import { Search, Plus, ShoppingBag, X, Instagram, MapPin, ChevronDown, ArrowUp } from "lucide-react";
 import Cart from "./components/Cart";
 import MenuItemCard from "./components/MenuItemCard";
 import PizzaModal from "./components/PizzaModal";
@@ -126,6 +126,26 @@ function App() {
   const [pausedItems, setPausedItems] = useState<string[]>([]);
   const [pausedItemsLoaded, setPausedItemsLoaded] = useState(false);
   const [hasOpenedPromoAutomatically, setHasOpenedPromoAutomatically] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [cartBounce, setCartBounce] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 350);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Dismiss zoomed image on ESC
+  useEffect(() => {
+    if (!zoomedImage) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setZoomedImage(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [zoomedImage]);
 
   useEffect(() => {
     if (!menuLoading && pausedItemsLoaded && menuItems.length > 0 && !hasOpenedPromoAutomatically) {
@@ -195,7 +215,13 @@ function App() {
 
     if (oldSubtotal < FREE_DELIVERY_THRESHOLD && newSubtotal >= FREE_DELIVERY_THRESHOLD) {
       playVictorySound();
+      hapticSuccess();
+    } else {
+      hapticMedium();
     }
+
+    setCartBounce(true);
+    setTimeout(() => setCartBounce(false), 500);
 
     const existingIndex = cart.findIndex(
       (item) =>
@@ -243,6 +269,10 @@ function App() {
   };
 
   const totalCartQty = cart.reduce((sum, item) => sum + item.quantity, 0);
+  const totalCartPrice = useMemo(
+    () => cart.reduce((sum, item) => sum + item.priceCalculated * item.quantity, 0),
+    [cart]
+  );
 
   // Grouping for render (Memoized for performance)
   const currentCategoriesUI = useMemo(() => {
@@ -343,8 +373,22 @@ function App() {
       <header className="bg-white sticky top-0 z-50 shadow-sm border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-3 md:gap-0 md:flex-row md:items-center justify-between">
           <div className="flex justify-between items-center w-full md:w-auto">
-            <div className="font-bold text-2xl drop-shadow-sm text-[#ea1d2c]">
-              41Menu's <span className="text-xl">🍕</span>
+            <div className="flex items-center gap-2.5">
+              <div className="font-bold text-2xl drop-shadow-sm text-[#ea1d2c]">
+                41Menu's <span className="text-xl">🍕</span>
+              </div>
+              {!businessStatus.loading && (
+                <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                  businessStatus.isOpen 
+                    ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                    : "bg-rose-50 text-rose-700 border-rose-200"
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    businessStatus.isOpen ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
+                  }`} />
+                  <span>{businessStatus.isOpen ? "Aberto • 35-45 min" : "Fechado"}</span>
+                </div>
+              )}
             </div>
             
             <button
@@ -408,7 +452,10 @@ function App() {
       </div>
 
       {/* Categories Bar Sticky */}
-      <div className="bg-white border-b border-gray-200 sticky top-16 z-30 shadow-xs relative">
+      <div 
+        id="categories-bar"
+        className="bg-white border-b border-gray-200 sticky top-[108px] md:top-[64px] z-30 shadow-xs relative"
+      >
         <div 
           onWheel={(e) => {
             if (e.deltaY !== 0) {
@@ -434,7 +481,9 @@ function App() {
                   setIsMenuDoDiaOpen(true);
                   return;
                 }
+                hapticLight();
                 setActiveCategory(cat.id);
+                e.currentTarget.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
                 const el = document.getElementById(`cat-${cat.id}`);
                 if (el) {
                   e.preventDefault();
@@ -460,25 +509,11 @@ function App() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8 flex flex-col lg:flex-row gap-8">
+      <div className="max-w-7xl mx-auto px-4 py-4 md:py-8 flex flex-col lg:flex-row gap-8">
         {/* Left Column - Main Content */}
         <div className="w-full lg:flex-1 min-w-0">
-          {/* Search Bar */}
-          <div className="relative mb-8 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Pesquisar produto"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full py-4 pl-12 pr-4 bg-gray-50 focus:bg-white outline-none text-sm transition-colors border-none"
-            />
-          </div>
-
           {/* Products Grids */}
-          <div className="space-y-12 pb-12 lg:pb-24">
+          <div className="space-y-10 md:space-y-12 pb-12 lg:pb-24">
             {currentCategoriesUI.map((cat) => {
               if (cat.id === "menu-do-dia") return null;
               
@@ -574,16 +609,79 @@ function App() {
 
       {/* Floating Action Buttons */}
 
-      {/* Mobile view cart toggle */}
-      <div className="fixed bottom-0 left-0 w-full p-4 bg-white border-t border-gray-200 lg:hidden z-40 pb-safe">
+      {/* Mobile view cart toggle - Only visible when items are in cart */}
+      {totalCartQty > 0 && (
+        <div className="fixed bottom-0 left-0 w-full p-3 bg-white/95 backdrop-blur-md border-t border-gray-200 lg:hidden z-40 pb-safe shadow-[0_-4px_25px_rgba(0,0,0,0.12)] transition-all animate-in slide-in-from-bottom duration-200">
+          {/* Barra de Progresso de Entrega Grátis */}
+          <div className="mb-2">
+            <div className="flex justify-between items-center text-[11px] font-bold mb-1">
+              {totalCartPrice >= FREE_DELIVERY_THRESHOLD ? (
+                <span className="text-emerald-700 flex items-center gap-1">
+                  🎉 Parabéns! Você ganhou <strong>Entrega Grátis</strong>
+                </span>
+              ) : (
+                <span className="text-stone-600 flex items-center gap-1">
+                  🛵 Falta <strong className="text-[#8b0000]">€{(FREE_DELIVERY_THRESHOLD - totalCartPrice).toFixed(2)}</strong> para <strong>Entrega Grátis</strong>
+                </span>
+              )}
+              <span className="text-stone-400 font-medium text-[10px]">Meta: €{FREE_DELIVERY_THRESHOLD.toFixed(2)}</span>
+            </div>
+            <div className="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden border border-stone-200/60">
+              <div 
+                className={`h-full transition-all duration-500 rounded-full ${
+                  totalCartPrice >= FREE_DELIVERY_THRESHOLD
+                    ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"
+                    : "bg-gradient-to-r from-amber-400 to-[#d4af37]"
+                }`}
+                style={{ width: `${Math.min(100, Math.round((totalCartPrice / FREE_DELIVERY_THRESHOLD) * 100))}%` }}
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              hapticMedium();
+              setIsCartOpen(true);
+            }}
+            className="w-full bg-[#8b0000] text-white font-extrabold text-[15px] py-3.5 px-4 rounded-xl flex items-center justify-between shadow-xl active:scale-[0.98] transition-all hover:bg-[#660000]"
+          >
+            <div className="flex items-center gap-2">
+              <div className={`relative transition-transform duration-300 ${cartBounce ? 'scale-125 rotate-6' : 'scale-100'}`}>
+                <ShoppingBag className="w-5 h-5" />
+                <span className="absolute -top-1.5 -right-2 bg-[#d4af37] text-[#1a1a1a] text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
+                  {totalCartQty}
+                </span>
+              </div>
+              <span className="ml-1">Ver Sacola</span>
+            </div>
+            <span className="bg-white/20 px-2.5 py-1 rounded-lg text-sm tracking-wide">
+              €{totalCartPrice.toFixed(2)}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Scroll to Top Floating Button */}
+      {showScrollTop && (
         <button
-          onClick={() => setIsCartOpen(true)}
-          className="w-full bg-[#8b0000] text-white font-extrabold text-[15px] py-4 rounded-xl flex items-center justify-center gap-2 shadow-xl active:scale-[0.98] transition-all hover:bg-[#660000]"
+          onClick={() => {
+            hapticLight();
+            const el = document.getElementById("categories-bar");
+            if (el) {
+              const yOffset = -120;
+              const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+              window.scrollTo({ top: Math.max(0, y), behavior: "smooth" });
+            } else {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+          className="fixed bottom-24 lg:bottom-8 left-4 sm:left-6 w-12 h-12 bg-white/95 backdrop-blur-md text-[#8b0000] rounded-full flex items-center justify-center shadow-lg border border-stone-200 hover:bg-[#8b0000] hover:text-white transition-all active:scale-95 z-30 group"
+          title="Voltar ao topo do cardápio"
+          aria-label="Voltar ao topo do cardápio"
         >
-          <ShoppingBag className="w-5 h-5" />
-          Ver Pedido ({totalCartQty})
+          <ArrowUp className="w-5 h-5 transition-transform group-hover:-translate-y-0.5" />
         </button>
-      </div>
+      )}
 
       {/* WhatsApp Floating Button */}
       <a
