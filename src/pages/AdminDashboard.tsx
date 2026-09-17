@@ -1901,31 +1901,6 @@ export default function AdminDashboard() {
             : 'space-y-4'
         }`}>
 
-          {/* Grace Period Warning Banner (dias 17 a 21 sem pagamento) */}
-          {subscriptionStatusInfo.isGracePeriod && !subscriptionStatusInfo.isBlocked && (
-            <div className="bg-gradient-to-r from-amber-500/20 via-amber-600/15 to-stone-900 border border-amber-500/40 rounded-xl p-3.5 sm:p-4 mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md text-amber-200">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-amber-500/20 text-amber-400 rounded-lg shrink-0">
-                  <AlertCircle className="w-5 h-5 animate-pulse" />
-                </div>
-                <div>
-                  <h4 className="text-xs sm:text-sm font-bold text-amber-200">
-                    Aviso de Vencimento da Mensalidade (Carência de {subscriptionStatusInfo.daysPastDue} de 5 dias corridos)
-                  </h4>
-                  <p className="text-[11px] sm:text-xs text-amber-300/80">
-                    A fatura de R$ 490,00 venceu no dia 16. Regularize até o dia 21 para evitar a suspensão temporária do painel no dia 22.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveTab("cobranca")}
-                className="px-3.5 py-1.5 bg-[#fdde58] hover:bg-[#ffe373] text-stone-950 font-bold text-xs rounded-lg transition-all shadow-sm active:scale-95 whitespace-nowrap self-start sm:self-auto cursor-pointer"
-              >
-                Pagar com PIX
-              </button>
-            </div>
-          )}
 
           {/* Header Section (Only for Non-Cockpit Views) */}
           {!['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) && (
