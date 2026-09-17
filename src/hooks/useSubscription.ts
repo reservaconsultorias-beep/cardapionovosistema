@@ -37,17 +37,14 @@ export interface InvoiceHistory {
   status: 'pago' | 'pendente' | 'cancelado';
 }
 
-const STORAGE_KEY = 'admin_system_subscription_state';
+const STORAGE_KEY = 'admin_system_subscription_state_v3';
 
 export function useSubscription() {
   const [loading, setLoading] = useState(true);
 
-  // Calcula a data de vencimento padrão (sempre dia 16 do mês corrente)
+  // Considera Setembro pago e define próximo vencimento para 16 de Outubro de 2026
   const calculateCurrentDueDate = (): string => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    return `${year}-${month}-16`;
+    return '2026-10-16';
   };
 
   const defaultSubscription: SubscriptionData = {
@@ -57,13 +54,13 @@ export function useSubscription() {
     dueDay: 16,
     gracePeriodDays: 5,
     status: 'active',
-    currentPeriodDue: calculateCurrentDueDate(),
-    lastPaymentDate: new Date(new Date().setDate(1)).toISOString(),
-    pixCode: '00020126580014br.gov.bcb.pix0136stripe-gestor-41menus-pizzaria5204000053039865405490.005802BR5925GESTOR DELIVERY SISTEMAS6009SAO PAULO62070503***6304A1B2',
-    pixQrUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=00020126580014br.gov.bcb.pix0136stripe-gestor-41menus-pizzaria5204000053039865405490.005802BR5925GESTOR DELIVERY SISTEMAS6009SAO PAULO62070503***6304A1B2',
+    currentPeriodDue: '2026-10-16',
+    lastPaymentDate: '2026-09-15T14:30:00.000Z',
+    pixCode: '00020126360014BR.GOV.BCB.PIX0114+55419965600805204000053039865406490.005802BR5914SISTEMA GESTOR6008CURITIBA62150511MENSALIDADE6304F9A7',
+    pixQrUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=00020126360014BR.GOV.BCB.PIX0114%2B55419965600805204000053039865406490.005802BR5914SISTEMA%20GESTOR6008CURITIBA62150511MENSALIDADE6304F9A7',
     stripePaymentLink: 'https://buy.stripe.com/test_gestor_delivery_490',
     isManuallyOverridden: false,
-    notes: 'Vencimento todo dia 16 com 5 dias corridos de tolerância.'
+    notes: 'Mês de Setembro/2026 pago. Próximo vencimento: 16 de Outubro de 2026.'
   };
 
   const [subscription, setSubscription] = useState<SubscriptionData>(() => {
@@ -80,12 +77,21 @@ export function useSubscription() {
 
   const [invoices, setInvoices] = useState<InvoiceHistory[]>([
     {
+      id: 'INV-2026-09',
+      month: 'Setembro / 2026',
+      dueDate: '16/09/2026',
+      paidDate: '15/09/2026 14:30',
+      amount: 490.00,
+      method: 'PIX Direto',
+      status: 'pago'
+    },
+    {
       id: 'INV-2026-08',
       month: 'Agosto / 2026',
       dueDate: '16/08/2026',
       paidDate: '15/08/2026 14:32',
       amount: 490.00,
-      method: 'PIX (Stripe)',
+      method: 'PIX Direto',
       status: 'pago'
     },
     {
@@ -94,7 +100,7 @@ export function useSubscription() {
       dueDate: '16/07/2026',
       paidDate: '16/07/2026 09:15',
       amount: 490.00,
-      method: 'PIX (Stripe)',
+      method: 'PIX Direto',
       status: 'pago'
     },
     {
@@ -103,7 +109,7 @@ export function useSubscription() {
       dueDate: '16/06/2026',
       paidDate: '14/06/2026 18:20',
       amount: 490.00,
-      method: 'PIX (Stripe)',
+      method: 'PIX Direto',
       status: 'pago'
     }
   ]);

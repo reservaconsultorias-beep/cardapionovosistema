@@ -90,7 +90,7 @@ export const BillingManager: React.FC = () => {
             )}
           </div>
           <p className="text-xs text-stone-400 mt-2">
-            Próximo vencimento: <strong className="text-stone-300">16 de Outubro de 2026</strong>.
+            Mês de Setembro/2026: <strong className="text-emerald-400 font-semibold">Pago ✓</strong> • Próximo vencimento: <strong className="text-stone-200">16 de Outubro de 2026</strong>.
           </p>
         </div>
 
@@ -158,25 +158,28 @@ export const BillingManager: React.FC = () => {
                 
                 <div>
                   <label className="text-[11px] font-mono text-stone-400 block mb-1">
-                    Chave Celular
+                    Chave PIX (Telefone)
                   </label>
-                  <div className="flex items-center justify-between bg-stone-950 border border-stone-800 rounded-lg px-3 py-2">
-                    <span className="font-mono text-stone-100 text-sm font-semibold">
-                      {PIX_PHONE_DISPLAY}
-                    </span>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="text" 
+                      readOnly 
+                      value={PIX_PHONE_DISPLAY}
+                      className="flex-1 bg-stone-950 border border-stone-800 rounded-lg px-3 py-2 text-xs text-stone-200 font-mono select-all focus:outline-none"
+                    />
                     <button
                       onClick={handleCopyKey}
-                      className="flex items-center gap-1.5 px-3 py-1 bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-medium rounded-md transition-colors cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-2 bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-medium rounded-lg transition-colors cursor-pointer shrink-0"
                     >
-                      {copiedKey ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                      <span>{copiedKey ? 'Copiada' : 'Copiar'}</span>
+                      {copiedKey ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                      <span>{copiedKey ? 'Copiado' : 'Copiar'}</span>
                     </button>
                   </div>
                 </div>
 
                 <div>
                   <label className="text-[11px] font-mono text-stone-400 block mb-1">
-                    Código Copia e Cola (com valor de R$ 490,00)
+                    PIX Copia e Cola (Payload Oficial)
                   </label>
                   <div className="flex items-center gap-2">
                     <input 
@@ -240,17 +243,23 @@ export const BillingManager: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-stone-800/60 text-stone-300">
               <tr>
+                <td className="py-2.5 px-3 font-medium text-stone-200">Outubro / 2026</td>
+                <td className="py-2.5 px-3 font-mono">R$ 490,00</td>
+                <td className="py-2.5 px-3 text-stone-400">PIX Direto</td>
+                <td className="py-2.5 px-3">
+                  <span className="text-stone-300 font-medium bg-stone-800 px-2 py-0.5 rounded text-[11px]">
+                    A vencer (16/10)
+                  </span>
+                </td>
+              </tr>
+              <tr className="text-stone-300">
                 <td className="py-2.5 px-3 font-medium text-stone-200">Setembro / 2026</td>
                 <td className="py-2.5 px-3 font-mono">R$ 490,00</td>
                 <td className="py-2.5 px-3 text-stone-400">PIX Direto</td>
                 <td className="py-2.5 px-3">
-                  {statusInfo.isBlocked ? (
-                    <span className="text-red-400 font-medium">Bloqueado</span>
-                  ) : statusInfo.isGracePeriod ? (
-                    <span className="text-amber-400 font-medium">Em carência</span>
-                  ) : (
-                    <span className="text-emerald-400 font-medium">Em dia</span>
-                  )}
+                  <span className="text-emerald-400 font-medium flex items-center gap-1">
+                    <Check size={12} /> Pago
+                  </span>
                 </td>
               </tr>
               <tr className="text-stone-400">
