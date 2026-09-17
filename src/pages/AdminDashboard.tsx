@@ -2945,163 +2945,224 @@ export default function AdminDashboard() {
                     </div>
                   )}
 
-                  {/* VISUALIZAÇÃO EM CARDS (MINIMALISTA NA PALETA DA EMPRESA) */}
+                  {/* VISUALIZAÇÃO EM CARDS (COMANDA OPERACIONAL DE ALTA USABILIDADE) */}
                   {ordersViewMode === 'cards' && filteredList.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 pt-1">
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pt-1">
                       {filteredList.map((order: any) => {
                         const elapsed = getElapsedTime(order.createdAt);
                         const isDelivery = order.orderType === 'entrega' || order.orderType === 'Delivery';
                         const items = safeParseItems(order.items);
+                        const isPending = order.status === 'Pendente';
+                        const isInPrep = order.status === 'Em Preparo';
+                        const isInRoute = order.status === 'Saiu para Entrega';
+                        const isDone = order.status === 'Finalizado';
+                        const isCanceled = order.status === 'Cancelado';
+
+                        // Cores de status de alta legibilidade para operação de cozinha/balcão
+                        const statusColor = isPending
+                          ? 'border-t-amber-400'
+                          : isInPrep
+                          ? 'border-t-amber-500'
+                          : isInRoute
+                          ? 'border-t-sky-500'
+                          : isDone
+                          ? 'border-t-emerald-500'
+                          : 'border-t-rose-400';
 
                         return (
                           <div
                             key={order.id}
-                            className="bg-white rounded-xl border border-stone-200/90 shadow-sm shadow-stone-200/70 hover:shadow-md hover:border-stone-300 transition-all flex flex-col justify-between overflow-hidden"
+                            className={`bg-white rounded-xl border border-stone-200/90 shadow-sm hover:shadow-md transition-all flex flex-col justify-between overflow-hidden border-t-4 ${statusColor}`}
                           >
-                            {/* Topo do Card: ID, Hora, Tempo e Valor */}
-                            <div className="p-3.5 pb-2.5 border-b border-stone-100 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="font-mono font-bold text-xs text-stone-900 bg-stone-100 px-2 py-0.5 rounded border border-stone-200">
+                            {/* Topo da Comanda: ID, Tipo de Pedido, Horário e Valor */}
+                            <div className="p-3.5 pb-3 border-b border-stone-100 bg-stone-50/40 space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono font-black text-sm text-stone-900 bg-white px-2 py-0.5 rounded-md border border-stone-200 shadow-2xs">
                                     #{order.id}
                                   </span>
-                                  <div className="flex items-center gap-1 text-[11px] font-mono text-stone-500">
-                                    <Clock size={11} className="text-stone-400" />
-                                    <span>{new Date(order.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</span>
-                                  </div>
-                                  {order.status !== 'Finalizado' && order.status !== 'Cancelado' && elapsed.text && (
-                                    <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded border border-stone-200 bg-stone-50 text-stone-600">
-                                      {elapsed.text}
-                                    </span>
-                                  )}
+
+                                  {/* Badge Tipo: Entrega vs Balcão */}
+                                  <span
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold ${
+                                      isDelivery
+                                        ? 'bg-sky-50 text-sky-800 border border-sky-200'
+                                        : 'bg-stone-100 text-stone-800 border border-stone-200'
+                                    }`}
+                                  >
+                                    {isDelivery ? <Bike size={12} className="text-sky-600" /> : <Store size={12} className="text-stone-600" />}
+                                    <span>{isDelivery ? 'Entrega' : 'Balcão'}</span>
+                                  </span>
+
+                                  {/* Badge Editado */}
                                   {(order.isEdited || order.is_edited) && (
-                                    <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-800 border border-stone-200 uppercase tracking-wider">
+                                    <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
                                       EDITADO
                                     </span>
                                   )}
                                 </div>
 
+                                {/* Valor Total em Destaque */}
                                 <div className="text-right">
-                                  <span className="font-mono font-black text-base text-stone-900 tabular-nums">
+                                  <span className="font-mono font-black text-lg text-stone-900 tabular-nums">
                                     €{Number(order.totalAmount || 0).toFixed(2)}
                                   </span>
                                 </div>
                               </div>
 
-                              {/* Badges de Canal, Pagamento e Status (Minimalistas) */}
-                              <div className="flex items-center justify-between gap-1.5 flex-wrap">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-stone-100 text-stone-700 border border-stone-200">
-                                    {isDelivery ? <Bike size={12} className="text-stone-500" /> : <Store size={12} className="text-stone-500" />}
-                                    <span>{isDelivery ? 'Entrega' : 'Balcão'}</span>
+                              {/* Linha de Horário, Tempo Decorrido e Status */}
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <div className="flex items-center gap-1.5 text-xs text-stone-500 font-mono">
+                                  <Clock size={12} className="text-stone-400" />
+                                  <span className="font-bold text-stone-700">
+                                    {new Date(order.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
                                   </span>
-
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-stone-100 text-stone-700 border border-stone-200">
-                                    <CreditCard size={11} className="text-stone-500" />
-                                    <span>{order.paymentMethod || 'Outros'}</span>
-                                  </span>
+                                  {order.status !== 'Finalizado' && order.status !== 'Cancelado' && elapsed.text && (
+                                    <span className="text-[11px] font-bold px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 border border-stone-200">
+                                      {elapsed.text}
+                                    </span>
+                                  )}
                                 </div>
 
-                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-stone-100 text-stone-800 border border-stone-200">
-                                  <span className={`w-1.5 h-1.5 rounded-full ${
-                                    order.status === 'Pendente' ? 'bg-amber-400' :
-                                    order.status === 'Em Preparo' ? 'bg-stone-700' :
-                                    order.status === 'Saiu para Entrega' ? 'bg-stone-500' :
-                                    order.status === 'Cancelado' ? 'bg-rose-500' :
-                                    'bg-emerald-500'
-                                  }`} />
+                                {/* Tag de Status */}
+                                <span
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                                    isPending
+                                      ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                      : isInPrep
+                                      ? 'bg-stone-900 text-[#fdde58] border-stone-800'
+                                      : isInRoute
+                                      ? 'bg-sky-100 text-sky-900 border-sky-300'
+                                      : isDone
+                                      ? 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                      : 'bg-rose-100 text-rose-900 border-rose-300'
+                                  }`}
+                                >
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full ${
+                                      isPending
+                                        ? 'bg-amber-500'
+                                        : isInPrep
+                                        ? 'bg-[#fdde58]'
+                                        : isInRoute
+                                        ? 'bg-sky-500'
+                                        : isDone
+                                        ? 'bg-emerald-600'
+                                        : 'bg-rose-500'
+                                    }`}
+                                  />
                                   <span>{order.status}</span>
                                 </span>
                               </div>
                             </div>
 
-                            {/* Informações do Cliente, Morada e NIF */}
-                            <div className="p-3.5 py-2.5 space-y-1.5 text-xs">
+                            {/* Informações do Cliente e Pagamento */}
+                            <div className="p-3.5 py-2.5 space-y-2 border-b border-stone-100">
                               <div className="flex items-center justify-between gap-2">
-                                <span className="font-bold text-stone-900 text-sm truncate">{order.customerName}</span>
+                                <span className="font-black text-stone-900 text-sm truncate">{order.customerName}</span>
                                 {order.customerPhone && (
                                   <a
                                     href={`tel:${order.customerPhone}`}
-                                    className="text-stone-600 hover:text-stone-900 font-mono font-medium text-[11px] flex items-center gap-1 shrink-0 bg-stone-50 hover:bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200 transition-colors"
+                                    className="text-stone-700 hover:text-stone-950 font-mono font-bold text-xs flex items-center gap-1 bg-stone-100 hover:bg-stone-200 px-2 py-0.5 rounded border border-stone-200 transition-colors"
                                     title="Ligar para cliente"
                                   >
-                                    <Phone size={10} />
+                                    <Phone size={11} className="text-stone-500" />
                                     <span>{order.customerPhone}</span>
                                   </a>
                                 )}
                               </div>
 
-                              {order.nif && (
-                                <div className="flex items-center gap-1">
-                                  <span className="text-[10px] font-mono font-bold bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded border border-stone-200">
-                                    NIF: {order.nif}
-                                  </span>
-                                </div>
-                              )}
-
+                              {/* Endereço de Entrega Resumido & Limpo */}
                               {isDelivery && order.deliveryAddress && (
-                                <div className="flex items-start gap-1.5 text-[11px] text-stone-600 bg-stone-50 p-2 rounded-lg border border-stone-200/70">
-                                  <MapPin size={12} className="text-stone-400 shrink-0 mt-0.5" />
-                                  <span className="line-clamp-2 leading-relaxed">
-                                    {order.deliveryAddress}
-                                    {order.deliveryZone ? ` (${order.deliveryZone})` : ''}
-                                  </span>
+                                <div className="flex items-start gap-1.5 text-xs text-stone-700 bg-sky-50/50 p-2 rounded-lg border border-sky-100">
+                                  <MapPin size={13} className="text-sky-600 shrink-0 mt-0.5" />
+                                  <div className="leading-snug">
+                                    <span className="font-medium text-stone-800">{order.deliveryAddress}</span>
+                                    {order.deliveryZone && (
+                                      <span className="block text-[11px] font-bold text-sky-800 mt-0.5">
+                                        Zona: {order.deliveryZone}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               )}
 
-                              {order.changeFor && Number(order.changeFor) > 0 && (
-                                <div className="text-[11px] font-mono font-bold text-stone-800 bg-stone-100 px-2 py-0.5 rounded border border-stone-200 inline-block">
-                                  Troco para: €{Number(order.changeFor).toFixed(2)}
+                              {/* Pagamento e Troco */}
+                              <div className="flex items-center justify-between gap-2 text-xs flex-wrap">
+                                <div className="flex items-center gap-1.5 text-stone-600 font-mono">
+                                  <CreditCard size={12} className="text-stone-400" />
+                                  <span className="font-bold text-stone-800">{order.paymentMethod || 'Numerário'}</span>
+                                  {order.nif && (
+                                    <span className="text-[10px] font-bold bg-stone-100 text-stone-600 px-1 rounded border border-stone-200">
+                                      NIF: {order.nif}
+                                    </span>
+                                  )}
                                 </div>
-                              )}
+
+                                {order.changeFor && Number(order.changeFor) > 0 && (
+                                  <span className="text-[11px] font-mono font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded border border-amber-300">
+                                    Troco p/ €{Number(order.changeFor).toFixed(2)}
+                                  </span>
+                                )}
+                              </div>
                             </div>
 
-                            {/* Bloco de Itens do Pedido */}
-                            <div className="px-3.5 py-2">
-                              <div className="bg-stone-50 rounded-lg p-2.5 border border-stone-200/80 space-y-1.5 max-h-[160px] overflow-y-auto">
-                                <div className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-wider">
-                                  Itens do Pedido ({items.length})
-                                </div>
+                            {/* Comanda de Produção: Lista dos Itens com Alta Clareza */}
+                            <div className="p-3.5 py-2.5 flex-1">
+                              <div className="space-y-2">
                                 {items.map((item: any, idx: number) => {
                                   const qty = item.quantity || item.qty || 1;
                                   const isPizza = item.type === 'pizza' || item.isPizza || (item.flavors && item.flavors.length > 0);
                                   const flavors = item.flavors || [];
+                                  const itemPrice = Number(item.price || 0) * qty;
 
                                   return (
-                                    <div key={idx} className="text-xs border-b border-stone-100 last:border-b-0 pb-1.5 last:pb-0">
-                                      <div className="flex items-start justify-between gap-1.5">
-                                        <div className="flex items-start gap-1.5 min-w-0">
-                                          <span className="font-mono font-bold text-stone-900 bg-stone-200/70 px-1 rounded text-[11px] shrink-0">
+                                    <div key={idx} className="border-b border-stone-100 last:border-b-0 pb-1.5 last:pb-0">
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-start gap-2 min-w-0">
+                                          {/* Quantidade em Destaque Real de Cozinha */}
+                                          <span className="font-mono font-black text-stone-950 bg-[#fdde58] px-1.5 py-0.5 rounded text-xs shrink-0 border border-[#d8ba39] shadow-2xs">
                                             {qty}x
                                           </span>
                                           <div className="min-w-0">
-                                            <div className="font-bold text-stone-800 leading-tight">
+                                            <div className="font-black text-stone-900 text-xs sm:text-sm leading-snug">
                                               {item.name || 'Produto'}
                                             </div>
+
+                                            {/* Sabores Meio a Meio */}
                                             {isPizza && flavors.length > 0 && (
-                                              <div className="pl-1 mt-0.5 space-y-0.5 text-[11px] text-stone-600 font-mono">
+                                              <div className="mt-1 space-y-0.5">
                                                 {flavors.map((fl: any, fIdx: number) => {
                                                   const fraction = flavors.length === 2 ? '1/2' : flavors.length === 3 ? '1/3' : flavors.length === 4 ? '1/4' : '1/1';
                                                   const flName = typeof fl === 'string' ? fl : fl.name;
                                                   return (
-                                                    <div key={fIdx} className="flex items-center gap-1">
-                                                      <span className="text-stone-500 font-bold">[{fraction}]</span>
+                                                    <div key={fIdx} className="flex items-center gap-1.5 text-xs text-stone-700 font-medium">
+                                                      <span className="text-[10px] font-mono font-bold bg-stone-100 text-stone-800 px-1 rounded border border-stone-200">
+                                                        {fraction}
+                                                      </span>
                                                       <span className="truncate">{flName}</span>
                                                     </div>
                                                   );
                                                 })}
                                               </div>
                                             )}
+
+                                            {/* Borda Recheada */}
                                             {(item.crust || item.borda) && (
-                                              <div className="text-[10px] text-stone-600 font-mono font-medium mt-0.5">
-                                                🧀 Borda: {item.crust || item.borda}
+                                              <div className="text-[11px] text-amber-900 font-bold mt-0.5 flex items-center gap-1">
+                                                <span>🧀 Borda:</span>
+                                                <span>{item.crust || item.borda}</span>
                                               </div>
                                             )}
                                           </div>
                                         </div>
-                                        <span className="font-mono text-stone-600 text-[11px] font-semibold tabular-nums shrink-0">
-                                          €{Number((item.price || 0) * qty).toFixed(2)}
-                                        </span>
+
+                                        {/* Preço só é exibido se for maior que 0 (evita €0.00 confuso de IA) */}
+                                        {itemPrice > 0 && (
+                                          <span className="font-mono text-stone-700 text-xs font-bold tabular-nums shrink-0">
+                                            €{itemPrice.toFixed(2)}
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                   );
@@ -3110,8 +3171,8 @@ export default function AdminDashboard() {
 
                               {/* Observação Geral com Alerta em Destaque */}
                               {order.notes && order.notes.trim() && (
-                                <div className="mt-2 bg-stone-50 border-l-3 border-stone-700 px-2.5 py-1.5 rounded-r-md text-xs font-bold text-stone-900 flex items-start gap-1.5 border border-stone-200 border-l-stone-700">
-                                  <AlertCircle size={13} className="text-stone-600 shrink-0 mt-0.5" />
+                                <div className="mt-2.5 bg-amber-50 border border-amber-300 px-2.5 py-1.5 rounded-lg text-xs font-bold text-amber-950 flex items-start gap-1.5">
+                                  <AlertCircle size={14} className="text-amber-700 shrink-0 mt-0.5" />
                                   <span className="break-words leading-tight">
                                     Obs: {order.notes}
                                   </span>
@@ -3119,22 +3180,22 @@ export default function AdminDashboard() {
                               )}
                             </div>
 
-                            {/* Rodapé do Card: Ações com Paleta da Empresa */}
-                            <div className="p-3.5 pt-2 border-t border-stone-100 bg-stone-50/40 space-y-2">
+                            {/* Rodapé do Card: Ações Operacionais */}
+                            <div className="p-3 pt-2 border-t border-stone-100 bg-stone-50/50 space-y-2">
                               {/* Botão de Avanço Rápido */}
-                              {order.status === 'Pendente' && (
+                              {isPending && (
                                 <button
                                   type="button"
                                   onClick={() => updateOrderStatus(order.id, 'Em Preparo')}
                                   className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-[#fdde58] hover:bg-[#e2c23f] active:bg-[#d8ba39] text-stone-950 font-mono font-black text-xs shadow-2xs transition-all cursor-pointer border border-[#d8ba39]"
                                 >
                                   <Flame size={14} />
-                                  <span>AVANÇAR P/ PREPARO</span>
+                                  <span>INICIAR PREPARO</span>
                                   <ArrowRight size={14} />
                                 </button>
                               )}
 
-                              {order.status === 'Em Preparo' && (
+                              {isInPrep && (
                                 <button
                                   type="button"
                                   onClick={() => updateOrderStatus(order.id, isDelivery ? 'Saiu para Entrega' : 'Finalizado')}
@@ -3146,35 +3207,35 @@ export default function AdminDashboard() {
                                 </button>
                               )}
 
-                              {order.status === 'Saiu para Entrega' && (
+                              {isInRoute && (
                                 <button
                                   type="button"
                                   onClick={() => updateOrderStatus(order.id, 'Finalizado')}
-                                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-stone-900 hover:bg-stone-950 active:bg-black text-white font-mono font-bold text-xs shadow-2xs transition-all cursor-pointer border border-stone-800"
+                                  className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-stone-900 hover:bg-stone-950 active:bg-black text-white font-mono font-black text-xs shadow-2xs transition-all cursor-pointer border border-stone-800"
                                 >
                                   <Check size={14} className="text-[#fdde58]" />
-                                  <span>CONCLUIR PEDIDO</span>
+                                  <span>CONCLUIR ENTREGA</span>
                                 </button>
                               )}
 
-                              {order.status === 'Finalizado' && (
-                                <div className="text-center py-1.5 text-xs font-mono font-bold text-stone-600 bg-stone-100 rounded-lg border border-stone-200">
+                              {isDone && (
+                                <div className="text-center py-1.5 text-xs font-mono font-bold text-emerald-800 bg-emerald-50 rounded-lg border border-emerald-200">
                                   ✓ PEDIDO CONCLUÍDO
                                 </div>
                               )}
 
-                              {order.status === 'Cancelado' && (
-                                <div className="text-center py-1.5 text-xs font-mono font-bold text-stone-500 bg-stone-100 rounded-lg border border-stone-200">
+                              {isCanceled && (
+                                <div className="text-center py-1.5 text-xs font-mono font-bold text-rose-800 bg-rose-50 rounded-lg border border-rose-200">
                                   ✕ PEDIDO CANCELADO
                                 </div>
                               )}
 
-                              {/* Linha de Ações Secundárias */}
+                              {/* Linha de Atalhos: Mudar Status + Imprimir + Editar + Cancelar + Excluir */}
                               <div className="flex items-center justify-between gap-1 pt-1">
                                 <select
                                   value={order.status}
                                   onChange={(e) => updateOrderStatus(order.id, e.target.value)}
-                                  className="text-[11px] font-mono font-semibold px-2 py-1 bg-white rounded border border-stone-200 text-stone-700 cursor-pointer outline-none hover:bg-stone-50 transition-colors"
+                                  className="text-[11px] font-mono font-bold px-2 py-1 bg-white rounded border border-stone-200 text-stone-800 cursor-pointer outline-none hover:bg-stone-50 transition-colors"
                                   title="Mudar status manualmente"
                                 >
                                   <option value="Pendente">Pendente</option>
@@ -3187,7 +3248,7 @@ export default function AdminDashboard() {
                                 <div className="flex items-center gap-1">
                                   <button
                                     onClick={() => handlePrintOrder(order)}
-                                    className="p-1.5 text-stone-600 hover:text-stone-950 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors cursor-pointer"
+                                    className="p-1.5 text-stone-700 hover:text-stone-950 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors cursor-pointer"
                                     title="Imprimir Talão Térmico"
                                   >
                                     <Printer size={13} />
@@ -3195,7 +3256,7 @@ export default function AdminDashboard() {
 
                                   <button
                                     onClick={() => setEditingOrder(order)}
-                                    className="p-1.5 text-stone-600 hover:text-stone-950 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors cursor-pointer"
+                                    className="p-1.5 text-stone-700 hover:text-stone-950 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors cursor-pointer"
                                     title="Editar Pedido"
                                   >
                                     <Edit2 size={13} />
@@ -3231,7 +3292,7 @@ export default function AdminDashboard() {
                     </div>
                   )}
 
-                  {/* VISUALIZAÇÃO EM TABELA REFINADA (RELATÓRIO COMPACTO PADRÃO) */}
+                  {/* VISUALIZAÇÃO EM TABELA (LIMPA, SEM ENDEREÇOS POLUINDO A PÁGINA PRINCIPAL) */}
                   {ordersViewMode === 'table' && filteredList.length > 0 && (
                     <div className="overflow-x-auto rounded-lg border border-stone-200">
                       <table className="min-w-full text-left">
@@ -3255,52 +3316,71 @@ export default function AdminDashboard() {
                               <tr key={order.id} className="hover:bg-stone-50/80 transition-colors">
                                 <td className="py-3 px-4">
                                   <div className="flex items-center gap-1.5">
-                                    <span className="font-bold text-stone-900 tabular-nums">#{order.id}</span>
+                                    <span className="font-black text-stone-900 tabular-nums">#{order.id}</span>
                                     {(order.isEdited || order.is_edited) && (
-                                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-stone-100 text-stone-800 border border-stone-200">
+                                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
                                         EDITADO
                                       </span>
                                     )}
                                   </div>
                                   <div className="text-[11px] text-stone-500 mt-0.5 flex items-center gap-1">
-                                    <span>{new Date(order.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    <span className="font-bold text-stone-700">
+                                      {new Date(order.createdAt).toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
                                     {order.status !== 'Finalizado' && order.status !== 'Cancelado' && elapsed.text && (
                                       <span className="text-[10px] text-stone-400">({elapsed.text})</span>
                                     )}
                                   </div>
                                 </td>
 
+                                {/* Cliente & Contato: Limpo e objetivo, sem endereço poluindo */}
                                 <td className="py-3 px-4">
-                                  <div className="font-bold text-stone-900 text-xs sm:text-sm">{order.customerName}</div>
+                                  <div className="font-black text-stone-900 text-xs sm:text-sm">{order.customerName}</div>
                                   <div className="flex items-center gap-2 mt-0.5 text-[11px] text-stone-500">
-                                    {order.customerPhone && <span>{order.customerPhone}</span>}
+                                    {order.customerPhone && (
+                                      <a
+                                        href={`tel:${order.customerPhone}`}
+                                        className="hover:text-stone-900 font-bold transition-colors"
+                                      >
+                                        {order.customerPhone}
+                                      </a>
+                                    )}
                                     {order.nif && (
                                       <span className="px-1 bg-stone-100 rounded text-[10px] font-bold border border-stone-200">
                                         NIF: {order.nif}
                                       </span>
                                     )}
                                   </div>
-                                  {isDelivery && order.deliveryAddress && (
-                                    <div className="text-[11px] text-stone-500 line-clamp-1 mt-0.5 max-w-xs">
-                                      📍 {order.deliveryAddress}
-                                    </div>
-                                  )}
                                 </td>
 
                                 <td className="py-3 px-4">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold bg-stone-100 text-stone-700 border border-stone-200">
-                                    {isDelivery ? <Bike size={11} className="text-stone-500" /> : <Store size={11} className="text-stone-500" />}
+                                  <span
+                                    title={isDelivery && order.deliveryAddress ? `Endereço: ${order.deliveryAddress}` : undefined}
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-bold border ${
+                                      isDelivery
+                                        ? 'bg-sky-50 text-sky-800 border-sky-200'
+                                        : 'bg-stone-100 text-stone-700 border-stone-200'
+                                    }`}
+                                  >
+                                    {isDelivery ? <Bike size={12} className="text-sky-600" /> : <Store size={12} className="text-stone-500" />}
                                     <span>{isDelivery ? 'Entrega' : 'Balcão'}</span>
                                   </span>
                                 </td>
 
                                 <td className="py-3 px-4">
-                                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold font-mono bg-stone-100 text-stone-700 border border-stone-200">
-                                    {order.paymentMethod || 'Outros'}
-                                  </span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold font-mono bg-stone-100 text-stone-800 border border-stone-200">
+                                      {order.paymentMethod || 'Numerário'}
+                                    </span>
+                                    {order.changeFor && Number(order.changeFor) > 0 && (
+                                      <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                        Troco €{Number(order.changeFor).toFixed(0)}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
 
-                                <td className="py-3 px-4 font-bold tabular-nums text-stone-900 text-sm">
+                                <td className="py-3 px-4 font-black tabular-nums text-stone-900 text-sm">
                                   €{Number(order.totalAmount || 0).toFixed(2)}
                                 </td>
 
@@ -3334,7 +3414,7 @@ export default function AdminDashboard() {
                                     {order.status === 'Em Preparo' && (
                                       <button
                                         onClick={() => updateOrderStatus(order.id, isDelivery ? 'Saiu para Entrega' : 'Finalizado')}
-                                        className="text-[11px] font-mono font-bold px-2.5 py-1 rounded bg-stone-900 hover:bg-stone-950 text-[#fdde58] transition-colors cursor-pointer border border-stone-800 shadow-2xs"
+                                        className="text-[11px] font-mono font-black px-2.5 py-1 rounded bg-stone-900 hover:bg-stone-950 text-[#fdde58] transition-colors cursor-pointer border border-stone-800 shadow-2xs"
                                         title={isDelivery ? 'Despachar Motoboy' : 'Finalizar Pedido'}
                                       >
                                         {isDelivery ? 'DESPACHAR' : 'FINALIZAR'}
@@ -3351,14 +3431,14 @@ export default function AdminDashboard() {
                                     )}
                                     <button
                                       onClick={() => handlePrintOrder(order)}
-                                      className="p-1.5 text-stone-600 hover:text-stone-950 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors cursor-pointer"
+                                      className="p-1.5 text-stone-700 hover:text-stone-950 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors cursor-pointer"
                                       title="Imprimir Talão"
                                     >
                                       <Printer size={13} />
                                     </button>
                                     <button
                                       onClick={() => setEditingOrder(order)}
-                                      className="p-1.5 text-stone-600 hover:text-stone-950 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors cursor-pointer"
+                                      className="p-1.5 text-stone-700 hover:text-stone-950 bg-white hover:bg-stone-100 border border-stone-200 rounded-md transition-colors cursor-pointer"
                                       title="Editar Pedido"
                                     >
                                       <Edit2 size={13} />
