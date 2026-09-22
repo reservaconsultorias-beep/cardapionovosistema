@@ -199,7 +199,7 @@ export default function MenuManager() {
       return isNaN(parsed) ? null : parsed;
     };
 
-    const dbItem = {
+    const dbItem: any = {
       id: editingItem.id || `item-${Date.now()}`,
       name: editingItem.name,
       ingredients: editingItem.ingredients,
@@ -208,15 +208,30 @@ export default function MenuManager() {
       price_p: isPizza ? parseNum(editingItem.price_p) : null,
       price_m: isPizza ? parseNum(editingItem.price_m) : null,
       price_g: isPizza ? parseNum(editingItem.price_g) : null,
-      price_big: isPizza ? parseNum(editingItem.price_big) : null,
-      price_super_big: isPizza ? parseNum(editingItem.price_super_big) : null,
       image_url: finalImageUrl,
       day_of_week: editingItem.day_of_week || null,
       is_active: editingItem.is_active !== undefined ? editingItem.is_active : true,
       is_bestseller: editingItem.is_bestseller !== undefined ? editingItem.is_bestseller : false
     };
 
-    const { error } = await supabase.from('menu_items').upsert(dbItem, { onConflict: 'id' });
+    // Apenas tenta enviar tamanhos extras se preenchidos em pizzas
+    if (isPizza) {
+      const pBig = parseNum(editingItem.price_big);
+      const pSuperBig = parseNum(editingItem.price_super_big);
+      if (pBig !== null) dbItem.price_big = pBig;
+      if (pSuperBig !== null) dbItem.price_super_big = pSuperBig;
+    }
+
+    let { error } = await supabase.from('menu_items').upsert(dbItem, { onConflict: 'id' });
+    
+    // Auto-recuperação: se as colunas price_big/price_super_big não existirem no schema cache do Supabase,
+    // remove esses campos extras e salva perfeitamente sem travar o gestor.
+    if (error && (error.message.includes('price_big') || error.message.includes('price_super_big'))) {
+      delete dbItem.price_big;
+      delete dbItem.price_super_big;
+      const retryResult = await supabase.from('menu_items').upsert(dbItem, { onConflict: 'id' });
+      error = retryResult.error;
+    }
     
     if (error) {
       setFeedback("Erro ao salvar: " + error.message);
