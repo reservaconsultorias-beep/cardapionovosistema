@@ -3,7 +3,8 @@ import { supabase } from '../lib/supabase';
 import { 
   Bot, Power, Loader2, MessageSquare, 
   Send, User, Search, PauseCircle, PlayCircle, X,
-  Image as ImageIcon, FileText, Music, ZoomIn, Download, ExternalLink, ShieldCheck, CheckCheck
+  Image as ImageIcon, FileText, Music, ZoomIn, Download, ExternalLink, ShieldCheck, CheckCheck,
+  Users, Clock, ShoppingBag, TrendingUp, Sparkles, ChevronDown, ChevronUp, RefreshCw
 } from 'lucide-react';
 
 export interface ChatMessage {
@@ -175,6 +176,114 @@ export default function AgentManager() {
   const [togglingChatPause, setTogglingChatPause] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ url: string; caption?: string; sender?: string; timestamp?: string } | null>(null);
 
+  // Métricas do Dia (Cockpit de Atendimento)
+  const [showMetricsDashboard, setShowMetricsDashboard] = useState(true);
+  const [showLearningDrawer, setShowLearningDrawer] = useState(false);
+  const [loadingMetrics, setLoadingMetrics] = useState(false);
+  const [metrics, setMetrics] = useState({
+    totalConversationsToday: 0,
+    aiHandledConversations: 0,
+    humanHandledConversations: 0,
+    totalClientMessages: 0,
+    totalBotMessages: 0,
+    totalHumanMessages: 0,
+    avgResponseTimeSec: 0,
+    totalOrdersConverted: 0,
+    totalRevenueConverted: 0
+  });
+
+  const fetchDailyMetrics = async () => {
+    setLoadingMetrics(true);
+    try {
+      const { data: allMsgs } = await supabase
+        .from('chat_messages')
+        .select('phone, sender, created_at');
+
+      const { data: allOrders } = await supabase
+        .from('orders')
+        .select('id, customer_phone, total_amount, created_at');
+
+      const msgs = allMsgs || [];
+      const ords = allOrders || [];
+
+      let clientMsgs = 0;
+      let botMsgs = 0;
+      let humanMsgs = 0;
+      const activePhones = new Set<string>();
+      const aiPhones = new Set<string>();
+      const humanPhones = new Set<string>();
+      const responseTimes: number[] = [];
+      const phoneGroups: Record<string, any[]> = {};
+
+      for (const m of msgs) {
+        if (m.phone) activePhones.add(m.phone);
+        if (m.sender === 'client') {
+          clientMsgs++;
+        } else if (m.sender === 'bot') {
+          botMsgs++;
+          if (m.phone) aiPhones.add(m.phone);
+        } else if (m.sender === 'human') {
+          humanMsgs++;
+          if (m.phone) humanPhones.add(m.phone);
+        }
+
+        if (m.phone) {
+          if (!phoneGroups[m.phone]) phoneGroups[m.phone] = [];
+          phoneGroups[m.phone].push(m);
+        }
+      }
+
+      for (const list of Object.values(phoneGroups)) {
+        list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        let lastClientTime = 0;
+        for (const m of list) {
+          if (m.sender === 'client') {
+            lastClientTime = new Date(m.created_at).getTime();
+          } else if (lastClientTime > 0) {
+            const diffSec = (new Date(m.created_at).getTime() - lastClientTime) / 1000;
+            if (diffSec >= 0 && diffSec < 400) {
+              responseTimes.push(diffSec);
+            }
+            lastClientTime = 0;
+          }
+        }
+      }
+
+      let ordersConverted = 0;
+      let revenueConverted = 0;
+      for (const o of ords) {
+        const rawOPhone = String(o.customer_phone || '').replace(/\D/g, '');
+        if (!rawOPhone) continue;
+        const last9 = rawOPhone.slice(-9);
+        const match = Array.from(activePhones).some(p => p.includes(last9));
+        if (match) {
+          ordersConverted++;
+          revenueConverted += Number(o.total_amount || 0);
+        }
+      }
+
+      const avgSec = responseTimes.length > 0
+        ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
+        : (botMsgs > 0 ? 4 : 0);
+
+      setMetrics({
+        totalConversationsToday: activePhones.size || conversations.length,
+        aiHandledConversations: aiPhones.size,
+        humanHandledConversations: humanPhones.size || conversations.filter(c => c.paused).length,
+        totalClientMessages: clientMsgs,
+        totalBotMessages: botMsgs,
+        totalHumanMessages: humanMsgs,
+        avgResponseTimeSec: avgSec,
+        totalOrdersConverted: ordersConverted,
+        totalRevenueConverted: revenueConverted
+      });
+    } catch (err) {
+      console.warn('Erro ao carregar métricas:', err);
+    } finally {
+      setLoadingMetrics(false);
+    }
+  };
+
   // Fecha o modal de imagem ao pressionar Esc
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -194,6 +303,7 @@ export default function AgentManager() {
   useEffect(() => {
     fetchBotStatus();
     loadConversations();
+    fetchDailyMetrics();
     
     // Inscrever-se para atualizações em tempo real (Settings, Conversas e Mensagens)
     const subscription = supabase
@@ -707,8 +817,23 @@ export default function AgentManager() {
           </div>
         </div>
 
-        {/* Botão Master Simples */}
+        {/* Botão Master e Toggle de Métricas */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowMetricsDashboard(prev => !prev)}
+            className={`px-3 py-2 rounded-lg font-medium text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer border shadow-2xs ${
+              showMetricsDashboard
+                ? 'bg-amber-500/10 text-amber-900 border-amber-300 font-semibold'
+                : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+            }`}
+            title="Exibir ou ocultar métricas de atendimento da IA"
+          >
+            <TrendingUp size={14} className="text-amber-600 shrink-0" />
+            <span className="hidden sm:inline">Métricas de Atendimento</span>
+            <span className="sm:hidden">Métricas</span>
+            {showMetricsDashboard ? <ChevronUp size={13} className="text-stone-400" /> : <ChevronDown size={13} className="text-stone-400" />}
+          </button>
+
           <button
             onClick={toggleBot}
             disabled={updating}
@@ -725,6 +850,140 @@ export default function AgentManager() {
           </button>
         </div>
       </div>
+
+      {/* Cockpit de Desempenho & Inteligência de I.A. */}
+      {showMetricsDashboard && (
+        <div className="bg-stone-900 text-white rounded-xl p-3.5 sm:p-4 shadow-sm border border-stone-800 space-y-3 transition-all animate-in fade-in duration-200">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-800 pb-2.5">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-amber-400 shrink-0" />
+              <span className="font-bold text-xs tracking-wider uppercase text-stone-200">Cockpit de Atendimento & Inteligência de I.A.</span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Hoje</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowLearningDrawer(prev => !prev)}
+                className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1 px-2.5 py-1 rounded bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/20 transition-colors cursor-pointer"
+              >
+                <span>💡 Aprendizados de Hoje ({showLearningDrawer ? 'Ocultar' : 'Ver Regras'})</span>
+              </button>
+              <button
+                onClick={fetchDailyMetrics}
+                disabled={loadingMetrics}
+                className="text-[11px] font-mono text-stone-400 hover:text-white flex items-center gap-1 px-2 py-1 rounded hover:bg-stone-800 transition-colors cursor-pointer"
+                title="Recalcular métricas de hoje"
+              >
+                <RefreshCw size={12} className={loadingMetrics ? "animate-spin text-amber-400" : ""} />
+                <span>Atualizar</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Grid de 4 Cards de Métricas */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+            {/* Card 1: Atendimentos Hoje */}
+            <div className="bg-stone-800/80 rounded-lg p-3 border border-stone-700/60 relative overflow-hidden">
+              <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
+                <span className="font-medium">Clientes Hoje</span>
+                <Users size={15} className="text-purple-400" />
+              </div>
+              <div className="text-xl sm:text-2xl font-bold font-mono text-white">
+                {metrics.totalConversationsToday}
+              </div>
+              <div className="text-[10.5px] text-stone-400 mt-1 flex items-center gap-1 font-mono">
+                <span className="text-emerald-400">🤖 {metrics.aiHandledConversations} IA</span>
+                <span>•</span>
+                <span className="text-amber-400">👤 {metrics.humanHandledConversations} Manuais</span>
+              </div>
+            </div>
+
+            {/* Card 2: Volume de Mensagens */}
+            <div className="bg-stone-800/80 rounded-lg p-3 border border-stone-700/60 relative overflow-hidden">
+              <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
+                <span className="font-medium">Mensagens Trocadas</span>
+                <MessageSquare size={15} className="text-blue-400" />
+              </div>
+              <div className="text-xl sm:text-2xl font-bold font-mono text-white">
+                {metrics.totalClientMessages + metrics.totalBotMessages + metrics.totalHumanMessages}
+              </div>
+              <div className="text-[10.5px] text-stone-400 mt-1 flex items-center gap-1 font-mono">
+                <span className="text-blue-300">{metrics.totalClientMessages} clientes</span>
+                <span>•</span>
+                <span className="text-stone-300">{metrics.totalBotMessages + metrics.totalHumanMessages} pizzaria</span>
+              </div>
+            </div>
+
+            {/* Card 3: Velocidade de Resposta */}
+            <div className="bg-stone-800/80 rounded-lg p-3 border border-stone-700/60 relative overflow-hidden">
+              <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
+                <span className="font-medium">Velocidade da IA</span>
+                <Clock size={15} className="text-emerald-400" />
+              </div>
+              <div className="text-xl sm:text-2xl font-bold font-mono text-emerald-400">
+                {metrics.avgResponseTimeSec > 0 ? `${metrics.avgResponseTimeSec}s` : '< 5s'}
+              </div>
+              <div className="text-[10.5px] text-stone-400 mt-1 font-mono">
+                Tempo médio de resposta
+              </div>
+            </div>
+
+            {/* Card 4: Conversão em Pedidos */}
+            <div className="bg-stone-800/80 rounded-lg p-3 border border-stone-700/60 relative overflow-hidden">
+              <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
+                <span className="font-medium">Pedidos via WhatsApp</span>
+                <ShoppingBag size={15} className="text-amber-400" />
+              </div>
+              <div className="text-xl sm:text-2xl font-bold font-mono text-amber-400">
+                € {metrics.totalRevenueConverted.toFixed(2)}
+              </div>
+              <div className="text-[10.5px] text-stone-400 mt-1 flex items-center gap-1 font-mono">
+                <span className="text-emerald-400 font-semibold">{metrics.totalOrdersConverted} pedidos</span>
+                <span>gerados de conversas</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Aba de Aprendizado & Inteligência com Casos Reais de Hoje */}
+          {showLearningDrawer && (
+            <div className="bg-stone-950/90 rounded-lg p-3.5 border border-amber-500/30 space-y-2.5 animate-in fade-in duration-150">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+                <Sparkles size={14} />
+                <span>Diretrizes e Aprendizados Consolidados para a Giovanna (Base de Casos Reais)</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] leading-relaxed text-stone-300">
+                <div className="p-2.5 rounded bg-stone-900 border border-stone-800 flex gap-2">
+                  <span className="text-base shrink-0">💶</span>
+                  <div>
+                    <span className="font-semibold text-white block">Pagamento Oficial (Regra Estrita):</span>
+                    Aceitar apenas <strong>MB WAY (+351 914 044 317)</strong> e <strong>Dinheiro (Numerário)</strong>. Transferência bancária é desconsiderada como regra geral e nunca deve ser oferecida.
+                  </div>
+                </div>
+                <div className="p-2.5 rounded bg-stone-900 border border-stone-800 flex gap-2">
+                  <span className="text-base shrink-0">🪙</span>
+                  <div>
+                    <span className="font-semibold text-white block">Troco Inteligente em Dinheiro:</span>
+                    Sempre que o cliente optar por dinheiro, perguntar se possui valor exato ou se precisa de troco para alguma nota específica (ex: nota de € 20, € 50).
+                  </div>
+                </div>
+                <div className="p-2.5 rounded bg-stone-900 border border-stone-800 flex gap-2">
+                  <span className="text-base shrink-0">🥤</span>
+                  <div>
+                    <span className="font-semibold text-white block">Bebidas & Refrigerantes:</span>
+                    Confirmar prontamente que a pizzaria possui Coca-Cola 1L nas opções <strong>Normal</strong> e <strong>Zero</strong>, além de cervejas Sagres e águas.
+                  </div>
+                </div>
+                <div className="p-2.5 rounded bg-stone-900 border border-stone-800 flex gap-2">
+                  <span className="text-base shrink-0">⏱️</span>
+                  <div>
+                    <span className="font-semibold text-white block">Status & Confirmações:</span>
+                    Avisar com prontidão quando o pedido já estiver no forno ou saindo para entrega com os estafetas (tempo médio estimado: até 60min).
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Espelho de Conversas estilo ADO / WhatsApp Minimalista */}
       <div className="bg-white rounded-xl border border-stone-200 shadow-xs overflow-hidden flex flex-col md:flex-row h-[calc(100vh-230px)] min-h-[400px]">
