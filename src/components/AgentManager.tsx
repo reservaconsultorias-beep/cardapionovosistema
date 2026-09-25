@@ -2,13 +2,17 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { 
   Bot, Power, Loader2, MessageSquare, 
-  Send, User, Search, PauseCircle, PlayCircle, X
+  Send, User, Search, PauseCircle, PlayCircle, X,
+  Image as ImageIcon, FileText, Music, ZoomIn, Download, ExternalLink, ShieldCheck, CheckCheck
 } from 'lucide-react';
 
 export interface ChatMessage {
   id: string;
   sender: 'client' | 'bot' | 'human';
   text: string;
+  media_url?: string | null;
+  media_type?: string | null;
+  caption?: string | null;
   timestamp: string;
 }
 
@@ -21,6 +25,109 @@ export interface ChatConversation {
   last_sender?: 'client' | 'bot' | 'human';
   updated_at: string;
   messages: ChatMessage[];
+}
+
+export interface ParsedMessage {
+  mediaType: 'image' | 'audio' | 'document' | 'sticker' | 'text';
+  mediaUrl: string | null;
+  caption: string | null;
+  displayText: string;
+  isReceipt: boolean;
+}
+
+export function parseMessageContent(text: string, mediaUrlProp?: string | null, mediaTypeProp?: string | null, captionProp?: string | null): ParsedMessage {
+  const isReceiptPattern = /(?:comprovante|mb\s*way|mbway|transfer[eê]ncia|paguei|pago|recibo)/i;
+
+  if (mediaUrlProp) {
+    const isImage = mediaTypeProp === 'image' || (!mediaTypeProp && (mediaUrlProp.startsWith('data:image') || /\.(jpg|jpeg|png|webp|gif)/i.test(mediaUrlProp)));
+    const isAudio = mediaTypeProp === 'audio' || (!mediaTypeProp && (mediaUrlProp.startsWith('data:audio') || /\.(mp3|ogg|wav|opus|m4a)/i.test(mediaUrlProp)));
+    const isDoc = mediaTypeProp === 'document' || (!mediaTypeProp && /\.(pdf|docx?|xlsx?)/i.test(mediaUrlProp));
+    const cap = captionProp || (text && !text.startsWith('[') ? text : null);
+    const mType = isImage ? 'image' : (isAudio ? 'audio' : (isDoc ? 'document' : 'text'));
+
+    return {
+      mediaType: mType,
+      mediaUrl: mediaUrlProp,
+      caption: cap,
+      displayText: cap || (isImage ? 'Foto / Comprovante' : (isAudio ? 'Mensagem de voz' : (isDoc ? 'Documento' : text))),
+      isReceipt: Boolean(cap && isReceiptPattern.test(cap))
+    };
+  }
+
+  if (!text) return { mediaType: 'text', mediaUrl: null, caption: null, displayText: '', isReceipt: false };
+
+  // 1. Detecta marcação [FOTO: URL] ou [IMAGEM: URL]
+  const fotoMatch = text.match(/^\[(?:FOTO|IMAGEM):\s*([^\]]+)\]\s*(.*)$/is);
+  if (fotoMatch) {
+    const url = fotoMatch[1].trim();
+    const cap = fotoMatch[2].trim() || null;
+    return {
+      mediaType: 'image',
+      mediaUrl: url.length > 5 ? url : null,
+      caption: cap,
+      displayText: cap || 'Foto / Comprovante',
+      isReceipt: Boolean(cap && isReceiptPattern.test(cap)) || (url.length > 5 && isReceiptPattern.test(text))
+    };
+  }
+
+  // 2. Detecta marcação [AUDIO: URL]
+  const audioMatch = text.match(/^\[AUDIO:\s*([^\]]+)\]\s*(.*)$/is);
+  if (audioMatch) {
+    const url = audioMatch[1].trim();
+    return {
+      mediaType: 'audio',
+      mediaUrl: url.length > 5 ? url : null,
+      caption: null,
+      displayText: 'Mensagem de voz',
+      isReceipt: false
+    };
+  }
+
+  // 3. Detecta marcação [DOC: URL]
+  const docMatch = text.match(/^\[DOC:\s*([^\]]+)\]\s*(.*)$/is);
+  if (docMatch) {
+    const url = docMatch[1].trim();
+    const title = docMatch[2].trim() || 'Documento';
+    return {
+      mediaType: 'document',
+      mediaUrl: url.length > 5 ? url : null,
+      caption: title,
+      displayText: title,
+      isReceipt: isReceiptPattern.test(title)
+    };
+  }
+
+  // 4. Detecta marcação [FIGURINHA: URL]
+  const stickerMatch = text.match(/^\[FIGURINHA:\s*([^\]]+)\]/is);
+  if (stickerMatch) {
+    const url = stickerMatch[1].trim();
+    return {
+      mediaType: 'sticker',
+      mediaUrl: url.length > 5 ? url : null,
+      caption: null,
+      displayText: 'Figurinha',
+      isReceipt: false
+    };
+  }
+
+  // 5. Fallback para descritivos de mídia sem link público direto
+  if (text.includes('[Foto/Comprovante') || text.includes('[📷 Foto') || text.includes('[Arquivo/Midia]')) {
+    return {
+      mediaType: 'image',
+      mediaUrl: null,
+      caption: text.replace(/^\[(?:Foto\/Comprovante[^\]]*|📷 Foto[^\]]*|Arquivo\/Midia)\]\s*:?\s*/i, '').trim() || null,
+      displayText: text,
+      isReceipt: isReceiptPattern.test(text)
+    };
+  }
+
+  return {
+    mediaType: 'text',
+    mediaUrl: null,
+    caption: null,
+    displayText: text,
+    isReceipt: false
+  };
 }
 
 export default function AgentManager() {
@@ -43,6 +150,16 @@ export default function AgentManager() {
   const [manualMessage, setManualMessage] = useState('');
   const [sendingManual, setSendingManual] = useState(false);
   const [togglingChatPause, setTogglingChatPause] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<{ url: string; caption?: string; sender?: string; timestamp?: string } | null>(null);
+
+  // Fecha o modal de imagem ao pressionar Esc
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedImage(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -87,7 +204,7 @@ export default function AgentManager() {
             });
 
             if (selectedPhoneRef.current === conv.phone && Array.isArray(conv.messages)) {
-              setActiveMessages(conv.messages.slice(-20));
+              setActiveMessages(conv.messages.slice(-100));
             }
           }
         }
@@ -144,8 +261,11 @@ export default function AgentManager() {
               id: newMsg.id,
               sender: newMsg.sender as 'client' | 'bot' | 'human',
               text: newMsg.text,
+              media_url: newMsg.media_url || null,
+              media_type: newMsg.media_type || null,
+              caption: newMsg.caption || null,
               timestamp: newMsg.created_at || new Date().toISOString()
-            }].slice(-20);
+            }].slice(-100);
           });
         }
 
@@ -267,20 +387,23 @@ export default function AgentManager() {
     if (!phone) return;
     setLoadingMessages(true);
     try {
-      // 1. Tenta carregar da tabela relacional chat_messages (últimas 20 mensagens)
+      // 1. Carrega histórico da tabela relacional chat_messages (até 100 mensagens)
       const { data: msgData, error: msgErr } = await supabase
         .from('chat_messages')
         .select('id, sender, text, created_at')
         .eq('phone', phone)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(100);
 
       if (!msgErr && msgData && msgData.length > 0) {
         // Inverter para ordem cronológica (mais antiga -> mais nova)
-        const chronMsgs: ChatMessage[] = msgData.reverse().map(m => ({
+        const chronMsgs: ChatMessage[] = msgData.reverse().map((m: any) => ({
           id: m.id,
           sender: m.sender as 'client' | 'bot' | 'human',
           text: m.text,
+          media_url: m.media_url || null,
+          media_type: m.media_type || null,
+          caption: m.caption || null,
           timestamp: m.created_at
         }));
         setActiveMessages(chronMsgs);
@@ -290,7 +413,7 @@ export default function AgentManager() {
       // 2. Fallback: carregar do array salvo no settings
       const conv = conversations.find(c => c.phone === phone);
       if (conv && Array.isArray(conv.messages) && conv.messages.length > 0) {
-        setActiveMessages(conv.messages.slice(-20));
+        setActiveMessages(conv.messages.slice(-100));
       } else {
         setActiveMessages([]);
       }
@@ -394,8 +517,8 @@ export default function AgentManager() {
       timestamp: nowIso
     };
 
-    // Atualização otimista na tela (mantendo limite de 20)
-    setActiveMessages(prev => [...prev, optimisticMsg].slice(-20));
+    // Atualização otimista na tela (mantendo limite de 100)
+    setActiveMessages(prev => [...prev, optimisticMsg].slice(-100));
 
     try {
       // 1. Grava na tabela relacional chat_messages e chat_conversations
@@ -425,7 +548,7 @@ export default function AgentManager() {
       // 2. Grava no settings (fallback de compatibilidade)
       const conv = conversations.find(c => c.phone === selectedPhone);
       const convKey = `chat_conversation_${selectedPhone}`;
-      const updatedMessages = [...(conv?.messages || []), optimisticMsg].slice(-20);
+      const updatedMessages = [...(conv?.messages || []), optimisticMsg].slice(-100);
 
       const updatedConv: ChatConversation = {
         phone: selectedPhone,
@@ -650,11 +773,28 @@ export default function AgentManager() {
                       </div>
 
                       <div className="flex items-center justify-between gap-1.5">
-                        <p className="text-[11px] text-stone-500 truncate leading-tight">
-                          {c.last_sender === 'bot' && <span className="text-emerald-600 font-medium">IA: </span>}
-                          {c.last_sender === 'human' && <span className="text-blue-600 font-medium">Você: </span>}
-                          {c.last_message || 'Iniciou conversa'}
-                        </p>
+                        <div className="text-[11px] text-stone-500 truncate leading-tight flex items-center gap-1 min-w-0">
+                          {c.last_sender === 'bot' && <span className="text-emerald-600 font-medium shrink-0">IA: </span>}
+                          {c.last_sender === 'human' && <span className="text-blue-600 font-medium shrink-0">Você: </span>}
+                          {c.last_message && (c.last_message.startsWith('📷') || c.last_message.includes('[FOTO:') || c.last_message.includes('[Foto')) ? (
+                            <span className="flex items-center gap-1 text-emerald-700 font-medium truncate">
+                              <ImageIcon size={11} className="shrink-0 text-emerald-600" />
+                              <span className="truncate">{c.last_message.replace(/^\[(?:FOTO:[^\]]+\]\s*|Foto\/Comprovante[^\]]*\]\s*)/i, '').trim() || 'Foto / Comprovante'}</span>
+                            </span>
+                          ) : c.last_message && (c.last_message.startsWith('🎵') || c.last_message.includes('[AUDIO:')) ? (
+                            <span className="flex items-center gap-1 text-amber-700 font-medium truncate">
+                              <Music size={11} className="shrink-0 text-amber-600" />
+                              <span className="truncate">Mensagem de voz</span>
+                            </span>
+                          ) : c.last_message && (c.last_message.startsWith('📄') || c.last_message.includes('[DOC:')) ? (
+                            <span className="flex items-center gap-1 text-blue-700 font-medium truncate">
+                              <FileText size={11} className="shrink-0 text-blue-600" />
+                              <span className="truncate">Documento</span>
+                            </span>
+                          ) : (
+                            <span className="truncate">{c.last_message || 'Iniciou conversa'}</span>
+                          )}
+                        </div>
                         {c.paused && (
                           <span className="shrink-0 text-[8px] font-mono font-bold px-1 py-0.2 rounded bg-amber-100 text-amber-800">
                             Pausa
@@ -733,6 +873,7 @@ export default function AgentManager() {
                   const isClient = m.sender === 'client';
                   const isBot = m.sender === 'bot';
                   const isHuman = m.sender === 'human';
+                  const parsed = parseMessageContent(m.text, m.media_url, m.media_type, m.caption);
 
                   return (
                     <div
@@ -740,7 +881,7 @@ export default function AgentManager() {
                       className={`flex flex-col ${isClient ? 'items-start' : 'items-end'}`}
                     >
                       <div
-                        className={`relative max-w-[85%] rounded-lg px-2 pt-1 pb-1.5 text-[12.5px] leading-snug shadow-sm ${
+                        className={`relative max-w-[85%] sm:max-w-[75%] rounded-lg px-2.5 pt-1.5 pb-1.5 text-[12.5px] leading-snug shadow-sm ${
                           isClient
                             ? 'bg-white text-[#111b21] rounded-tl-sm'
                             : 'bg-[#d9fdd3] text-[#111b21] rounded-tr-sm'
@@ -748,21 +889,124 @@ export default function AgentManager() {
                       >
                         {/* Nome do remetente interno */}
                         {!isClient && (
-                          <div className={`text-[10.5px] font-medium mb-0.5 leading-none ${isBot ? 'text-emerald-600' : 'text-blue-500'}`}>
+                          <div className={`text-[10.5px] font-medium mb-1 leading-none ${isBot ? 'text-emerald-600' : 'text-blue-500'}`}>
                             {isBot ? 'Giovanna' : 'Você'}
                           </div>
                         )}
                         {isClient && selectedConversation.name && (
-                          <div className="text-[10.5px] font-medium mb-0.5 leading-none text-[#a80076]">
+                          <div className="text-[10.5px] font-medium mb-1 leading-none text-[#a80076]">
                             {selectedConversation.name}
                           </div>
                         )}
 
-                        <div className="whitespace-pre-wrap">{m.text}</div>
+                        {/* Selo especial para comprovantes de pagamento / MB WAY */}
+                        {parsed.isReceipt && (
+                          <div className="inline-flex items-center gap-1 px-1.5 py-0.5 mb-1.5 rounded bg-emerald-100/90 text-emerald-800 text-[10px] font-bold border border-emerald-300 shadow-2xs">
+                            <ShieldCheck size={11} className="text-emerald-700 shrink-0" />
+                            <span>Comprovante MB WAY</span>
+                          </div>
+                        )}
 
-                        {/* Horário (flutuando à direita inferior ou em linha) */}
-                        <div className={`text-[9px] text-[#667781] text-right mt-0.5 -mb-0.5 ${m.text.length < 20 ? 'inline-block ml-3 translate-y-0.5' : 'block'}`}>
-                          {m.timestamp ? new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
+                        {/* Renderização de Imagem / Foto / Comprovante */}
+                        {parsed.mediaType === 'image' && (
+                          <div className="my-0.5">
+                            {parsed.mediaUrl ? (
+                              <div 
+                                onClick={() => setSelectedImage({
+                                  url: parsed.mediaUrl!,
+                                  caption: parsed.caption || undefined,
+                                  sender: isClient ? (selectedConversation.name || 'Cliente') : (isBot ? 'Giovanna' : 'Você'),
+                                  timestamp: m.timestamp
+                                })}
+                                className="group relative rounded-md overflow-hidden cursor-pointer border border-stone-200/70 bg-stone-100 hover:shadow-md transition-all max-w-[260px]"
+                              >
+                                <img
+                                  src={parsed.mediaUrl}
+                                  alt={parsed.caption || "Foto recebida"}
+                                  className="w-full max-h-56 object-cover select-none group-hover:scale-[1.02] transition-transform duration-200"
+                                  loading="lazy"
+                                />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                                  <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 text-white text-[10px] font-medium px-2 py-1 rounded-full flex items-center gap-1 shadow-sm backdrop-blur-xs">
+                                    <ZoomIn size={11} />
+                                    Ver comprovante
+                                  </span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="p-2.5 rounded bg-stone-50 border border-stone-200 flex items-center gap-2 text-stone-600 text-xs">
+                                <ImageIcon size={18} className="text-stone-400 shrink-0" />
+                                <div>
+                                  <div className="font-semibold text-[11px] text-stone-700">Foto / Comprovante</div>
+                                  <div className="text-[10px] text-stone-400">Recebido via WhatsApp</div>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Legenda da imagem se houver */}
+                            {parsed.caption && (
+                              <div className="mt-1 text-[12px] whitespace-pre-wrap leading-snug text-stone-800">
+                                {parsed.caption}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Renderização de Áudio / Mensagem de Voz */}
+                        {parsed.mediaType === 'audio' && (
+                          <div className="my-1 p-2 rounded-md bg-stone-50/80 border border-stone-200/60 flex items-center gap-2">
+                            <Music size={16} className="text-emerald-600 shrink-0" />
+                            {parsed.mediaUrl ? (
+                              <audio controls className="h-7 w-48 max-w-full" src={parsed.mediaUrl} />
+                            ) : (
+                              <span className="text-xs text-stone-600 italic">Mensagem de voz</span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Renderização de Documento / PDF */}
+                        {parsed.mediaType === 'document' && (
+                          <div className="my-1 p-2 rounded-md bg-stone-50 border border-stone-200 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <FileText size={18} className="text-blue-500 shrink-0" />
+                              <span className="text-xs font-medium text-stone-800 truncate">{parsed.displayText}</span>
+                            </div>
+                            {parsed.mediaUrl && (
+                              <a
+                                href={parsed.mediaUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded transition-colors"
+                                title="Baixar documento"
+                              >
+                                <Download size={13} />
+                              </a>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Renderização de Figurinha (Sticker) */}
+                        {parsed.mediaType === 'sticker' && (
+                          <div className="my-0.5">
+                            {parsed.mediaUrl ? (
+                              <img src={parsed.mediaUrl} alt="Figurinha" className="w-24 h-24 object-contain select-none" />
+                            ) : (
+                              <span className="text-xs text-stone-500 italic">🎭 Figurinha</span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Renderização de Texto Simples */}
+                        {parsed.mediaType === 'text' && (
+                          <div className="whitespace-pre-wrap">{parsed.displayText}</div>
+                        )}
+
+                        {/* Horário e Confirmação de Leitura */}
+                        <div className={`text-[9px] text-[#667781] text-right mt-0.5 -mb-0.5 flex items-center justify-end gap-1 ${parsed.displayText.length < 20 && parsed.mediaType === 'text' ? 'inline-block ml-3 translate-y-0.5' : 'block'}`}>
+                          <span>{m.timestamp ? new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                          {!isClient && (
+                            <CheckCheck size={11} className="text-emerald-600 inline shrink-0 -translate-y-0.2" />
+                          )}
                         </div>
                       </div>
                     </div>
@@ -806,6 +1050,85 @@ export default function AgentManager() {
           </div>
         )}
       </div>
+
+      {/* Modal Lightbox de Imagem / Comprovante em Tela Cheia */}
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center p-4 transition-all"
+          onClick={() => setSelectedImage(null)}
+        >
+          {/* Barra Superior do Modal */}
+          <div 
+            className="w-full max-w-4xl flex items-center justify-between text-white pb-3 px-2 shrink-0"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <ImageIcon size={18} className="text-emerald-400 shrink-0" />
+              <span className="text-sm font-semibold truncate">
+                {selectedImage.caption || 'Foto / Comprovante do WhatsApp'}
+              </span>
+              <span className="text-xs text-stone-400 font-mono shrink-0">
+                ({selectedImage.sender} • {selectedImage.timestamp ? new Date(selectedImage.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''})
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              {selectedImage.url && !selectedImage.url.startsWith('data:') && (
+                <a
+                  href={selectedImage.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-md bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white transition-colors flex items-center gap-1 text-xs"
+                  title="Abrir em nova aba"
+                >
+                  <ExternalLink size={14} />
+                  <span className="hidden sm:inline">Nova Aba</span>
+                </a>
+              )}
+              {selectedImage.url && (
+                <a
+                  href={selectedImage.url}
+                  download={`comprovante_${Date.now()}.jpg`}
+                  className="p-1.5 rounded-md bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white transition-colors flex items-center gap-1 text-xs"
+                  title="Baixar imagem"
+                >
+                  <Download size={14} />
+                  <span className="hidden sm:inline">Baixar</span>
+                </a>
+              )}
+              <button
+                onClick={() => setSelectedImage(null)}
+                className="p-1.5 rounded-md bg-stone-800 hover:bg-red-900/80 text-stone-300 hover:text-white transition-colors cursor-pointer"
+                title="Fechar (Esc)"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* Imagem Ampliada */}
+          <div 
+            className="relative max-w-4xl max-h-[80vh] flex items-center justify-center overflow-hidden rounded-lg bg-stone-950/60 p-1 border border-stone-800 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <img
+              src={selectedImage.url}
+              alt={selectedImage.caption || "Imagem em tela cheia"}
+              className="max-h-[78vh] max-w-full object-contain rounded select-none"
+            />
+          </div>
+
+          {/* Legenda Inferior */}
+          {selectedImage.caption && (
+            <div 
+              className="mt-3 px-4 py-1.5 bg-stone-900/90 text-stone-200 text-xs rounded-full max-w-xl text-center truncate border border-stone-800"
+              onClick={e => e.stopPropagation()}
+            >
+              {selectedImage.caption}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

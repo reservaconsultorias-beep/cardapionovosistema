@@ -27,7 +27,7 @@ export default async (req: Request) => {
     // Se a Evolution API URL estiver configurada:
     const evolutionUrl = process.env.EVOLUTION_API_URL || 'https://evolution.cloudfy.live';
     const evolutionApiKey = process.env.EVOLUTION_API_KEY || '4296444B2C3B41198544D7C2C07FA4FE';
-    const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'agente1';
+    const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'agente41menus';
 
     let evolutionResult = null;
     try {

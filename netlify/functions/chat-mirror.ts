@@ -44,16 +44,23 @@ export default async (req: Request) => {
 
     // 1. Gravar nas tabelas relacionais dedicadas (chat_conversations e chat_messages)
     try {
-      // Upsert na conversa
+      const isAttendant = sender === 'human' || name.toLowerCase().includes('41 menu') || name.toLowerCase() === 'você';
+      
+      const convPayload: any = {
+        phone: rawPhone,
+        last_message: text,
+        last_sender: sender,
+        updated_at: new Date().toISOString()
+      };
+
+      // Só atualiza o nome se NÃO for atendente e se um nome real tiver sido enviado
+      if (!isAttendant && name && name !== 'Cliente') {
+        convPayload.name = name;
+      }
+
       await supabase
         .from('chat_conversations')
-        .upsert({
-          phone: rawPhone,
-          name: name && name !== 'Cliente' ? name : undefined,
-          last_message: text,
-          last_sender: sender,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'phone' });
+        .upsert(convPayload, { onConflict: 'phone' });
 
       // Insert na mensagem individual
       await supabase
@@ -89,7 +96,7 @@ export default async (req: Request) => {
 
     const updatedValue = {
       phone: rawPhone,
-      name: existingData.name && existingData.name !== 'Cliente' ? existingData.name : name,
+      name: existingData.name && existingData.name !== 'Cliente' && !existingData.name.toLowerCase().includes('41 menu') ? existingData.name : (!isAttendant && name && name !== 'Cliente' ? name : (existingData.name || 'Cliente')),
       paused: Boolean(existingData.paused ?? false),
       paused_at: existingData.paused_at ?? null,
       last_message: text,
