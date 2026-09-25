@@ -735,6 +735,8 @@ export default function AgentManager() {
             ) : (
               filteredConversations.map(c => {
                 const isSelected = selectedPhone === c.phone;
+                const isPizzeriaName = c.name && c.name.toLowerCase().includes("41 menu");
+                const displayName = (!c.name || isPizzeriaName) ? (c.phone || 'Cliente') : c.name;
                 return (
                   <button
                     key={c.phone}
@@ -746,7 +748,7 @@ export default function AgentManager() {
                     }`}
                   >
                     <div className="relative w-7 h-7 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center font-bold text-[11px] shrink-0 border border-stone-200">
-                      {c.name ? c.name.charAt(0).toUpperCase() : <User size={12} />}
+                      {displayName ? displayName.charAt(0).toUpperCase() : <User size={12} />}
                       <span 
                         className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${c.paused ? 'bg-amber-500' : 'bg-emerald-500'}`} 
                         title={c.paused ? "IA Pausada neste chat" : "IA Ativa"}
@@ -756,7 +758,7 @@ export default function AgentManager() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-1 leading-none mb-0.5">
                         <span className="font-semibold text-xs text-stone-900 truncate">
-                          {c.name || c.phone}
+                          {displayName}
                         </span>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <span className="text-[9px] font-mono text-stone-400">
@@ -813,53 +815,59 @@ export default function AgentManager() {
         {selectedConversation ? (
           <div className="flex-1 flex flex-col h-full bg-[#efeae2]">
             {/* Topo do Chat Selecionado */}
-            <div className="px-3 py-2 bg-white border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center font-bold text-xs shrink-0 border border-stone-200">
-                  {selectedConversation.name ? selectedConversation.name.charAt(0).toUpperCase() : <User size={12} />}
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 leading-none mb-0.5">
-                    <h3 className="font-bold text-xs text-stone-900 truncate">
-                      {selectedConversation.name || 'Cliente'}
-                    </h3>
-                    <span className="text-[10px] font-mono text-stone-400">
-                      {selectedConversation.phone}
-                    </span>
+            {(() => {
+              const isHeaderPizzeriaName = selectedConversation.name && selectedConversation.name.toLowerCase().includes("41 menu");
+              const headerDisplayName = (!selectedConversation.name || isHeaderPizzeriaName) ? (selectedConversation.phone || 'Cliente') : selectedConversation.name;
+              return (
+                <div className="px-3 py-2 bg-white border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center font-bold text-xs shrink-0 border border-stone-200">
+                      {headerDisplayName ? headerDisplayName.charAt(0).toUpperCase() : <User size={12} />}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 leading-none mb-0.5">
+                        <h3 className="font-bold text-xs text-stone-900 truncate">
+                          {headerDisplayName}
+                        </h3>
+                        <span className="text-[10px] font-mono text-stone-400">
+                          {selectedConversation.phone}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] leading-none">
+                        <span className={`w-1.5 h-1.5 rounded-full ${selectedConversation.paused ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                        <span className={selectedConversation.paused ? 'text-amber-700 font-medium' : 'text-emerald-700 font-medium'}>
+                          {selectedConversation.paused ? 'IA pausada neste chat' : 'IA respondendo'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1 text-[10px] leading-none">
-                    <span className={`w-1.5 h-1.5 rounded-full ${selectedConversation.paused ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                    <span className={selectedConversation.paused ? 'text-amber-700 font-medium' : 'text-emerald-700 font-medium'}>
-                      {selectedConversation.paused ? 'IA pausada neste chat' : 'IA respondendo'}
-                    </span>
-                  </div>
-                </div>
-              </div>
 
-              {/* Botão de Pausa Individual Discreto */}
-              <button
-                onClick={() => toggleChatPause(selectedConversation.phone, Boolean(selectedConversation.paused))}
-                disabled={togglingChatPause}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-medium flex items-center gap-1 transition-all cursor-pointer ${
-                  selectedConversation.paused
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
-                    : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200'
-                }`}
-                title={selectedConversation.paused ? "Retomar respostas automáticas da IA" : "Pausar IA neste chat para atender manualmente"}
-              >
-                {selectedConversation.paused ? (
-                  <>
-                    <PlayCircle size={12} />
-                    Retomar IA
-                  </>
-                ) : (
-                  <>
-                    <PauseCircle size={12} />
-                    Assumir Chat
-                  </>
-                )}
-              </button>
-            </div>
+                  {/* Botão de Pausa Individual Discreto */}
+                  <button
+                    onClick={() => toggleChatPause(selectedConversation.phone, Boolean(selectedConversation.paused))}
+                    disabled={togglingChatPause}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-medium flex items-center gap-1 transition-all cursor-pointer ${
+                      selectedConversation.paused
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
+                        : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200'
+                    }`}
+                    title={selectedConversation.paused ? "Retomar respostas automáticas da IA" : "Pausar IA neste chat para atender manualmente"}
+                  >
+                    {selectedConversation.paused ? (
+                      <>
+                        <PlayCircle size={13} className="text-white shrink-0" />
+                        <span>Retomar IA</span>
+                      </>
+                    ) : (
+                      <>
+                        <PauseCircle size={13} className="text-stone-500 shrink-0" />
+                        <span>Pausar IA</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              );
+            })()}
 
             {/* Mensagens com Balões Padrão WhatsApp (Compacto) */}
             <div className="flex-1 p-3 overflow-y-auto space-y-1.5 relative" style={{ backgroundImage: 'url("https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png")', opacity: 0.9 }}>
