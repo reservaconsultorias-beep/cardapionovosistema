@@ -40,16 +40,17 @@ export function parseMessageContent(text: string, mediaUrlProp?: string | null, 
 
   if (mediaUrlProp) {
     const isImage = mediaTypeProp === 'image' || (!mediaTypeProp && (mediaUrlProp.startsWith('data:image') || /\.(jpg|jpeg|png|webp|gif)/i.test(mediaUrlProp)));
+    const isSticker = mediaTypeProp === 'sticker' || (!mediaTypeProp && mediaUrlProp.startsWith('data:image/webp'));
     const isAudio = mediaTypeProp === 'audio' || (!mediaTypeProp && (mediaUrlProp.startsWith('data:audio') || /\.(mp3|ogg|wav|opus|m4a)/i.test(mediaUrlProp)));
     const isDoc = mediaTypeProp === 'document' || (!mediaTypeProp && /\.(pdf|docx?|xlsx?)/i.test(mediaUrlProp));
     const cap = captionProp || (text && !text.startsWith('[') ? text : null);
-    const mType = isImage ? 'image' : (isAudio ? 'audio' : (isDoc ? 'document' : 'text'));
+    const mType = isSticker ? 'sticker' : (isImage ? 'image' : (isAudio ? 'audio' : (isDoc ? 'document' : 'text')));
 
     return {
       mediaType: mType,
       mediaUrl: mediaUrlProp,
       caption: cap,
-      displayText: cap || (isImage ? 'Foto / Comprovante' : (isAudio ? 'Mensagem de voz' : (isDoc ? 'Documento' : text))),
+      displayText: cap || (isSticker ? 'Figurinha' : (isImage ? 'Foto / Comprovante' : (isAudio ? 'Mensagem de voz' : (isDoc ? 'Documento' : text)))),
       isReceipt: Boolean(cap && isReceiptPattern.test(cap))
     };
   }
@@ -110,7 +111,29 @@ export function parseMessageContent(text: string, mediaUrlProp?: string | null, 
     };
   }
 
-  // 5. Fallback para descritivos de mídia sem link público direto
+  // 5. Fallbacks para figurinhas descritivas
+  if (text.includes('[Figurinha') || text.includes('🏷️') || text.includes('[sticker')) {
+    return {
+      mediaType: 'sticker',
+      mediaUrl: null,
+      caption: null,
+      displayText: 'Figurinha WhatsApp',
+      isReceipt: false
+    };
+  }
+
+  // 6. Fallbacks para áudios descritivos
+  if (text.includes('[Mensagem de voz') || text.includes('[Áudio') || text.includes('[Audio') || text.includes('🎵')) {
+    return {
+      mediaType: 'audio',
+      mediaUrl: null,
+      caption: null,
+      displayText: 'Mensagem de voz',
+      isReceipt: false
+    };
+  }
+
+  // 7. Fallback para fotos/comprovantes descritivos sem link
   if (text.includes('[Foto/Comprovante') || text.includes('[📷 Foto') || text.includes('[Arquivo/Midia]')) {
     return {
       mediaType: 'image',
@@ -783,10 +806,15 @@ export default function AgentManager() {
                               <ImageIcon size={11} className="shrink-0 text-emerald-600" />
                               <span className="truncate">{c.last_message.replace(/^\[(?:FOTO:[^\]]+\]\s*|Foto\/Comprovante[^\]]*\]\s*)/i, '').trim() || 'Foto / Comprovante'}</span>
                             </span>
-                          ) : c.last_message && (c.last_message.startsWith('🎵') || c.last_message.includes('[AUDIO:')) ? (
+                          ) : c.last_message && (c.last_message.startsWith('🎵') || c.last_message.includes('[AUDIO:') || c.last_message.includes('voz]')) ? (
                             <span className="flex items-center gap-1 text-amber-700 font-medium truncate">
                               <Music size={11} className="shrink-0 text-amber-600" />
                               <span className="truncate">Mensagem de voz</span>
+                            </span>
+                          ) : c.last_message && (c.last_message.startsWith('🎭') || c.last_message.startsWith('🏷️') || c.last_message.includes('[FIGURINHA:') || c.last_message.includes('Figurinha')) ? (
+                            <span className="flex items-center gap-1 text-purple-700 font-medium truncate">
+                              <span className="text-[11px] shrink-0">🎭</span>
+                              <span className="truncate">Figurinha</span>
                             </span>
                           ) : c.last_message && (c.last_message.startsWith('📄') || c.last_message.includes('[DOC:')) ? (
                             <span className="flex items-center gap-1 text-blue-700 font-medium truncate">
@@ -883,25 +911,31 @@ export default function AgentManager() {
                   const isHuman = m.sender === 'human';
                   const parsed = parseMessageContent(m.text, m.media_url, m.media_type, m.caption);
 
+                  const isSticker = parsed.mediaType === 'sticker';
+
                   return (
                     <div
                       key={m.id || idx}
                       className={`flex flex-col ${isClient ? 'items-start' : 'items-end'}`}
                     >
                       <div
-                        className={`relative max-w-[85%] sm:max-w-[75%] rounded-lg px-2.5 pt-1.5 pb-1.5 text-[12.5px] leading-snug shadow-sm ${
-                          isClient
-                            ? 'bg-white text-[#111b21] rounded-tl-sm'
-                            : 'bg-[#d9fdd3] text-[#111b21] rounded-tr-sm'
+                        className={`relative max-w-[85%] sm:max-w-[75%] ${
+                          isSticker
+                            ? 'bg-transparent shadow-none p-0'
+                            : `rounded-lg px-2.5 pt-1.5 pb-1.5 text-[12.5px] leading-snug shadow-sm ${
+                                isClient
+                                  ? 'bg-white text-[#111b21] rounded-tl-sm'
+                                  : 'bg-[#d9fdd3] text-[#111b21] rounded-tr-sm'
+                              }`
                         }`}
                       >
                         {/* Nome do remetente interno */}
-                        {!isClient && (
+                        {!isClient && !isSticker && (
                           <div className={`text-[10.5px] font-medium mb-1 leading-none ${isBot ? 'text-emerald-600' : 'text-blue-500'}`}>
                             {isBot ? 'Giovanna' : 'Você'}
                           </div>
                         )}
-                        {isClient && selectedConversation.name && (
+                        {isClient && !isSticker && selectedConversation.name && (
                           <div className="text-[10.5px] font-medium mb-1 leading-none text-[#a80076]">
                             {selectedConversation.name}
                           </div>
@@ -962,12 +996,17 @@ export default function AgentManager() {
 
                         {/* Renderização de Áudio / Mensagem de Voz */}
                         {parsed.mediaType === 'audio' && (
-                          <div className="my-1 p-2 rounded-md bg-stone-50/80 border border-stone-200/60 flex items-center gap-2">
-                            <Music size={16} className="text-emerald-600 shrink-0" />
+                          <div className="my-1 p-2 rounded-lg bg-emerald-50/80 border border-emerald-200/80 flex flex-col gap-1.5 min-w-[230px] max-w-full shadow-2xs">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                <Music size={13} />
+                              </div>
+                              <span className="text-[11px] font-semibold text-emerald-900">Mensagem de voz</span>
+                            </div>
                             {parsed.mediaUrl ? (
-                              <audio controls className="h-7 w-48 max-w-full" src={parsed.mediaUrl} />
+                              <audio controls preload="metadata" className="w-full h-8 mt-0.5 accent-emerald-600" src={parsed.mediaUrl} />
                             ) : (
-                              <span className="text-xs text-stone-600 italic">Mensagem de voz</span>
+                              <span className="text-xs text-stone-500 italic">Áudio recebido via WhatsApp</span>
                             )}
                           </div>
                         )}
@@ -995,11 +1034,19 @@ export default function AgentManager() {
 
                         {/* Renderização de Figurinha (Sticker) */}
                         {parsed.mediaType === 'sticker' && (
-                          <div className="my-0.5">
+                          <div className="relative group my-0.5">
                             {parsed.mediaUrl ? (
-                              <img src={parsed.mediaUrl} alt="Figurinha" className="w-24 h-24 object-contain select-none" />
+                              <img 
+                                src={parsed.mediaUrl} 
+                                alt="Figurinha" 
+                                className="w-28 h-28 sm:w-32 sm:h-32 object-contain select-none drop-shadow-md hover:scale-105 transition-transform" 
+                                loading="lazy"
+                              />
                             ) : (
-                              <span className="text-xs text-stone-500 italic">🎭 Figurinha</span>
+                              <div className="p-2.5 rounded-lg bg-white/90 border border-stone-200 flex items-center gap-2 shadow-xs">
+                                <span className="text-base">🎭</span>
+                                <span className="text-xs font-medium text-stone-700">Figurinha WhatsApp</span>
+                              </div>
                             )}
                           </div>
                         )}
@@ -1010,7 +1057,11 @@ export default function AgentManager() {
                         )}
 
                         {/* Horário e Confirmação de Leitura */}
-                        <div className={`text-[9px] text-[#667781] text-right mt-0.5 -mb-0.5 flex items-center justify-end gap-1 ${parsed.displayText.length < 20 && parsed.mediaType === 'text' ? 'inline-block ml-3 translate-y-0.5' : 'block'}`}>
+                        <div className={`text-[9px] text-[#667781] text-right mt-0.5 -mb-0.5 flex items-center justify-end gap-1 ${
+                          isSticker
+                            ? 'bg-white/80 backdrop-blur-xs px-1.5 py-0.5 rounded-full shadow-2xs font-mono ml-auto'
+                            : (parsed.displayText.length < 20 && parsed.mediaType === 'text' ? 'inline-block ml-3 translate-y-0.5' : 'block')
+                        }`}>
                           <span>{m.timestamp ? new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                           {!isClient && (
                             <CheckCheck size={11} className="text-emerald-600 inline shrink-0 -translate-y-0.2" />
