@@ -10,7 +10,7 @@ import {
   DollarSign, CreditCard, Smartphone, Check, 
   Percent, ArrowRight, User, Phone, MapPin, 
   Tag, Utensils, Bike, Store, AlertCircle, 
-  RotateCcw, Sparkles, ChevronRight, Hash, Edit2, ChevronDown
+  RotateCcw, Sparkles, ChevronRight, Hash, Edit2, ChevronDown, FileText
 } from 'lucide-react';
 
 interface PDVModalProps {
@@ -34,6 +34,59 @@ export interface PDVCartItem {
   unitPrice: number;
   totalPrice: number;
 }
+
+// Helpers to identify promotions with pizza and customization capabilities
+export const isPromoWithPizza = (item: MenuItem | null | undefined): boolean => {
+  if (!item) return false;
+  const nameLower = (item.name || '').toLowerCase();
+  const idLower = (item.id || '').toLowerCase();
+  const catLower = (item.category || '').toLowerCase();
+  const ingLower = (item.ingredients || '').toLowerCase();
+
+  const isPromo = catLower.includes('promo') || idLower.startsWith('md-') || idLower.startsWith('promo-') || nameLower.includes('promo') || nameLower.includes('combo') || nameLower.includes('menu ');
+  const hasPizza = nameLower.includes('pizza') || idLower.includes('pizza') || ingLower.includes('pizza');
+
+  return Boolean(isPromo && hasPizza);
+};
+
+export const isItemCustomizable = (item: MenuItem | null | undefined): boolean => {
+  if (!item) return false;
+  return Boolean(
+    item.priceP || 
+    item.priceM || 
+    item.priceG || 
+    item.priceBig || 
+    item.priceSuperBig || 
+    isPromoWithPizza(item)
+  );
+};
+
+export const getPromoFlavors = (item: MenuItem | null | undefined): string[] => {
+  if (!item) return [];
+  if (item.id === 'md-1-pizza') {
+    return ['Calabresa', 'Calabresa acebolada', 'Da Casa', 'Calapiry', 'Crocante', 'Frampalha', 'Marguerita'];
+  }
+  if (item.id === 'item-1788199746629' || item.id === 'md-2-pizza') {
+    return ['Da Casa', 'Frango c/ catupiry', 'Carijó', 'Fiambre c/ queijo', 'Milho', 'Tradicional'];
+  }
+  if (item.id === 'item-1786481022634') {
+    return ['Alho e Óleo', 'Frampalha', 'Calabresa Acebolada', 'Carijó', 'Da Casa', 'Crocante', 'Baiana'];
+  }
+  if (item.ingredients) {
+    const match = item.ingredients.match(/sabores\s*(?:da\s*promo[çc][ãa]o)?\s*:\s*([^.\n]+)/i);
+    if (match && match[1]) {
+      return match[1].split(/,| e /i).map(s => s.trim().replace(/^ou\s+/i, '')).filter(Boolean);
+    }
+  }
+  return [];
+};
+
+export const isTwoPizzaPromo = (item: MenuItem | null | undefined): boolean => {
+  if (!item) return false;
+  const n = (item.name || '').toLowerCase();
+  const id = (item.id || '').toLowerCase();
+  return id === 'item-1788199746629' || id === 'md-2-pizza' || n.includes('2 pizza') || n.includes('2 pizzas');
+};
 
 const getPizzaPriceForSize = (item: MenuItem, size: 'P' | 'M' | 'G' | 'Big' | 'Super Big') => {
   if (size === 'P') return item.priceP || (item.priceM ? item.priceM - 2 : item.priceSingle || 0);
@@ -145,6 +198,14 @@ export default function PDVModal({
   const [customBorda, setCustomBorda] = useState<MenuItem | null>(null);
   const [customExtras, setCustomExtras] = useState<ExtraIngredient[]>([]);
   const [customNotes, setCustomNotes] = useState('');
+
+  // Order-level observations (Observações Gerais do Pedido no PDV)
+  const [orderNotes, setOrderNotes] = useState('');
+
+  // Promo Pizza Customization specific states
+  const [customPromoFlavor, setCustomPromoFlavor] = useState('');
+  const [customPromoFlavor2, setCustomPromoFlavor2] = useState('');
+  const [customDrinkVariant, setCustomDrinkVariant] = useState<'Normal' | 'Zero'>('Normal');
 
   // Editing existing item in cart
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null);
@@ -291,12 +352,14 @@ export default function PDVModal({
       setSearchQuery('');
       setSelectedCategory('all');
       setPaymentMethod('MB Way');
+      setOrderNotes('');
+      setCustomPromoFlavor('');
+      setCustomPromoFlavor2('');
+      setCustomDrinkVariant('Normal');
     }
   }, [isOpen]);
 
   // Bordas available
-
-
   const bordas = useMemo(() => {
     return menuItems.filter(i => i.category === 'bordas' || i.id.startsWith('bd-'));
   }, [menuItems]);
@@ -306,9 +369,31 @@ export default function PDVModal({
     return menuItems.filter(i => i.id.startsWith('p-') || i.category?.includes('pizza') || i.category === 'tradicionais' || i.category === 'especiais');
   }, [menuItems]);
 
+  // Categoria exclusiva do PDV: ADICIONAIS EXTRAS como itens de cardápio selecionáveis
+  const extraProductsAsMenuItems: MenuItem[] = useMemo(() => {
+    return availableExtras.map(extra => ({
+      id: `extra-item-${extra.id}`,
+      name: extra.name,
+      ingredients: 'Adicional extra para acrescentar na pizza ou pedido',
+      priceSingle: extra.price,
+      category: 'adicionais-extras',
+      imageUrl: ''
+    }));
+  }, [availableExtras]);
+
   // Filtered menu items
   const filteredProducts = useMemo(() => {
-    return menuItems.filter(item => {
+    // Se a categoria selecionada for a exclusiva do PDV "ADICIONAIS EXTRAS"
+    if (selectedCategory === 'adicionais-extras') {
+      const q = searchQuery.toLowerCase().trim();
+      return extraProductsAsMenuItems.filter(item => {
+        return !q || 
+          item.name.toLowerCase().includes(q) || 
+          (item.ingredients && item.ingredients.toLowerCase().includes(q));
+      });
+    }
+
+    const regularFiltered = menuItems.filter(item => {
       if (item.category === 'bordas' || item.id.startsWith('bd-')) return false;
 
       const matchesCat = selectedCategory === 'all' || item.category === selectedCategory;
@@ -319,9 +404,20 @@ export default function PDVModal({
 
       return matchesCat && matchesSearch;
     });
-  }, [menuItems, selectedCategory, searchQuery]);
 
-  // Categories list
+    // Se estiver na busca global e digitou algo, também busca nos adicionais extras
+    if (searchQuery.trim() && selectedCategory === 'all') {
+      const q = searchQuery.toLowerCase().trim();
+      const matchingExtras = extraProductsAsMenuItems.filter(item => 
+        item.name.toLowerCase().includes(q) || (item.ingredients && item.ingredients.toLowerCase().includes(q))
+      );
+      return [...regularFiltered, ...matchingExtras];
+    }
+
+    return regularFiltered;
+  }, [menuItems, selectedCategory, searchQuery, extraProductsAsMenuItems]);
+
+  // Categories list (inclui categoria ADICIONAIS EXTRAS somente no PDV)
   const displayCategories = useMemo(() => {
     const counts: Record<string, number> = {};
     (menuItems || []).forEach(i => {
@@ -333,9 +429,10 @@ export default function PDVModal({
     const activeCats = (categories || []).filter(c => c && c.id && (counts[c.id] > 0 || c.id === 'all'));
     return [
       { id: 'all', name: 'Todos os Itens', count: (menuItems || []).filter(i => !i.id.startsWith('bd-')).length },
-      ...activeCats.map(c => ({ id: c.id, name: c.name, count: counts[c.id] || 0 }))
+      ...activeCats.map(c => ({ id: c.id, name: c.name, count: counts[c.id] || 0 })),
+      { id: 'adicionais-extras', name: 'ADICIONAIS EXTRAS', count: availableExtras.length }
     ];
-  }, [categories, menuItems]);
+  }, [categories, menuItems, availableExtras]);
 
   // Calculations
   const subtotal = useMemo(() => {
@@ -383,13 +480,19 @@ export default function PDVModal({
   // Preço dinâmico em tempo real dentro do modal de customização
   const currentPreviewPrice = useMemo(() => {
     if (!customizingItem) return 0;
-    let basePrice = getPizzaPriceForSize(customizingItem, customSize);
+    const isPromoPizza = isPromoWithPizza(customizingItem);
 
-    if (customAdditionalFlavors.length > 0) {
-      for (const flavor of customAdditionalFlavors) {
-        const p = getPizzaPriceForSize(flavor, customSize);
-        if (p > basePrice) {
-          basePrice = p;
+    let basePrice = 0;
+    if (isPromoPizza) {
+      basePrice = customizingItem.priceSingle || getPizzaPriceForSize(customizingItem, customSize) || 0;
+    } else {
+      basePrice = getPizzaPriceForSize(customizingItem, customSize);
+      if (customAdditionalFlavors.length > 0) {
+        for (const flavor of customAdditionalFlavors) {
+          const p = getPizzaPriceForSize(flavor, customSize);
+          if (p > basePrice) {
+            basePrice = p;
+          }
         }
       }
     }
@@ -426,7 +529,40 @@ export default function PDVModal({
     setCustomAdditionalFlavors(flavors);
     setCustomBorda(item.selectedBorda || null);
     setCustomExtras(item.selectedExtras || []);
-    setCustomNotes(item.notes || '');
+
+    // Parse promo details if it's a promo with pizza
+    const isPromoPizza = isPromoWithPizza(item.menuItem);
+    if (isPromoPizza && item.notes) {
+      const parts = item.notes.split(' | ');
+      const restNotes: string[] = [];
+      let flavor1 = '';
+      let flavor2 = '';
+      let drink: 'Normal' | 'Zero' = 'Normal';
+
+      parts.forEach(p => {
+        if (p.startsWith('Sabor: ')) {
+          flavor1 = p.replace('Sabor: ', '').trim();
+        } else if (p.startsWith('Sabor 2: ')) {
+          flavor2 = p.replace('Sabor 2: ', '').trim();
+        } else if (p.startsWith('Bebida: Coca-Cola ')) {
+          const v = p.replace('Bebida: Coca-Cola ', '').trim();
+          if (v === 'Zero' || v === 'Normal') drink = v;
+        } else {
+          restNotes.push(p);
+        }
+      });
+
+      setCustomPromoFlavor(flavor1);
+      setCustomPromoFlavor2(flavor2);
+      setCustomDrinkVariant(drink);
+      setCustomNotes(restNotes.join(' | '));
+    } else {
+      setCustomPromoFlavor('');
+      setCustomPromoFlavor2('');
+      setCustomDrinkVariant('Normal');
+      setCustomNotes(item.notes || '');
+    }
+
     setSearchingFlavorSlot(null);
     setFlavorSearchQuery('');
   };
@@ -436,16 +572,33 @@ export default function PDVModal({
     setEditingCartIndex(null);
     setSearchingFlavorSlot(null);
     setFlavorSearchQuery('');
-    const hasMultipleSizes = Boolean(item.priceP || item.priceM || item.priceG || item.priceBig || item.priceSuperBig);
 
-    if (hasMultipleSizes) {
+    // Se for um item avulso da categoria ADICIONAIS EXTRAS, adiciona diretamente ao carrinho
+    if (item.category === 'adicionais-extras' || item.id.startsWith('extra-item-')) {
+      const unitPrice = item.priceSingle || 0;
+      addToCart({
+        id: `${item.id}-${Date.now()}`,
+        menuItem: item,
+        quantity: 1,
+        unitPrice,
+        totalPrice: unitPrice
+      });
+      return;
+    }
+
+    const hasMultipleSizes = Boolean(item.priceP || item.priceM || item.priceG || item.priceBig || item.priceSuperBig);
+    const isPromoPizza = isPromoWithPizza(item);
+
+    if (hasMultipleSizes || isPromoPizza) {
       setCustomizingItem(item);
-      setCustomSize(item.priceG ? 'G' : item.priceM ? 'M' : 'P');
+      setCustomSize(item.priceG ? 'G' : item.priceM ? 'M' : item.priceP ? 'P' : 'G');
       setCustomAdditionalFlavors([]);
-      
       setCustomBorda(null);
       setCustomExtras([]);
       setCustomNotes('');
+      setCustomPromoFlavor('');
+      setCustomPromoFlavor2('');
+      setCustomDrinkVariant('Normal');
     } else {
       const unitPrice = item.priceSingle || item.priceP || item.priceM || item.priceG || 0;
       addToCart({
@@ -462,13 +615,20 @@ export default function PDVModal({
   const handleConfirmCustomization = () => {
     if (!customizingItem) return;
 
-    let basePrice = getPizzaPriceForSize(customizingItem, customSize);
+    const isPromoPizza = isPromoWithPizza(customizingItem);
+    const hasMultipleSizes = Boolean(customizingItem.priceP || customizingItem.priceM || customizingItem.priceG || customizingItem.priceBig || customizingItem.priceSuperBig);
 
-    if (customAdditionalFlavors.length > 0) {
-      for (const flavor of customAdditionalFlavors) {
-        const p = getPizzaPriceForSize(flavor, customSize);
-        if (p > basePrice) {
-          basePrice = p;
+    let basePrice = 0;
+    if (isPromoPizza) {
+      basePrice = customizingItem.priceSingle || getPizzaPriceForSize(customizingItem, customSize) || 0;
+    } else {
+      basePrice = getPizzaPriceForSize(customizingItem, customSize);
+      if (customAdditionalFlavors.length > 0) {
+        for (const flavor of customAdditionalFlavors) {
+          const p = getPizzaPriceForSize(flavor, customSize);
+          if (p > basePrice) {
+            basePrice = p;
+          }
         }
       }
     }
@@ -476,6 +636,28 @@ export default function PDVModal({
     const bordaPrice = customBorda?.priceSingle || 0;
     const extrasPrice = customExtras.reduce((sum, e) => sum + (e.price || 0), 0);
     const unitPrice = basePrice + bordaPrice + extrasPrice;
+
+    // Constrói as observações finais (com sabor e bebida se for promoção)
+    let finalNotes = customNotes.trim();
+    if (isPromoPizza) {
+      const parts: string[] = [];
+      if (customPromoFlavor) {
+        parts.push(`Sabor: ${customPromoFlavor}`);
+      }
+      if (customPromoFlavor2) {
+        parts.push(`Sabor 2: ${customPromoFlavor2}`);
+      }
+      const hasDrink = (customizingItem.name || '').toLowerCase().includes('coca') || 
+                       (customizingItem.ingredients || '').toLowerCase().includes('coca') ||
+                       (customizingItem.ingredients || '').toLowerCase().includes('bebida');
+      if (hasDrink && customDrinkVariant) {
+        parts.push(`Bebida: Coca-Cola ${customDrinkVariant}`);
+      }
+      if (finalNotes) {
+        parts.push(finalNotes);
+      }
+      finalNotes = parts.join(' | ');
+    }
 
     if (editingCartIndex !== null && editingCartIndex >= 0 && editingCartIndex < cart.length) {
       setCart(prev => {
@@ -485,13 +667,13 @@ export default function PDVModal({
         updated[editingCartIndex] = {
           ...existing,
           menuItem: customizingItem,
-          size: customSize,
-          isHalf: customAdditionalFlavors.length === 1,
-          secondFlavor: customAdditionalFlavors.length === 1 ? customAdditionalFlavors[0] : undefined,
-          additionalFlavors: customAdditionalFlavors.length > 0 ? customAdditionalFlavors : undefined,
+          size: hasMultipleSizes ? customSize : undefined,
+          isHalf: !isPromoPizza && customAdditionalFlavors.length === 1,
+          secondFlavor: !isPromoPizza && customAdditionalFlavors.length === 1 ? customAdditionalFlavors[0] : undefined,
+          additionalFlavors: !isPromoPizza && customAdditionalFlavors.length > 0 ? customAdditionalFlavors : undefined,
           selectedBorda: customBorda,
           selectedExtras: customExtras.length > 0 ? customExtras : undefined,
-          notes: customNotes.trim() || undefined,
+          notes: finalNotes || undefined,
           unitPrice,
           totalPrice: unitPrice * qty
         };
@@ -502,13 +684,13 @@ export default function PDVModal({
       addToCart({
         id: `${customizingItem.id}-${Date.now()}`,
         menuItem: customizingItem,
-        size: customSize,
-        isHalf: customAdditionalFlavors.length === 1,
-        secondFlavor: customAdditionalFlavors.length === 1 ? customAdditionalFlavors[0] : undefined,
-        additionalFlavors: customAdditionalFlavors.length > 0 ? customAdditionalFlavors : undefined,
+        size: hasMultipleSizes ? customSize : undefined,
+        isHalf: !isPromoPizza && customAdditionalFlavors.length === 1,
+        secondFlavor: !isPromoPizza && customAdditionalFlavors.length === 1 ? customAdditionalFlavors[0] : undefined,
+        additionalFlavors: !isPromoPizza && customAdditionalFlavors.length > 0 ? customAdditionalFlavors : undefined,
         selectedBorda: customBorda,
         selectedExtras: customExtras.length > 0 ? customExtras : undefined,
-        notes: customNotes.trim() || undefined,
+        notes: finalNotes || undefined,
         quantity: 1,
         unitPrice,
         totalPrice: unitPrice
@@ -624,12 +806,14 @@ export default function PDVModal({
           name += ` [Extras: ${item.selectedExtras.map(e => e.name).join(', ')}]`;
         }
 
+        const extrasTotalPrice = (item.selectedExtras || []).reduce((sum, e) => sum + (e.price || 0), 0);
+
         return {
           name,
-          category: item.menuItem.category || 'Geral',
+          category: item.menuItem.category === 'adicionais-extras' ? 'Adicionais' : (item.menuItem.category || 'Geral'),
           quantity: item.quantity,
           priceCalculated: item.unitPrice,
-          basePrice: item.unitPrice,
+          basePrice: item.unitPrice - extrasTotalPrice,
           notes: item.notes || '',
           extras: (item.selectedExtras || []).map(e => ({ name: e.name, price: e.price }))
         };
@@ -655,6 +839,7 @@ export default function PDVModal({
         status: 'Em Preparo',
         total_amount: Number(totalAmount.toFixed(2)),
         items: formattedItems,
+        notes: orderNotes.trim() || null,
         delivery_address: fullDeliveryAddress,
         delivery_zone: orderType === 'entrega' ? deliveryZone : null,
         change_for: paymentMethod === 'Numerário' && !isNaN(changeForNum) && changeForNum > totalAmount ? changeForNum : null
@@ -841,6 +1026,19 @@ export default function PDVModal({
           <nav className="w-full bg-[var(--pdv-surface)] border-b border-[var(--pdv-border)] flex flex-wrap items-center shrink-0 px-3 py-2 gap-1.5 shadow-[var(--pdv-shadow-sm)] z-10">
             {displayCategories.map(cat => {
               const isActive = selectedCategory === cat.id;
+              const isExtrasCat = cat.id === 'adicionais-extras';
+
+              let buttonStyle = '';
+              if (isExtrasCat) {
+                buttonStyle = isActive
+                  ? 'bg-purple-600 text-white border-purple-700 shadow-xs'
+                  : 'bg-purple-50 text-purple-800 border-purple-200 hover:bg-purple-100 hover:text-purple-900 font-extrabold';
+              } else if (isActive) {
+                buttonStyle = 'bg-[var(--pdv-brand)] text-stone-950 border-[#d8ba39] shadow-xs';
+              } else {
+                buttonStyle = 'bg-[var(--pdv-surface)] text-[var(--pdv-text-secondary)] border-[var(--pdv-border)] hover:bg-[var(--pdv-surface-hover)] hover:text-[var(--pdv-text-primary)]';
+              }
+
               return (
                 <button
                   key={cat.id}
@@ -848,12 +1046,9 @@ export default function PDVModal({
                     setSelectedCategory(cat.id);
                     setSearchQuery('');
                   }}
-                  className={`flex items-center justify-center px-2.5 py-1 rounded-[var(--pdv-radius-full)] text-[11px] font-bold transition-all cursor-pointer active:scale-95 border ${
-                    isActive
-                      ? 'bg-[var(--pdv-brand)] text-stone-950 border-[#d8ba39] shadow-xs'
-                      : 'bg-[var(--pdv-surface)] text-[var(--pdv-text-secondary)] border-[var(--pdv-border)] hover:bg-[var(--pdv-surface-hover)] hover:text-[var(--pdv-text-primary)]'
-                  }`}
+                  className={`flex items-center justify-center px-2.5 py-1 rounded-[var(--pdv-radius-full)] text-[11px] font-bold transition-all cursor-pointer active:scale-95 border ${buttonStyle}`}
                 >
+                  {isExtrasCat && <Sparkles size={11} className="mr-1" />}
                   <span className="whitespace-nowrap">{cat.name}</span>
                 </button>
               );
@@ -884,6 +1079,7 @@ export default function PDVModal({
                   product.id?.startsWith('md-') ||
                   selectedCategory === 'promocoes' ||
                   selectedCategory?.toLowerCase().includes('promo');
+                const isExtraItem = product.category === 'adicionais-extras' || product.id?.startsWith('extra-item-');
 
                 return (
                   <button
@@ -896,10 +1092,17 @@ export default function PDVModal({
                   >
                     {/* Image / Thumbnail (4:5 para Promoção do Dia, 1:1 Quadrado para os demais itens) */}
                     <div className={`w-full ${isPromoItem ? 'aspect-[4/5]' : 'aspect-square'} bg-stone-50 rounded-lg mb-1.5 overflow-hidden flex items-center justify-center relative shadow-inner border border-stone-200/50`}>
-                      <PDVProductImage 
-                        product={product} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
+                      {isExtraItem ? (
+                        <div className="w-full h-full bg-gradient-to-br from-purple-100 to-purple-200/70 flex flex-col items-center justify-center text-purple-700 p-2">
+                          <Sparkles size={24} className="text-purple-600 mb-1" />
+                          <span className="text-[8.5px] font-black uppercase tracking-wider text-purple-900 text-center">Adicional</span>
+                        </div>
+                      ) : (
+                        <PDVProductImage 
+                          product={product} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      )}
                       
                       {/* Multiple sizes badge */}
                       {hasSizes && (
@@ -1170,7 +1373,7 @@ export default function PDVModal({
             ) : (
               <div className="space-y-1">
                 {cart.map((item, idx) => {
-                  const isCustomizable = Boolean(item.menuItem.priceP || item.menuItem.priceM || item.menuItem.priceG || item.menuItem.priceBig || item.menuItem.priceSuperBig);
+                  const isCustomizable = isItemCustomizable(item.menuItem);
                   const isBeingEdited = editingCartIndex === idx;
 
                   return (
@@ -1294,6 +1497,33 @@ export default function PDVModal({
               })}
               </div>
             )}
+          </div>
+
+          {/* Section: Observações do Pedido */}
+          <div className="px-2.5 py-1.5 bg-stone-50 border-t border-stone-200 shrink-0">
+            <div className="flex items-center justify-between mb-1">
+              <label htmlFor="pdv-order-notes" className="text-[9.5px] font-mono font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1 cursor-pointer">
+                <FileText size={11} className="text-stone-500" />
+                <span>Observações do Pedido</span>
+              </label>
+              {orderNotes.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setOrderNotes('')}
+                  className="text-[9px] text-rose-500 hover:text-rose-700 font-bold transition-colors cursor-pointer"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
+            <textarea
+              id="pdv-order-notes"
+              value={orderNotes}
+              onChange={e => setOrderNotes(e.target.value)}
+              placeholder="Ex: sem cebola, massa crocante, enviar talheres, entregar após 20h..."
+              rows={2}
+              className="w-full px-2 py-1 bg-white border border-stone-300 rounded text-[11px] text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-200 resize-none transition-all leading-snug"
+            />
           </div>
 
           {/* Section 3: Adjustments (Desconto / Acréscimo) - Ultra Compact */}
@@ -1497,46 +1727,208 @@ export default function PDVModal({
 
             <div className="p-4 overflow-y-auto space-y-4">
               
-              <div>
-                <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
-                  Tamanho
-                </label>
-                <div className="grid grid-cols-5 gap-2">
-                  {(['P', 'M', 'G', 'Big', 'Super Big'] as const).map(size => {
-                    let p = 0;
-                    if (size === 'P') p = customizingItem.priceP || (customizingItem.priceM ? customizingItem.priceM - 2 : 0);
-                    if (size === 'M') p = customizingItem.priceM || 0;
-                    if (size === 'G') p = customizingItem.priceG || 0;
-                    if (size === 'Big') p = customizingItem.priceBig || 0;
-                    if (size === 'Super Big') p = customizingItem.priceSuperBig || 0;
-                    if (p <= 0) return null;
-
-                    const isSelected = customSize === size;
-                    return (
-                      <button
-                        key={size}
-                        onClick={() => {
-                          setCustomSize(size);
-                          const maxAdditional = size === 'Super Big' ? 3 : size === 'Big' ? 2 : size === 'G' ? 1 : 0;
-                          if (customAdditionalFlavors.length > maxAdditional) {
-                            setCustomAdditionalFlavors(prev => prev.slice(0, maxAdditional));
-                          }
-                        }}
-                        className={`py-2.5 px-2 rounded-xl flex flex-col items-center gap-0.5 border-2 transition-all cursor-pointer shadow-2xs ${
-                          isSelected
-                            ? 'bg-yellow-50 border-yellow-400 text-yellow-900 ring-1 ring-yellow-400 ring-offset-1'
-                            : 'bg-white border-gray-200 text-gray-600 hover:border-yellow-200 hover:bg-yellow-50/50'
-                        }`}
-                      >
-                        <span className="text-xs font-black">{size === 'P' ? 'Pequena' : size === 'M' ? 'Média' : size === 'G' ? 'Grande' : size}</span>
-                        <span className="text-[10px] font-bold text-gray-500">+ € {p.toFixed(2)}</span>
-                      </button>
-                    );
-                  })}
+              {/* Tamanho da Pizza / Banner de Promoção */}
+              {isPromoWithPizza(customizingItem) && !Boolean(customizingItem.priceP || customizingItem.priceM || customizingItem.priceG) ? (
+                <div className="p-3 bg-amber-50 rounded-2xl border border-amber-200 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-1 rounded-full bg-amber-200 text-amber-900 text-[10px] font-black uppercase tracking-wide flex items-center gap-1">
+                      <Sparkles size={11} className="text-amber-700" />
+                      Promoção com Pizza
+                    </span>
+                    <span className="text-xs font-bold text-amber-950">
+                      Preço Especial do Combo / Promoção
+                    </span>
+                  </div>
+                  <span className="text-sm font-black font-mono text-amber-900">
+                    € {(customizingItem.priceSingle || 0).toFixed(2)}
+                  </span>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
+                    Tamanho
+                  </label>
+                  <div className="grid grid-cols-5 gap-2">
+                    {(['P', 'M', 'G', 'Big', 'Super Big'] as const).map(size => {
+                      let p = 0;
+                      if (size === 'P') p = customizingItem.priceP || (customizingItem.priceM ? customizingItem.priceM - 2 : 0);
+                      if (size === 'M') p = customizingItem.priceM || 0;
+                      if (size === 'G') p = customizingItem.priceG || 0;
+                      if (size === 'Big') p = customizingItem.priceBig || 0;
+                      if (size === 'Super Big') p = customizingItem.priceSuperBig || 0;
+                      if (p <= 0) return null;
 
-              {(customSize === 'G' || customSize === 'Big' || customSize === 'Super Big') && (() => {
+                      const isSelected = customSize === size;
+                      return (
+                        <button
+                          key={size}
+                          onClick={() => {
+                            setCustomSize(size);
+                            const maxAdditional = size === 'Super Big' ? 3 : size === 'Big' ? 2 : size === 'G' ? 1 : 0;
+                            if (customAdditionalFlavors.length > maxAdditional) {
+                              setCustomAdditionalFlavors(prev => prev.slice(0, maxAdditional));
+                            }
+                          }}
+                          className={`py-2.5 px-2 rounded-xl flex flex-col items-center gap-0.5 border-2 transition-all cursor-pointer shadow-2xs ${
+                            isSelected
+                              ? 'bg-yellow-50 border-yellow-400 text-yellow-900 ring-1 ring-yellow-400 ring-offset-1'
+                              : 'bg-white border-gray-200 text-gray-600 hover:border-yellow-200 hover:bg-yellow-50/50'
+                          }`}
+                        >
+                          <span className="text-xs font-black">{size === 'P' ? 'Pequena' : size === 'M' ? 'Média' : size === 'G' ? 'Grande' : size}</span>
+                          <span className="text-[10px] font-bold text-gray-500">+ € {p.toFixed(2)}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Se for Promoção com Pizza: Seleção de Sabor e Bebida da Promoção */}
+              {isPromoWithPizza(customizingItem) && (() => {
+                const promoFlavors = getPromoFlavors(customizingItem);
+                const isTwoPizza = isTwoPizzaPromo(customizingItem);
+                const hasDrinkOption = (customizingItem.name || '').toLowerCase().includes('coca') || 
+                                      (customizingItem.ingredients || '').toLowerCase().includes('coca') ||
+                                      (customizingItem.ingredients || '').toLowerCase().includes('bebida');
+
+                return (
+                  <div className="space-y-3 pt-4 border-t border-gray-100">
+                    {/* Versão da Coca-Cola */}
+                    {hasDrinkOption && (
+                      <div className="space-y-1.5 bg-red-50/70 p-3 rounded-2xl border border-red-200">
+                        <label className="block text-[10px] font-black uppercase tracking-widest text-red-800">
+                          Versão da Bebida / Coca-Cola:
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setCustomDrinkVariant('Normal')}
+                            className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                              customDrinkVariant === 'Normal'
+                                ? 'bg-red-600 text-white border-red-700 shadow-xs'
+                                : 'bg-white border-red-200 text-red-900 hover:bg-red-100/50'
+                            }`}
+                          >
+                            <span>Coca-Cola Normal</span>
+                            {customDrinkVariant === 'Normal' && <Check size={12} className="stroke-[3]" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCustomDrinkVariant('Zero')}
+                            className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                              customDrinkVariant === 'Zero'
+                                ? 'bg-stone-900 text-white border-black shadow-xs'
+                                : 'bg-white border-stone-300 text-stone-900 hover:bg-stone-100'
+                            }`}
+                          >
+                            <span>Coca-Cola Zero</span>
+                            {customDrinkVariant === 'Zero' && <Check size={12} className="stroke-[3]" />}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Sabor 1 da Promoção */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-gray-900">
+                          {isTwoPizza ? 'Sabor da Pizza 1 (Promoção):' : 'Sabor da Pizza (Promoção):'}
+                        </label>
+                        {customPromoFlavor && (
+                          <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">
+                            {customPromoFlavor}
+                          </span>
+                        )}
+                      </div>
+
+                      {promoFlavors.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {promoFlavors.map(f => {
+                            const isSel = customPromoFlavor === f;
+                            return (
+                              <button
+                                key={f}
+                                type="button"
+                                onClick={() => setCustomPromoFlavor(f)}
+                                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                                  isSel
+                                    ? 'bg-amber-500 text-white border-amber-600 shadow-xs ring-1 ring-amber-400'
+                                    : 'bg-white text-gray-700 border-gray-200 hover:bg-amber-50 hover:border-amber-300'
+                                }`}
+                              >
+                                {f}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      <select
+                        value={customPromoFlavor}
+                        onChange={e => setCustomPromoFlavor(e.target.value)}
+                        className="w-full h-8 px-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-900 focus:bg-white focus:border-amber-500 focus:outline-none"
+                      >
+                        <option value="">Ou selecione qualquer outro sabor do cardápio...</option>
+                        {pizzasList.map(p => (
+                          <option key={p.id} value={p.name}>{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Sabor 2 se for promoção de 2 pizzas */}
+                    {isTwoPizza && (
+                      <div className="space-y-2 pt-2 border-t border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-black text-gray-900">
+                            Sabor da Pizza 2 (Promoção):
+                          </label>
+                          {customPromoFlavor2 && (
+                            <span className="text-[10px] font-bold bg-amber-100 text-amber-900 px-2 py-0.5 rounded-full">
+                              {customPromoFlavor2}
+                            </span>
+                          )}
+                        </div>
+
+                        {promoFlavors.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {promoFlavors.map(f => {
+                              const isSel = customPromoFlavor2 === f;
+                              return (
+                                <button
+                                  key={`p2-${f}`}
+                                  type="button"
+                                  onClick={() => setCustomPromoFlavor2(f)}
+                                  className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                                    isSel
+                                      ? 'bg-amber-500 text-white border-amber-600 shadow-xs ring-1 ring-amber-400'
+                                      : 'bg-white text-gray-700 border-gray-200 hover:bg-amber-50 hover:border-amber-300'
+                                  }`}
+                                >
+                                  {f}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        <select
+                          value={customPromoFlavor2}
+                          onChange={e => setCustomPromoFlavor2(e.target.value)}
+                          className="w-full h-8 px-2 bg-gray-50 border border-gray-200 rounded-lg text-xs font-bold text-gray-900 focus:bg-white focus:border-amber-500 focus:outline-none"
+                        >
+                          <option value="">Ou selecione o 2º sabor do cardápio...</option>
+                          {pizzasList.map(p => (
+                            <option key={`p2-opt-${p.id}`} value={p.name}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {!isPromoWithPizza(customizingItem) && (customSize === 'G' || customSize === 'Big' || customSize === 'Super Big') && (() => {
                 const maxAdditional = customSize === 'Super Big' ? 3 : customSize === 'Big' ? 2 : 1;
                 const totalFlavors = 1 + customAdditionalFlavors.length;
                 const maxAllowedTotal = maxAdditional + 1;
@@ -1919,7 +2311,7 @@ export default function PDVModal({
               </button>
               <button
                 onClick={handleConfirmCustomization}
-                disabled={customAdditionalFlavors.some(f => !f || !f.id)}
+                disabled={!isPromoWithPizza(customizingItem) && customAdditionalFlavors.some(f => !f || !f.id)}
                 className="flex-1 py-2.5 bg-[#fdde58] hover:bg-[#e2c23f] disabled:opacity-50 text-stone-950 font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 border border-[#d8ba39]"
               >
                 <Check size={16} className="stroke-[3]" />

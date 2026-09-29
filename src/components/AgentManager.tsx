@@ -4,7 +4,7 @@ import {
   Bot, Power, Loader2, MessageSquare, 
   Send, User, Search, PauseCircle, PlayCircle, X,
   Image as ImageIcon, FileText, Music, ZoomIn, Download, ExternalLink, ShieldCheck, CheckCheck,
-  Users, Clock, ShoppingBag, TrendingUp, Sparkles, ChevronDown, ChevronUp, RefreshCw
+  Users, Clock, TrendingUp, Sparkles, ChevronDown, ChevronUp, RefreshCw, Trash2
 } from 'lucide-react';
 
 export interface ChatMessage {
@@ -175,6 +175,7 @@ export default function AgentManager() {
   const [sendingManual, setSendingManual] = useState(false);
   const [togglingChatPause, setTogglingChatPause] = useState(false);
   const [selectedImage, setSelectedImage] = useState<{ url: string; caption?: string; sender?: string; timestamp?: string } | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
 
   // Métricas do Dia (Cockpit de Atendimento)
   const [showMetricsDashboard, setShowMetricsDashboard] = useState(true);
@@ -187,9 +188,7 @@ export default function AgentManager() {
     totalClientMessages: 0,
     totalBotMessages: 0,
     totalHumanMessages: 0,
-    avgResponseTimeSec: 0,
-    totalOrdersConverted: 0,
-    totalRevenueConverted: 0
+    avgResponseTimeSec: 0
   });
 
   const fetchDailyMetrics = async () => {
@@ -199,12 +198,7 @@ export default function AgentManager() {
         .from('chat_messages')
         .select('phone, sender, created_at');
 
-      const { data: allOrders } = await supabase
-        .from('orders')
-        .select('id, customer_phone, total_amount, created_at');
-
       const msgs = allMsgs || [];
-      const ords = allOrders || [];
 
       let clientMsgs = 0;
       let botMsgs = 0;
@@ -249,19 +243,6 @@ export default function AgentManager() {
         }
       }
 
-      let ordersConverted = 0;
-      let revenueConverted = 0;
-      for (const o of ords) {
-        const rawOPhone = String(o.customer_phone || '').replace(/\D/g, '');
-        if (!rawOPhone) continue;
-        const last9 = rawOPhone.slice(-9);
-        const match = Array.from(activePhones).some(p => p.includes(last9));
-        if (match) {
-          ordersConverted++;
-          revenueConverted += Number(o.total_amount || 0);
-        }
-      }
-
       const avgSec = responseTimes.length > 0
         ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
         : (botMsgs > 0 ? 4 : 0);
@@ -273,9 +254,7 @@ export default function AgentManager() {
         totalClientMessages: clientMsgs,
         totalBotMessages: botMsgs,
         totalHumanMessages: humanMsgs,
-        avgResponseTimeSec: avgSec,
-        totalOrdersConverted: ordersConverted,
-        totalRevenueConverted: revenueConverted
+        avgResponseTimeSec: avgSec
       });
     } catch (err) {
       console.warn('Erro ao carregar métricas:', err);
@@ -756,6 +735,56 @@ export default function AgentManager() {
     }
   };
 
+  const deleteAllConversations = async () => {
+    if (conversations.length === 0) return;
+
+    const confirmed = window.confirm(
+      `ATENÇÃO: Deseja realmente excluir TODAS as ${conversations.length} conversas e o histórico de mensagens?\n\nEsta ação apagará todo o histórico e não poderá ser desfeita.`
+    );
+    if (!confirmed) return;
+
+    setDeletingAll(true);
+    try {
+      const phones = conversations.map(c => c.phone).filter(Boolean);
+
+      // 1. Exclui de chat_conversations e chat_messages (relacional)
+      try {
+        if (phones.length > 0) {
+          await supabase.from('chat_conversations').delete().in('phone', phones);
+          await supabase.from('chat_messages').delete().in('phone', phones);
+        }
+        await supabase.from('chat_conversations').delete().neq('phone', '');
+        await supabase.from('chat_messages').delete().neq('phone', '');
+      } catch (relErr) {
+        console.warn('Aviso delete all relacional:', relErr);
+      }
+
+      // 2. Exclui de settings (fallback)
+      try {
+        if (phones.length > 0) {
+          const settingsKeys = phones.map(p => `chat_conversation_${p}`);
+          await supabase.from('settings').delete().in('key', settingsKeys);
+        }
+        await supabase.from('settings').delete().like('key', 'chat_conversation_%');
+      } catch (setErr) {
+        console.warn('Aviso delete all settings:', setErr);
+      }
+
+      // 3. Limpa estados locais
+      setConversations([]);
+      setSelectedPhone(null);
+      setActiveMessages([]);
+
+      // 4. Recalcula métricas
+      fetchDailyMetrics();
+    } catch (err) {
+      console.error('Erro ao excluir todas as conversas:', err);
+      alert('Erro ao excluir todas as conversas.');
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   const selectedConversation = conversations.find(c => c.phone === selectedPhone);
 
   const filteredConversations = conversations.filter(c => {
@@ -879,8 +908,8 @@ export default function AgentManager() {
             </div>
           </div>
 
-          {/* Grid de 4 Cards de Métricas */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {/* Grid de 3 Cards de Métricas */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             {/* Card 1: Atendimentos Hoje */}
             <div className="bg-stone-800/80 rounded-lg p-3 border border-stone-700/60 relative overflow-hidden">
               <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
@@ -924,21 +953,6 @@ export default function AgentManager() {
               </div>
               <div className="text-[10.5px] text-stone-400 mt-1 font-mono">
                 Tempo médio de resposta
-              </div>
-            </div>
-
-            {/* Card 4: Conversão em Pedidos */}
-            <div className="bg-stone-800/80 rounded-lg p-3 border border-stone-700/60 relative overflow-hidden">
-              <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
-                <span className="font-medium">Pedidos via WhatsApp</span>
-                <ShoppingBag size={15} className="text-amber-400" />
-              </div>
-              <div className="text-xl sm:text-2xl font-bold font-mono text-amber-400">
-                € {metrics.totalRevenueConverted.toFixed(2)}
-              </div>
-              <div className="text-[10.5px] text-stone-400 mt-1 flex items-center gap-1 font-mono">
-                <span className="text-emerald-400 font-semibold">{metrics.totalOrdersConverted} pedidos</span>
-                <span>gerados de conversas</span>
               </div>
             </div>
           </div>
@@ -989,8 +1003,8 @@ export default function AgentManager() {
       <div className="bg-white rounded-xl border border-stone-200 shadow-xs overflow-hidden flex flex-col md:flex-row h-[calc(100vh-230px)] min-h-[400px]">
         {/* Coluna Esquerda: Lista de Conversas (Alta Densidade) */}
         <div className="w-full md:w-72 lg:w-80 border-r border-stone-200 flex flex-col h-full bg-stone-50/50">
-          {/* Busca Limpa Compacta */}
-          <div className="p-2 border-b border-stone-200/80 bg-white shrink-0">
+          {/* Busca Limpa Compacta e Ações */}
+          <div className="p-2 border-b border-stone-200/80 bg-white shrink-0 space-y-1.5">
             <div className="relative">
               <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
               <input
@@ -1001,6 +1015,24 @@ export default function AgentManager() {
                 className="w-full pl-7 pr-2.5 py-1 text-xs bg-stone-100/80 rounded-md border border-transparent focus:border-stone-300 focus:bg-white focus:outline-none transition-all"
               />
             </div>
+
+            {conversations.length > 0 && (
+              <div className="flex items-center justify-between px-1 pt-0.5">
+                <span className="text-[10px] font-mono text-stone-500 font-medium">
+                  {filteredConversations.length} {filteredConversations.length === 1 ? 'conversa' : 'conversas'}
+                </span>
+                <button
+                  type="button"
+                  onClick={deleteAllConversations}
+                  disabled={deletingAll}
+                  className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-0.5 rounded flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 border border-transparent hover:border-red-200"
+                  title="Excluir todas as conversas e limpar histórico"
+                >
+                  <Trash2 size={11} className={deletingAll ? "animate-spin" : ""} />
+                  <span>{deletingAll ? 'Excluindo...' : 'Excluir Todas'}</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Lista de Contatos Alta Densidade com Scroll */}
