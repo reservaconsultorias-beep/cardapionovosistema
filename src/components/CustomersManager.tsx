@@ -35,6 +35,41 @@ export interface CustomerProfile {
   raw_orders: any[];
 }
 
+export function getSegmentBadge(segment: CustomerProfile['segment']) {
+  switch (segment) {
+    case 'vip':
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] font-sans font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-900 border border-amber-500/30">
+          <Star size={10} className="fill-amber-500 text-amber-500" /> VIP
+        </span>
+      );
+    case 'recorrente':
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] font-sans font-semibold px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 border border-stone-200">
+          <RefreshCw size={10} className="text-stone-500" /> Recorrente
+        </span>
+      );
+    case 'novo':
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] font-sans font-semibold px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-800 border border-emerald-500/25">
+          <Sparkles size={10} className="text-emerald-600" /> 1º Pedido
+        </span>
+      );
+    case 'em_risco':
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] font-sans font-semibold px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-800 border border-rose-500/25">
+          <AlertTriangle size={10} className="text-rose-600" /> Em Risco
+        </span>
+      );
+    case 'inativo':
+      return (
+        <span className="inline-flex items-center gap-1 text-[11px] font-sans font-medium px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
+          <Clock size={10} className="text-stone-400" /> Inativo
+        </span>
+      );
+  }
+}
+
 export default function CustomersManager() {
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [loading, setLoading] = useState(true);
@@ -429,46 +464,11 @@ export default function CustomersManager() {
     setTimeout(() => setCopiedPhone(null), 2000);
   };
 
-  const getSegmentBadge = (segment: CustomerProfile['segment']) => {
-    switch (segment) {
-      case 'vip':
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-300">
-            <Star size={10} className="fill-amber-500 text-amber-500" /> VIP
-          </span>
-        );
-      case 'recorrente':
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
-            <RefreshCw size={10} className="text-blue-500" /> Recorrente
-          </span>
-        );
-      case 'novo':
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-            <Sparkles size={10} className="text-emerald-500" /> 1º Pedido
-          </span>
-        );
-      case 'em_risco':
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-200">
-            <AlertTriangle size={10} className="text-orange-500" /> Em Risco
-          </span>
-        );
-      case 'inativo':
-        return (
-          <span className="inline-flex items-center gap-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-stone-100 text-stone-600 border border-stone-200">
-            <Clock size={10} className="text-stone-400" /> Inativo
-          </span>
-        );
-    }
-  };
-
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-stone-200 p-12 text-center flex flex-col items-center justify-center gap-3">
-        <RefreshCw className="w-7 h-7 animate-spin text-amber-500" />
-        <span className="text-xs font-mono font-medium text-stone-500">
+      <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center flex flex-col items-center justify-center gap-3 shadow-xs">
+        <RefreshCw className="w-8 h-8 animate-spin text-stone-900" />
+        <span className="text-xs font-sans font-semibold text-stone-600">
           Carregando dados e inteligência comercial dos clientes...
         </span>
       </div>
@@ -478,78 +478,68 @@ export default function CustomersManager() {
   return (
     <div className="space-y-4">
       {/* ─────────────────────────────────────────────────────────────
-          1. COCKPIT DE INTELIGÊNCIA COMERCIAL (TOP KPIS)
+          1. SÍNTESE DA CARTEIRA - ADAPTADA MOBILE & DESKTOP (AIRY & LEVE)
       ─────────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-        {/* Total Clientes */}
-        <div className="bg-white p-3.5 rounded-xl border border-stone-200/90 shadow-2xs relative overflow-hidden">
-          <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
-            <span className="font-semibold text-stone-600">Base Total</span>
-            <User size={15} className="text-stone-500" />
+      <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs p-3.5 sm:p-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4 divide-y sm:divide-y-0 sm:divide-x divide-stone-100">
+          <div className="pt-1 sm:pt-0 sm:px-3 first:pl-0">
+            <span className="text-[10px] sm:text-[11px] font-semibold text-stone-500 uppercase tracking-wider block font-sans">Clientes</span>
+            <span className="text-xl sm:text-2xl font-bold font-sans text-stone-900 tracking-tight block mt-0.5">
+              {stats.totalCount}
+            </span>
+            <span className="text-[10px] text-stone-400 block font-sans">
+              {stats.newCount} novos • {stats.recurringCount} fiéis
+            </span>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-stone-900">
-            {stats.totalCount}
-          </div>
-          <div className="text-[10px] text-stone-400 mt-1 flex items-center gap-1 font-mono">
-            <span className="text-emerald-600 font-semibold">{stats.newCount} novos</span>
-            <span>•</span>
-            <span className="text-blue-600 font-semibold">{stats.recurringCount} fiéis</span>
-          </div>
-        </div>
 
-        {/* Clientes VIP */}
-        <div className="bg-white p-3.5 rounded-xl border border-amber-200 bg-amber-50/20 shadow-2xs relative overflow-hidden">
-          <div className="flex items-center justify-between text-amber-700 text-xs mb-1">
-            <span className="font-bold">Clientes VIP</span>
-            <Star size={15} className="fill-amber-500 text-amber-500" />
+          <div className="pt-2 sm:pt-0 sm:px-3">
+            <span className="text-[10px] sm:text-[11px] font-semibold text-stone-500 uppercase tracking-wider block font-sans">VIPs</span>
+            <span className="text-xl sm:text-2xl font-bold font-sans text-amber-600 tracking-tight block mt-0.5">
+              {stats.vipCount}
+            </span>
+            <span className="text-[10px] text-stone-400 block font-sans">
+              ≥ 5 pedidos
+            </span>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-amber-900">
-            {stats.vipCount}
-          </div>
-          <div className="text-[10px] text-amber-700 mt-1 font-mono">
-            ≥ 5 pedidos ou alto valor
-          </div>
-        </div>
 
-        {/* Clientes Ativos (30 dias) */}
-        <div className="bg-white p-3.5 rounded-xl border border-stone-200/90 shadow-2xs relative overflow-hidden">
-          <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
-            <span className="font-semibold text-stone-600">Ativos no Mês</span>
-            <Flame size={15} className="text-emerald-500" />
+          <div className="pt-2 sm:pt-0 sm:px-3">
+            <span className="text-[10px] sm:text-[11px] font-semibold text-stone-500 uppercase tracking-wider block font-sans">Ativos no Mês</span>
+            <span className="text-xl sm:text-2xl font-bold font-sans text-emerald-600 tracking-tight block mt-0.5">
+              {stats.activeCount}
+            </span>
+            <span className="text-[10px] text-stone-400 block font-sans">
+              Últimos 30 dias
+            </span>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-emerald-600">
-            {stats.activeCount}
-          </div>
-          <div className="text-[10px] text-stone-400 mt-1 font-mono">
-            Compraram nos últimos 30 dias
-          </div>
-        </div>
 
-        {/* Clientes em Risco / Inativos */}
-        <div className="bg-white p-3.5 rounded-xl border border-orange-200 bg-orange-50/20 shadow-2xs relative overflow-hidden">
-          <div className="flex items-center justify-between text-orange-700 text-xs mb-1">
-            <span className="font-bold">Em Risco / Inativos</span>
-            <AlertTriangle size={15} className="text-orange-500" />
+          <div className="pt-2 sm:pt-0 sm:px-3">
+            <span className="text-[10px] sm:text-[11px] font-semibold text-stone-500 uppercase tracking-wider block font-sans">Em Risco</span>
+            <span className="text-xl sm:text-2xl font-bold font-sans text-rose-600 tracking-tight block mt-0.5">
+              {stats.riskCount}
+            </span>
+            <span className="text-[10px] text-stone-400 block font-sans">
+              +30d sem pedir
+            </span>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-orange-800">
-            {stats.riskCount + stats.inactiveCount}
-          </div>
-          <div className="text-[10px] text-orange-700 mt-1 font-mono">
-            {stats.riskCount} em risco • {stats.inactiveCount} inativos
-          </div>
-        </div>
 
-        {/* Ticket Médio Geral */}
-        <div className="bg-stone-900 text-white p-3.5 rounded-xl border border-stone-800 shadow-2xs relative overflow-hidden col-span-2 sm:col-span-1">
-          <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
-            <span className="font-semibold text-stone-300">Ticket Médio</span>
-            <TrendingUp size={15} className="text-amber-400" />
+          <div className="pt-2 sm:pt-0 sm:px-3">
+            <span className="text-[10px] sm:text-[11px] font-semibold text-stone-500 uppercase tracking-wider block font-sans">Ticket Médio</span>
+            <span className="text-xl sm:text-2xl font-bold font-mono text-stone-900 tracking-tight block mt-0.5">
+              € {stats.avgTicket.toFixed(2)}
+            </span>
+            <span className="text-[10px] text-stone-400 block font-sans">
+              por pedido
+            </span>
           </div>
-          <div className="text-xl sm:text-2xl font-bold font-mono text-amber-400">
-            € {stats.avgTicket.toFixed(2)}
-          </div>
-          <div className="text-[10px] text-stone-400 mt-1 font-mono truncate">
-            Total Carteira: € {stats.totalRevenue.toFixed(0)}
+
+          <div className="pt-2 sm:pt-0 sm:px-3">
+            <span className="text-[10px] sm:text-[11px] font-semibold text-stone-500 uppercase tracking-wider block font-sans">Total Faturado</span>
+            <span className="text-xl sm:text-2xl font-bold font-mono text-emerald-700 tracking-tight block mt-0.5">
+              € {stats.totalRevenue.toLocaleString('pt-PT', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            </span>
+            <span className="text-[10px] text-stone-400 block font-sans">
+              carteira total
+            </span>
           </div>
         </div>
       </div>
@@ -557,13 +547,13 @@ export default function CustomersManager() {
       {/* ─────────────────────────────────────────────────────────────
           2. PAINEL PRINCIPAL DO CRM & FERRAMENTAS
       ─────────────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs p-3.5 sm:p-4 space-y-3.5">
+      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs p-3.5 sm:p-5 space-y-4">
         
-        {/* Linha 1: Segmentação Rápida (Abas Automáticas) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-stone-100 no-scrollbar">
+        {/* Linha 1: Segmentação Rápida (Abas Executivas Minimalistas com Scroll Suave no Mobile) */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-stone-100 no-scrollbar scroll-smooth">
           <button
             onClick={() => setActiveSegment('todos')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all shrink-0 cursor-pointer ${
+            className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-sans font-semibold transition-all shrink-0 cursor-pointer ${
               activeSegment === 'todos'
                 ? 'bg-stone-900 text-white shadow-xs'
                 : 'bg-stone-100/80 hover:bg-stone-200/70 text-stone-600'
@@ -574,10 +564,10 @@ export default function CustomersManager() {
 
           <button
             onClick={() => setActiveSegment('vip')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+            className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-sans font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
               activeSegment === 'vip'
                 ? 'bg-amber-500 text-stone-950 font-bold shadow-xs'
-                : 'bg-amber-50 hover:bg-amber-100/70 text-amber-800 border border-amber-200'
+                : 'bg-stone-100/80 hover:bg-amber-50 hover:text-amber-900 text-stone-700'
             }`}
           >
             <Star size={12} className={activeSegment === 'vip' ? 'fill-stone-950 text-stone-950' : 'fill-amber-500 text-amber-500'} />
@@ -586,10 +576,10 @@ export default function CustomersManager() {
 
           <button
             onClick={() => setActiveSegment('recorrente')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+            className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-sans font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
               activeSegment === 'recorrente'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-blue-50 hover:bg-blue-100/70 text-blue-700 border border-blue-200'
+                ? 'bg-stone-900 text-white shadow-xs'
+                : 'bg-stone-100/80 hover:bg-stone-200/70 text-stone-700'
             }`}
           >
             <RefreshCw size={11} />
@@ -598,10 +588,10 @@ export default function CustomersManager() {
 
           <button
             onClick={() => setActiveSegment('novo')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+            className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-sans font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
               activeSegment === 'novo'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'bg-emerald-50 hover:bg-emerald-100/70 text-emerald-800 border border-emerald-200'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'bg-stone-100/80 hover:bg-emerald-50 hover:text-emerald-900 text-stone-700'
             }`}
           >
             <Sparkles size={11} />
@@ -610,10 +600,10 @@ export default function CustomersManager() {
 
           <button
             onClick={() => setActiveSegment('em_risco')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+            className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-sans font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
               activeSegment === 'em_risco'
-                ? 'bg-orange-600 text-white shadow-xs'
-                : 'bg-orange-50 hover:bg-orange-100/70 text-orange-800 border border-orange-200'
+                ? 'bg-rose-700 text-white shadow-xs'
+                : 'bg-stone-100/80 hover:bg-rose-50 hover:text-rose-900 text-stone-700'
             }`}
           >
             <AlertTriangle size={11} />
@@ -622,29 +612,39 @@ export default function CustomersManager() {
 
           <button
             onClick={() => setActiveSegment('inativo')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+            className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-sans font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
               activeSegment === 'inativo'
                 ? 'bg-stone-700 text-white shadow-xs'
-                : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200'
+                : 'bg-stone-100/80 hover:bg-stone-200 text-stone-600'
             }`}
           >
             <Clock size={11} />
-            <span>Inativos (+60d) ({stats.inactiveCount})</span>
+            <span>Inativos ({stats.inactiveCount})</span>
           </button>
         </div>
 
         {/* Linha 2: Barra de Filtros, Busca, Ordenação e Exportar */}
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-2.5">
-          {/* Busca Texto */}
-          <div className="relative flex-1 w-full lg:max-w-xs">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
+        <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-2.5">
+          {/* Busca Texto com botão de limpar (X) */}
+          <div className="relative flex-1 w-full lg:max-w-md">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar por nome, telefone, sabor, rua..."
-              className="h-8 pl-8 pr-3 bg-stone-50/80 focus:bg-white border border-stone-200 focus:border-amber-400 rounded-lg text-xs font-mono text-stone-900 focus:outline-none w-full shadow-2xs transition-colors"
+              className="h-10 sm:h-9 pl-9 pr-8 bg-stone-50 focus:bg-white border border-stone-200 focus:border-stone-900 rounded-lg text-xs font-sans text-stone-900 focus:outline-none w-full shadow-2xs transition-colors"
             />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-700 rounded transition-colors cursor-pointer"
+                title="Limpar busca"
+                aria-label="Limpar busca"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
 
           {/* Grupo de Controles da Direita */}
@@ -666,7 +666,7 @@ export default function CustomersManager() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="h-8 pl-2.5 pr-7 border border-stone-200 hover:border-stone-300 bg-white text-stone-700 rounded-lg text-xs font-mono font-medium appearance-none cursor-pointer shadow-2xs focus:outline-none focus:border-amber-400"
+                className="h-10 sm:h-9 pl-3 pr-8 border border-stone-200 hover:border-stone-300 bg-white text-stone-700 rounded-lg text-xs font-sans font-medium appearance-none cursor-pointer shadow-2xs focus:outline-none focus:border-stone-900"
               >
                 <option value="recent">Última Compra</option>
                 <option value="spent">+ Faturamento (€)</option>
@@ -674,42 +674,151 @@ export default function CustomersManager() {
                 <option value="ticket">+ Ticket Médio (€)</option>
                 <option value="inactive">+ Tempo Sem Comprar</option>
               </select>
-              <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+              <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
             </div>
 
             {/* Botão Exportar CSV */}
             <button
               onClick={exportToCSV}
-              className="h-8 px-2.5 bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-700 hover:text-stone-900 rounded-lg text-xs font-mono font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+              className="h-10 sm:h-9 px-3 bg-stone-50 hover:bg-stone-100 border border-stone-200 text-stone-800 rounded-lg text-xs font-sans font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
               title="Exportar lista filtrada para Excel / CSV"
             >
               <Download size={13} className="text-stone-600" />
               <span className="hidden sm:inline">Exportar CSV</span>
             </button>
+
+            {/* Botão Limpar Filtros Ativos */}
+            {(search || activeSegment !== 'todos' || period !== 'todos') && (
+              <button
+                onClick={() => {
+                  setSearch('');
+                  setActiveSegment('todos');
+                  setPeriod('todos');
+                  setStartDate('');
+                  setEndDate('');
+                }}
+                className="h-10 sm:h-9 px-2.5 text-rose-700 hover:text-rose-900 hover:bg-rose-50 rounded-lg text-xs font-sans font-semibold transition-colors cursor-pointer flex items-center gap-1"
+                title="Limpar todos os filtros"
+              >
+                <X size={12} />
+                <span>Limpar</span>
+              </button>
+            )}
           </div>
         </div>
 
         {/* ─────────────────────────────────────────────────────────────
-            3. TABELA DE ALTA DENSIDADE E INTELIGÊNCIA COMERCIAL
+            3. DUAL-VIEW: TABELA DESKTOP + CARDS ADAPTATIVOS MOBILE
         ─────────────────────────────────────────────────────────────── */}
-        <div className="overflow-x-auto border border-stone-200/90 rounded-xl">
+
+        {/* 3A. MODO MOBILE (< 768px): CARDS ERGONÔMICOS E DIRETOS */}
+        <div className="block md:hidden space-y-2.5">
+          {filteredCustomers.length === 0 ? (
+            <div className="py-12 text-center text-stone-400 font-sans text-xs bg-stone-50 rounded-xl border border-stone-200">
+              Nenhum cliente encontrado com os filtros atuais.
+            </div>
+          ) : (
+            filteredCustomers.map((c) => {
+              const whatsappLink = `https://wa.me/${formatPhoneForWhatsApp(c.phone)}`;
+              const isCopied = copiedPhone === c.phone;
+              return (
+                <div
+                  key={`mobile-${c.id}`}
+                  onClick={() => setSelectedCustomer(c)}
+                  className="bg-white p-3.5 rounded-xl border border-stone-200 hover:border-stone-300 shadow-2xs space-y-2.5 active:bg-amber-50/20 transition-all cursor-pointer"
+                >
+                  {/* Topo do Card: Nome + Segmento + WhatsApp Button (40px target) */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-stone-900 text-sm tracking-tight truncate font-sans">
+                          {c.name || 'Cliente'}
+                        </span>
+                        {getSegmentBadge(c.segment)}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-stone-500 font-mono mt-0.5">
+                        <span>{c.formattedPhone}</span>
+                        <button
+                          onClick={(e) => copyPhone(c.phone, e)}
+                          className="p-1 text-stone-400 hover:text-stone-700 transition-colors"
+                          title="Copiar telefone"
+                          aria-label={`Copiar telefone de ${c.name}`}
+                        >
+                          {isCopied ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <a
+                      href={whatsappLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="shrink-0 min-h-[40px] px-3 py-2 rounded-xl bg-emerald-600 text-white font-sans font-bold text-xs flex items-center gap-1.5 shadow-2xs hover:bg-emerald-700 active:scale-95 transition-all"
+                      aria-label={`Conversar com ${c.name} no WhatsApp`}
+                    >
+                      <MessageCircle size={15} />
+                      <span>WhatsApp</span>
+                    </a>
+                  </div>
+
+                  {/* 3 Métricas Rápidas */}
+                  <div className="grid grid-cols-3 gap-1.5 p-2 bg-stone-50 rounded-lg border border-stone-100 text-center font-sans">
+                    <div>
+                      <span className="text-[9.5px] uppercase font-semibold text-stone-400 block">Pedidos</span>
+                      <span className="text-xs font-bold text-stone-800 font-mono">{c.total_orders}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9.5px] uppercase font-semibold text-stone-400 block">Total Gasto</span>
+                      <span className="text-xs font-bold text-stone-900 font-mono">€ {c.total_spent.toFixed(2)}</span>
+                    </div>
+                    <div>
+                      <span className="text-[9.5px] uppercase font-semibold text-stone-400 block">Última Compra</span>
+                      <span className="text-xs font-semibold text-stone-700">
+                        {c.days_since_last_order === 0 ? 'Hoje' : c.days_since_last_order === 1 ? 'Ontem' : `Há ${c.days_since_last_order}d`}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Rodapé do Card com Favorito e Ficha */}
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-stone-100">
+                    {c.favorite_items.length > 0 ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] text-stone-600 truncate max-w-[210px]">
+                        <Pizza size={11} className="text-amber-600 shrink-0" />
+                        <span className="truncate">{c.favorite_items[0].name}</span>
+                      </span>
+                    ) : (
+                      <span className="text-stone-400 text-[11px]">-</span>
+                    )}
+                    <span className="text-amber-800 font-bold text-[11px] flex items-center gap-0.5 shrink-0">
+                      Ver Ficha <ArrowUpRight size={12} />
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* 3B. MODO DESKTOP (≥ 768px): TABELA EXECUTIVA DE ALTA DENSIDADE */}
+        <div className="hidden md:block overflow-x-auto border border-stone-200/90 rounded-xl">
           <table className="min-w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-stone-200 bg-stone-50/90 text-stone-600 font-mono uppercase text-[10.5px]">
-                <th className="py-2.5 px-3.5 font-bold">Cliente & Segmento</th>
-                <th className="py-2.5 px-3 font-bold">Telefone / WhatsApp</th>
-                <th className="py-2.5 px-3 font-bold text-center">Pedidos</th>
-                <th className="py-2.5 px-3 font-bold text-right">Total Gasto</th>
-                <th className="py-2.5 px-3 font-bold text-right">Ticket Médio</th>
-                <th className="py-2.5 px-3 font-bold">Última Compra</th>
-                <th className="py-2.5 px-3 font-bold">Preferência</th>
-                <th className="py-2.5 px-3 font-bold text-center">Ficha</th>
+              <tr className="border-b border-stone-200 bg-stone-50/90 text-stone-600 font-sans uppercase text-[11px] tracking-wider">
+                <th className="py-3 px-3.5 font-bold">Cliente & Segmento</th>
+                <th className="py-3 px-3 font-bold">Telefone / WhatsApp</th>
+                <th className="py-3 px-3 font-bold text-center">Pedidos</th>
+                <th className="py-3 px-3 font-bold text-right">Total Gasto</th>
+                <th className="py-3 px-3 font-bold text-right">Ticket Médio</th>
+                <th className="py-3 px-3 font-bold">Última Compra</th>
+                <th className="py-3 px-3 font-bold">Preferência</th>
+                <th className="py-3 px-3 font-bold text-center">Ficha</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-stone-100 font-mono">
+            <tbody className="divide-y divide-stone-100">
               {filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-stone-400 font-mono">
+                  <td colSpan={8} className="py-12 text-center text-stone-400 font-sans text-xs">
                     Nenhum cliente encontrado com os filtros atuais.
                   </td>
                 </tr>
@@ -722,19 +831,28 @@ export default function CustomersManager() {
                     <tr
                       key={c.id}
                       onClick={() => setSelectedCustomer(c)}
-                      className="hover:bg-amber-50/40 transition-colors cursor-pointer group"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedCustomer(c);
+                        }
+                      }}
+                      tabIndex={0}
+                      role="button"
+                      aria-label={`Ver detalhes de ${c.name}`}
+                      className="hover:bg-amber-50/40 transition-colors cursor-pointer group focus:outline-none focus:bg-amber-50/60"
                     >
                       {/* Cliente e Segmento */}
-                      <td className="py-2.5 px-3.5">
+                      <td className="py-3 px-3.5">
                         <div className="flex flex-col">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-bold text-stone-900 group-hover:text-amber-900 text-xs">
+                            <span className="font-bold text-stone-900 group-hover:text-amber-950 text-sm tracking-tight font-sans">
                               {c.name || 'Cliente'}
                             </span>
                             {getSegmentBadge(c.segment)}
                           </div>
                           {c.first_order_at && (
-                            <span className="text-[9.5px] text-stone-400 mt-0.5">
+                            <span className="text-[11px] text-stone-500 font-sans mt-0.5">
                               Cliente desde {new Date(c.first_order_at).toLocaleDateString('pt-PT')}
                             </span>
                           )}
@@ -742,50 +860,52 @@ export default function CustomersManager() {
                       </td>
 
                       {/* Telefone e Botão WhatsApp */}
-                      <td className="py-2.5 px-3" onClick={e => e.stopPropagation()}>
+                      <td className="py-3 px-3" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-stone-700 text-xs">{c.formattedPhone}</span>
+                          <span className="font-mono text-stone-700 text-xs font-medium">{c.formattedPhone}</span>
                           <button
                             onClick={(e) => copyPhone(c.phone, e)}
-                            className="p-1 text-stone-300 hover:text-stone-600 rounded transition-colors"
+                            className="p-1 text-stone-400 hover:text-stone-700 rounded transition-colors cursor-pointer"
                             title="Copiar telefone"
+                            aria-label={`Copiar telefone de ${c.name}`}
                           >
-                            {isCopied ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                            {isCopied ? <Check size={12} className="text-emerald-600 font-bold" /> : <Copy size={12} />}
                           </button>
                           <a
                             href={whatsappLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-1 rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors border border-emerald-200"
+                            className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 transition-colors border border-emerald-200 cursor-pointer"
                             title="Conversar no WhatsApp"
+                            aria-label={`Conversar com ${c.name} no WhatsApp`}
                           >
-                            <MessageCircle size={12} />
+                            <MessageCircle size={13} />
                           </a>
                         </div>
                       </td>
 
                       {/* Pedidos */}
-                      <td className="py-2.5 px-3 text-center">
-                        <span className="px-2 py-0.5 rounded font-bold bg-stone-100 text-stone-800 text-[11px] border border-stone-200">
+                      <td className="py-3 px-3 text-center">
+                        <span className="px-2.5 py-0.5 rounded-md font-bold font-mono bg-stone-100 text-stone-900 text-xs border border-stone-200/80">
                           {c.total_orders}
                         </span>
                       </td>
 
                       {/* Total Gasto */}
-                      <td className="py-2.5 px-3 text-right font-bold text-stone-900 text-xs">
+                      <td className="py-3 px-3 text-right font-bold text-stone-900 font-mono text-xs">
                         € {c.total_spent.toFixed(2)}
                       </td>
 
                       {/* Ticket Médio */}
-                      <td className="py-2.5 px-3 text-right font-semibold text-emerald-700 text-xs">
+                      <td className="py-3 px-3 text-right font-bold text-emerald-700 font-mono text-xs">
                         € {c.ticket_medio.toFixed(2)}
                       </td>
 
                       {/* Última Compra */}
-                      <td className="py-2.5 px-3">
+                      <td className="py-3 px-3">
                         <div className="flex flex-col">
-                          <div className="flex items-center gap-1">
-                            <span className={`w-1.5 h-1.5 rounded-full ${
+                          <div className="flex items-center gap-1.5">
+                            <span className={`w-2 h-2 rounded-full ${
                               c.days_since_last_order <= 7 
                                 ? 'bg-emerald-500' 
                                 : c.days_since_last_order <= 30 
@@ -794,38 +914,38 @@ export default function CustomersManager() {
                                 ? 'bg-orange-500' 
                                 : 'bg-rose-500'
                             }`} />
-                            <span className={`font-semibold text-xs ${
+                            <span className={`font-semibold text-xs font-sans ${
                               c.days_since_last_order > 60 
                                 ? 'text-stone-500' 
                                 : c.days_since_last_order > 30 
-                                ? 'text-orange-700' 
+                                ? 'text-rose-700' 
                                 : 'text-stone-800'
                             }`}>
                               {c.days_since_last_order === 0 ? 'Hoje' : c.days_since_last_order === 1 ? 'Ontem' : `Há ${c.days_since_last_order} dias`}
                             </span>
                           </div>
-                          <span className="text-[9.5px] text-stone-400">
+                          <span className="text-[11px] text-stone-500 font-sans">
                             {c.last_order_at ? new Date(c.last_order_at).toLocaleDateString('pt-PT') : '-'}
                           </span>
                         </div>
                       </td>
 
                       {/* Preferência / Item Mais Pedido */}
-                      <td className="py-2.5 px-3 max-w-[170px] truncate">
+                      <td className="py-3 px-3 max-w-[190px] truncate">
                         {c.favorite_items.length > 0 ? (
-                          <span className="inline-flex items-center gap-1 text-[10.5px] text-stone-600 bg-stone-50 px-1.5 py-0.5 rounded border border-stone-200 truncate">
-                            <Pizza size={10} className="text-amber-600 shrink-0" />
+                          <span className="inline-flex items-center gap-1 text-[11px] text-stone-700 bg-stone-50 px-2 py-0.5 rounded border border-stone-200 truncate font-sans font-medium">
+                            <Pizza size={11} className="text-amber-600 shrink-0" />
                             <span className="truncate">{c.favorite_items[0].name}</span>
                           </span>
                         ) : (
-                          <span className="text-stone-400 text-[10px]">-</span>
+                          <span className="text-stone-400 text-xs">-</span>
                         )}
                       </td>
 
                       {/* Botão Ver Ficha */}
-                      <td className="py-2.5 px-3 text-center">
-                        <span className="text-[11px] font-bold text-amber-700 group-hover:underline flex items-center justify-center gap-0.5">
-                          Ver <ArrowUpRight size={12} />
+                      <td className="py-3 px-3 text-center">
+                        <span className="text-xs font-bold text-amber-800 group-hover:underline flex items-center justify-center gap-0.5 font-sans">
+                          Ver <ArrowUpRight size={13} />
                         </span>
                       </td>
                     </tr>
@@ -837,9 +957,9 @@ export default function CustomersManager() {
         </div>
 
         {/* Rodapé da tabela com totalizadores */}
-        <div className="flex flex-wrap items-center justify-between text-xs font-mono text-stone-500 pt-1">
+        <div className="flex flex-wrap items-center justify-between text-xs font-sans text-stone-500 pt-1 border-t border-stone-100">
           <span>Mostrando <strong>{filteredCustomers.length}</strong> de <strong>{customers.length}</strong> clientes</span>
-          <span>Faturamento Filtrado: <strong className="text-stone-900">€ {filteredCustomers.reduce((acc, c) => acc + c.total_spent, 0).toFixed(2)}</strong></span>
+          <span className="font-mono">Faturamento Filtrado: <strong className="text-stone-900 text-sm">€ {filteredCustomers.reduce((acc, c) => acc + c.total_spent, 0).toFixed(2)}</strong></span>
         </div>
       </div>
 
@@ -910,12 +1030,19 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
   const [activeTab, setActiveTab] = useState<'historico' | 'acoes_whatsapp' | 'cadastro'>('historico');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [copiedTemplateIdx, setCopiedTemplateIdx] = useState<number | null>(null);
 
   const [formData, setFormData] = useState({
     name: customer.name || '',
     address: customer.primary_address || '',
     notes: customer.notes || ''
   });
+
+  const copyTemplateText = (text: string, idx: number) => {
+    navigator.clipboard.writeText(text);
+    setCopiedTemplateIdx(idx);
+    setTimeout(() => setCopiedTemplateIdx(null), 2000);
+  };
 
   // Fechar com ESC
   useEffect(() => {
@@ -929,24 +1056,24 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
   const cleanPhone = customer.phone.replace(/\D/g, '');
   const internationalPhone = cleanPhone.startsWith('351') ? cleanPhone : `351${cleanPhone}`;
 
-  // Modelos de mensagens prontas para WhatsApp
+  // Modelos de mensagens prontas para WhatsApp (Práticos, Diretos e Sem Clichês)
   const firstName = customer.name.split(' ')[0] || 'Cliente';
   const favoritePizza = customer.favorite_items[0]?.name || 'sua pizza favorita';
 
   const messageTemplates = [
     {
       title: '🎁 Reativação / Sentimos sua Falta',
-      desc: 'Ideal para clientes em risco ou inativos (+30 dias sem pedir).',
+      desc: 'Para clientes em risco ou inativos (+30 dias sem pedir).',
       text: `Olá ${firstName}! Tudo bem? 🍕\nSentimos sua falta aqui na 41 Menu's! Preparamos um mimo especial para o seu próximo pedido hoje. Gostaria de dar uma olhada no nosso cardápio atualizado?`
     },
     {
-      title: '🌟 Reconhecimento & Benefício VIP',
-      desc: 'Para fortalecer o relacionamento com seus clientes mais leais.',
+      title: '🌟 Reconhecimento VIP',
+      desc: 'Para estreitar laços com os clientes mais frequentes.',
       text: `Olá ${firstName}! Passando para agradecer pela sua preferência de sempre como cliente VIP da 41 Menu's! ⭐\nNa sua próxima pizza grande, a sobremesa ou a borda recheada é por nossa conta. Vamos pedir hoje?`
     },
     {
       title: '🌱 Pós-Venda (Novo Cliente)',
-      desc: 'Acompanhar quem acabou de fazer o 1º pedido para garantir a satisfação.',
+      desc: 'Para quem realizou o 1º pedido recente.',
       text: `Olá ${firstName}, tudo bem? Aqui é da equipe da 41 Menu's. Passando para saber como foi a sua experiência com a nossa pizza! Seu feedback é muito importante para nós. Esperamos que tenha adorado! 😊`
     },
     {
@@ -967,62 +1094,59 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
 
   return (
     <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/60 backdrop-blur-xs animate-in fade-in duration-150"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-stone-950/60 backdrop-blur-xs animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div 
-        className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-3xl shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[88vh] pb-[max(0.75rem,env(safe-area-inset-bottom,0px))]"
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Indicador de arrasto no Mobile */}
+        <div className="w-10 h-1 bg-stone-300 rounded-full mx-auto my-2.5 sm:hidden shrink-0" />
+
         {/* Topo / Header da Ficha */}
-        <div className="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/80 flex flex-wrap justify-between items-start gap-3 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-stone-900 text-white flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+        <div className="p-3.5 sm:p-5 border-b border-stone-200 bg-stone-50/90 flex flex-wrap justify-between items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-stone-900 text-white flex items-center justify-center font-bold text-base sm:text-lg shadow-xs shrink-0">
               {customer.name ? customer.name.charAt(0).toUpperCase() : <User size={20} />}
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-bold text-base sm:text-lg text-stone-900 leading-tight">
+                <h3 className="font-bold text-base sm:text-xl text-stone-900 tracking-tight leading-tight font-sans truncate">
                   {customer.name || 'Cliente'}
                 </h3>
-                {customer.segment === 'vip' && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                    ⭐ VIP
-                  </span>
-                )}
-                {customer.segment === 'novo' && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                    🌱 Novo Cliente
-                  </span>
-                )}
+                {getSegmentBadge(customer.segment)}
               </div>
-              <div className="flex items-center gap-2 text-xs font-mono text-stone-500 mt-0.5">
-                <span>{customer.formattedPhone}</span>
+              <div className="flex items-center gap-2 text-xs font-sans text-stone-600 mt-0.5">
+                <span className="font-mono font-medium">{customer.formattedPhone}</span>
                 {customer.first_order_at && (
                   <>
-                    <span>•</span>
-                    <span>Cliente desde {new Date(customer.first_order_at).toLocaleDateString('pt-PT')}</span>
+                    <span className="text-stone-300">•</span>
+                    <span className="hidden sm:inline">Cliente desde {new Date(customer.first_order_at).toLocaleDateString('pt-PT')}</span>
+                    <span className="inline sm:hidden">Desde {new Date(customer.first_order_at).toLocaleDateString('pt-PT')}</span>
                   </>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <a
               href={`https://wa.me/${internationalPhone}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              className="min-h-[40px] px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-sans font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              aria-label={`Conversar com ${customer.name} no WhatsApp`}
             >
-              <MessageCircle size={14} />
+              <MessageCircle size={15} />
               <span>WhatsApp</span>
             </a>
 
             <button 
               onClick={onClose} 
-              className="p-1.5 hover:bg-stone-200 rounded-lg text-stone-400 hover:text-stone-700 transition-colors"
+              className="min-h-[40px] min-w-[40px] p-2 hover:bg-stone-200 rounded-xl text-stone-400 hover:text-stone-700 transition-colors flex items-center justify-center cursor-pointer"
               title="Fechar (Esc)"
+              aria-label="Fechar janela"
             >
               <X size={18} />
             </button>
@@ -1030,83 +1154,96 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
         </div>
 
         {/* 4 Cards de Resumo Financeiro e Frequência do Cliente */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 sm:p-4 bg-stone-100/60 border-b border-stone-200 shrink-0">
-          <div className="bg-white p-2.5 rounded-xl border border-stone-200">
-            <span className="text-[10px] font-mono font-bold text-stone-400 uppercase block">Total Gasto</span>
-            <span className="text-base sm:text-lg font-black font-mono text-stone-900">€ {customer.total_spent.toFixed(2)}</span>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5 p-3 sm:p-4 bg-stone-50 border-b border-stone-200 shrink-0">
+          <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-stone-200 shadow-2xs">
+            <span className="text-[10px] font-sans font-bold text-stone-500 uppercase tracking-wider block">Total Gasto</span>
+            <span className="text-base sm:text-xl font-bold font-mono text-stone-900 mt-0.5 block">€ {customer.total_spent.toFixed(2)}</span>
           </div>
-          <div className="bg-white p-2.5 rounded-xl border border-stone-200">
-            <span className="text-[10px] font-mono font-bold text-stone-400 uppercase block">Pedidos Feitos</span>
-            <span className="text-base sm:text-lg font-black font-mono text-stone-900">{customer.total_orders} pedidos</span>
+          <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-stone-200 shadow-2xs">
+            <span className="text-[10px] font-sans font-bold text-stone-500 uppercase tracking-wider block">Pedidos Feitos</span>
+            <span className="text-base sm:text-xl font-bold font-mono text-stone-900 mt-0.5 block">
+              {customer.total_orders === 1 ? '1 pedido' : `${customer.total_orders} pedidos`}
+            </span>
           </div>
-          <div className="bg-white p-2.5 rounded-xl border border-stone-200">
-            <span className="text-[10px] font-mono font-bold text-stone-400 uppercase block">Ticket Médio</span>
-            <span className="text-base sm:text-lg font-black font-mono text-emerald-700">€ {customer.ticket_medio.toFixed(2)}</span>
+          <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-stone-200 shadow-2xs">
+            <span className="text-[10px] font-sans font-bold text-stone-500 uppercase tracking-wider block">Ticket Médio</span>
+            <span className="text-base sm:text-xl font-bold font-mono text-emerald-700 mt-0.5 block">€ {customer.ticket_medio.toFixed(2)}</span>
           </div>
-          <div className="bg-white p-2.5 rounded-xl border border-stone-200">
-            <span className="text-[10px] font-mono font-bold text-stone-400 uppercase block">Última Compra</span>
-            <span className="text-base sm:text-lg font-black font-mono text-stone-900">
-              {customer.days_since_last_order === 0 ? 'Hoje' : `Há ${customer.days_since_last_order}d`}
+          <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-stone-200 shadow-2xs">
+            <span className="text-[10px] font-sans font-bold text-stone-500 uppercase tracking-wider block">Última Compra</span>
+            <span className="text-base sm:text-xl font-bold font-sans text-stone-900 mt-0.5 block">
+              {customer.days_since_last_order === 0 ? 'Hoje' : customer.days_since_last_order === 1 ? 'Ontem' : `Há ${customer.days_since_last_order}d`}
             </span>
           </div>
         </div>
 
-        {/* Bloco de Preferências & Padrões Extraídos por Inteligência */}
-        <div className="px-4 py-2.5 bg-amber-50/40 border-b border-amber-200/60 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-stone-700 font-mono shrink-0">
+        {/* Bloco de Preferências & Padrões do Cliente */}
+        <div className="px-3.5 sm:px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-stone-800 font-sans shrink-0">
           {customer.favorite_items.length > 0 && (
             <div className="flex items-center gap-1.5">
-              <Pizza size={13} className="text-amber-600 shrink-0" />
+              <span className="p-1 rounded-md bg-amber-100 text-amber-800">
+                <Pizza size={12} className="text-amber-700 shrink-0" />
+              </span>
               <span>Favorito: <strong>{customer.favorite_items[0].name}</strong> ({customer.favorite_items[0].count}x)</span>
             </div>
           )}
           <div className="flex items-center gap-1.5">
-            <Bike size={13} className="text-blue-600 shrink-0" />
+            <span className="p-1 rounded-md bg-blue-100 text-blue-800">
+              <Bike size={12} className="text-blue-700 shrink-0" />
+            </span>
             <span>Preferência: <strong>{customer.delivery_percentage}% Entrega</strong></span>
           </div>
           {customer.primary_zone && (
             <div className="flex items-center gap-1.5">
-              <MapPin size={13} className="text-rose-600 shrink-0" />
+              <span className="p-1 rounded-md bg-rose-100 text-rose-800">
+                <MapPin size={12} className="text-rose-700 shrink-0" />
+              </span>
               <span>Zona: <strong>{customer.primary_zone}</strong></span>
             </div>
           )}
           {customer.primary_payment_method && (
             <div className="flex items-center gap-1.5">
-              <CreditCard size={13} className="text-emerald-600 shrink-0" />
+              <span className="p-1 rounded-md bg-emerald-100 text-emerald-800">
+                <CreditCard size={12} className="text-emerald-700 shrink-0" />
+              </span>
               <span>Pagamento: <strong>{customer.primary_payment_method}</strong></span>
             </div>
           )}
         </div>
 
-        {/* Tabs da Ficha */}
+        {/* Tabs da Ficha (Responsivo para Celular e Desktop) */}
         <div className="flex border-b border-stone-200 bg-white shrink-0">
           <button
             onClick={() => setActiveTab('historico')}
-            className={`flex-1 py-2.5 text-xs font-bold font-mono tracking-wider border-b-2 transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'historico' ? 'border-amber-500 text-amber-900 bg-amber-50/20' : 'border-transparent text-stone-500 hover:text-stone-900'
+            className={`flex-1 min-h-[44px] py-2.5 text-xs font-bold font-sans tracking-wide border-b-2 transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'historico' ? 'border-amber-600 text-amber-950 bg-amber-50/25' : 'border-transparent text-stone-500 hover:text-stone-900'
             }`}
           >
-            <ShoppingBag size={13} />
-            <span>HISTÓRICO ({customer.raw_orders.length})</span>
+            <ShoppingBag size={14} className={activeTab === 'historico' ? 'text-amber-600' : 'text-stone-400'} />
+            <span className="hidden sm:inline">HISTÓRICO ({customer.raw_orders.length})</span>
+            <span className="inline sm:hidden">Histórico ({customer.raw_orders.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('acoes_whatsapp')}
-            className={`flex-1 py-2.5 text-xs font-bold font-mono tracking-wider border-b-2 transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'acoes_whatsapp' ? 'border-emerald-500 text-emerald-900 bg-emerald-50/20' : 'border-transparent text-stone-500 hover:text-stone-900'
+            className={`flex-1 min-h-[44px] py-2.5 text-xs font-bold font-sans tracking-wide border-b-2 transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'acoes_whatsapp' ? 'border-emerald-600 text-emerald-950 bg-emerald-50/25' : 'border-transparent text-stone-500 hover:text-stone-900'
             }`}
           >
-            <Send size={13} />
-            <span>MENSAGENS WHATSAPP</span>
+            <Send size={14} className={activeTab === 'acoes_whatsapp' ? 'text-emerald-600' : 'text-stone-400'} />
+            <span className="hidden sm:inline">MENSAGENS WHATSAPP</span>
+            <span className="inline sm:hidden">WhatsApp</span>
           </button>
 
           <button
             onClick={() => setActiveTab('cadastro')}
-            className={`flex-1 py-2.5 text-xs font-bold font-mono tracking-wider border-b-2 transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
-              activeTab === 'cadastro' ? 'border-amber-500 text-amber-900 bg-amber-50/20' : 'border-transparent text-stone-500 hover:text-stone-900'
+            className={`flex-1 min-h-[44px] py-2.5 text-xs font-bold font-sans tracking-wide border-b-2 transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+              activeTab === 'cadastro' ? 'border-stone-900 text-stone-950 bg-stone-50' : 'border-transparent text-stone-500 hover:text-stone-900'
             }`}
           >
-            <FileText size={13} />
-            <span>EDITAR CADASTRO & NOTAS</span>
+            <FileText size={14} className={activeTab === 'cadastro' ? 'text-stone-900' : 'text-stone-400'} />
+            <span className="hidden sm:inline">EDITAR CADASTRO & NOTAS</span>
+            <span className="inline sm:hidden">Cadastro / Notas</span>
           </button>
         </div>
 
@@ -1117,7 +1254,7 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
           {activeTab === 'historico' && (
             <div className="space-y-3">
               {customer.raw_orders.length === 0 ? (
-                <div className="text-center text-stone-400 py-10 font-mono text-xs">
+                <div className="text-center text-stone-400 py-10 font-sans text-xs">
                   Nenhum pedido registrado para este cliente.
                 </div>
               ) : (
@@ -1159,7 +1296,7 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
                           }`}>
                             {o.status}
                           </span>
-                          <span className="font-black text-xs text-stone-900 font-mono">
+                          <span className="font-bold text-xs text-stone-900 font-mono">
                             € {Number(o.total_amount || 0).toFixed(2)}
                           </span>
                         </div>
@@ -1168,11 +1305,11 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
                       {/* Lista de Itens do Pedido */}
                       <div className="space-y-1">
                         {itemsList.map((it: any, iIdx: number) => (
-                          <div key={iIdx} className="text-xs text-stone-700 flex justify-between items-start font-mono">
+                          <div key={iIdx} className="text-xs text-stone-700 flex justify-between items-start font-sans">
                             <div className="flex-1 pr-2">
-                              <span className="font-bold text-stone-900">{it.quantity}x</span> {it.name}
+                              <span className="font-bold text-stone-900 font-mono">{it.quantity}x</span> {it.name}
                               {it.extras && it.extras.length > 0 && (
-                                <div className="text-[10px] text-amber-700 pl-4">
+                                <div className="text-[10px] text-amber-700 pl-4 font-mono">
                                   + {it.extras.map((e: any) => e.name).join(', ')}
                                 </div>
                               )}
@@ -1182,7 +1319,7 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
                                 </div>
                               )}
                             </div>
-                            <span className="font-semibold text-stone-600 shrink-0">
+                            <span className="font-semibold text-stone-600 shrink-0 font-mono">
                               € {Number(it.priceCalculated || it.basePrice || 0).toFixed(2)}
                             </span>
                           </div>
@@ -1190,7 +1327,7 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
                       </div>
 
                       {o.delivery_address && (
-                        <div className="mt-2 pt-2 border-t border-stone-200/50 text-[10.5px] text-stone-500 font-mono flex items-center gap-1">
+                        <div className="mt-2 pt-2 border-t border-stone-200/50 text-[10.5px] text-stone-500 font-sans flex items-center gap-1">
                           <MapPin size={11} className="text-stone-400 shrink-0" />
                           <span className="truncate">{o.delivery_address} {o.delivery_zone ? `(${o.delivery_zone})` : ''}</span>
                         </div>
@@ -1204,32 +1341,45 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
 
           {/* ABA 2: AÇÕES RÁPIDAS DE WHATSAPP (MODELOS DE FIDELIZAÇÃO) */}
           {activeTab === 'acoes_whatsapp' && (
-            <div className="space-y-3 font-mono">
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 leading-relaxed">
-                💡 <strong>Disparo Inteligente 1-Click:</strong> Escolha um dos modelos abaixo para abrir o WhatsApp Web já com a mensagem personalizada com o nome e sabor favorito do cliente.
+            <div className="space-y-3 font-sans">
+              <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-700 leading-relaxed">
+                <span className="font-bold text-stone-900">Modelos Rápidos para WhatsApp:</span> Mensagens pré-configuradas e personalizadas com o primeiro nome e preferências do cliente. Envie diretamente pelo WhatsApp ou copie o texto para personalizar.
               </div>
 
               <div className="grid grid-cols-1 gap-3">
                 {messageTemplates.map((tmpl, idx) => {
                   const encodedMsg = encodeURIComponent(tmpl.text);
                   const waUrl = `https://wa.me/${internationalPhone}?text=${encodedMsg}`;
+                  const isCopied = copiedTemplateIdx === idx;
 
                   return (
-                    <div key={idx} className="p-3.5 bg-stone-50 border border-stone-200 rounded-xl space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-xs text-stone-900">{tmpl.title}</span>
-                        <a
-                          href={waUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
-                        >
-                          <Send size={11} />
-                          <span>Enviar WhatsApp</span>
-                        </a>
+                    <div key={idx} className="p-3.5 bg-stone-50/80 border border-stone-200 rounded-xl space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <span className="font-bold text-xs text-stone-900 block">{tmpl.title}</span>
+                          <span className="text-[10px] text-stone-500 block">{tmpl.desc}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => copyTemplateText(tmpl.text, idx)}
+                            className="min-h-[36px] px-2.5 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 font-semibold text-xs rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                            title="Copiar texto da mensagem"
+                          >
+                            {isCopied ? <Check size={12} className="text-emerald-600 font-bold" /> : <Copy size={12} />}
+                            <span>{isCopied ? 'Copiado!' : 'Copiar'}</span>
+                          </button>
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="min-h-[36px] px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                          >
+                            <Send size={11} />
+                            <span>Enviar WhatsApp</span>
+                          </a>
+                        </div>
                       </div>
-                      <p className="text-[10px] text-stone-500 font-sans">{tmpl.desc}</p>
-                      <div className="p-2.5 bg-white border border-stone-200 rounded-lg text-xs text-stone-800 whitespace-pre-wrap font-sans">
+                      <div className="p-3 bg-white border border-stone-200 rounded-lg text-xs text-stone-800 whitespace-pre-wrap font-sans leading-relaxed">
                         {tmpl.text}
                       </div>
                     </div>
@@ -1241,55 +1391,55 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
 
           {/* ABA 3: EDITAR CADASTRO & NOTAS */}
           {activeTab === 'cadastro' && (
-            <form onSubmit={handleSave} className="space-y-3.5 font-mono">
+            <form onSubmit={handleSave} className="space-y-3.5 font-sans">
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-stone-700 uppercase mb-1">
                   Nome do Cliente
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full h-9 px-3 bg-stone-50 border border-stone-200 rounded-lg text-xs font-sans text-stone-900 focus:bg-white focus:border-amber-400 focus:outline-none"
+                  className="w-full h-10 px-3 bg-stone-50 border border-stone-200 rounded-lg text-base sm:text-xs font-sans text-stone-900 focus:bg-white focus:border-stone-900 focus:outline-none transition-colors"
                   placeholder="Nome do cliente"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-stone-700 uppercase mb-1">
                   Telefone / WhatsApp (Identificador do Cliente)
                 </label>
                 <input
                   type="text"
                   disabled
                   value={customer.formattedPhone}
-                  className="w-full h-9 px-3 bg-stone-100 border border-stone-200 rounded-lg text-xs text-stone-500 cursor-not-allowed"
+                  className="w-full h-10 px-3 bg-stone-100 border border-stone-200 rounded-lg text-base sm:text-xs font-mono text-stone-500 cursor-not-allowed"
                 />
                 <span className="text-[10px] text-stone-400 mt-0.5 block">O telefone é a chave única do cliente para vincular pedidos e histórico.</span>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-stone-700 uppercase mb-1">
                   Endereço de Entrega Principal
                 </label>
                 <input
                   type="text"
                   value={formData.address}
                   onChange={e => setFormData({ ...formData, address: e.target.value })}
-                  className="w-full h-9 px-3 bg-stone-50 border border-stone-200 rounded-lg text-xs font-sans text-stone-900 focus:bg-white focus:border-amber-400 focus:outline-none"
+                  className="w-full h-10 px-3 bg-stone-50 border border-stone-200 rounded-lg text-base sm:text-xs font-sans text-stone-900 focus:bg-white focus:border-stone-900 focus:outline-none transition-colors"
                   placeholder="Ex: Rua das Flores, 123 - Apto 4B"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase mb-1">
+                <label className="block text-[11px] font-bold text-stone-700 uppercase mb-1">
                   Observações Internas / Preferências do Cliente
                 </label>
                 <textarea
                   value={formData.notes}
                   onChange={e => setFormData({ ...formData, notes: e.target.value })}
                   rows={3}
-                  className="w-full p-3 bg-stone-50 border border-stone-200 rounded-lg text-xs font-sans text-stone-900 focus:bg-white focus:border-amber-400 focus:outline-none resize-none"
+                  className="w-full p-3 bg-stone-50 border border-stone-200 rounded-lg text-base sm:text-xs font-sans text-stone-900 focus:bg-white focus:border-stone-900 focus:outline-none resize-none transition-colors"
                   placeholder="Ex: Prefere massa bem assada, não consome cebola, costuma pedir aos sábados, cliente amigo da família..."
                 />
               </div>
@@ -1305,7 +1455,7 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="w-full h-10 bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                  className="w-full min-h-[44px] bg-stone-900 hover:bg-stone-800 text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
                 >
                   {isSaving ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
                   <span>{isSaving ? 'Salvando...' : 'Salvar Alterações'}</span>
