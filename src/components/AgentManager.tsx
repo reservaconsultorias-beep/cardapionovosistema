@@ -439,7 +439,8 @@ export default function AgentManager() {
       const isSwitchingPhone = prevPhoneRef.current !== selectedPhone;
       prevPhoneRef.current = selectedPhone;
       messagesEndRef.current.scrollIntoView({ 
-        behavior: isSwitchingPhone ? 'auto' : 'smooth' 
+        behavior: isSwitchingPhone ? 'auto' : 'smooth',
+        block: 'nearest'
       });
     }
   }, [selectedPhone, activeMessages]);
@@ -840,19 +841,19 @@ export default function AgentManager() {
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 h-full space-y-2">
+    <div className="space-y-4 max-w-7xl">
       {/* Topo / Painel de Comando da Atendente Virtual */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs px-3.5 py-2 sm:px-4 sm:py-2.5 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+      <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
         {/* Identificação de Alto Impacto da IA */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className={`relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 transition-all ${
+        <div className="flex items-center gap-3.5 sm:gap-4">
+          <div className={`relative w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
             isActive 
-              ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 ring-2 ring-emerald-500/10' 
-              : 'bg-amber-500/10 text-amber-600 border border-amber-500/30 ring-2 ring-amber-500/10'
+              ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 ring-4 ring-emerald-500/10' 
+              : 'bg-amber-500/10 text-amber-600 border border-amber-500/30 ring-4 ring-amber-500/10'
           }`}>
-            <Bot size={20} className={updating ? "animate-pulse" : ""} />
+            <Bot size={26} className={updating ? "animate-pulse" : ""} />
             <span 
-              className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white flex items-center justify-center ${
+              className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full ring-2 ring-white flex items-center justify-center ${
                 isActive ? 'bg-emerald-500' : 'bg-amber-500'
               }`} 
               title={isActive ? "IA Conectada e Operando" : "IA Pausada"}
@@ -865,26 +866,26 @@ export default function AgentManager() {
 
           <div>
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-base sm:text-lg font-black text-stone-900 tracking-tight leading-none font-sans">
+              <h2 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight leading-tight font-sans">
                 Giovanna
               </h2>
-              <span className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full border transition-all ${
+              <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full border transition-all ${
                 isActive 
                   ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
                   : 'bg-amber-50 text-amber-900 border-amber-300'
               }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                {isActive ? 'Operação Ativa' : 'Pausada • Modo Manual'}
+                <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                {isActive ? 'Operação Automática Ativa' : 'Pausada • Modo Manual'}
               </span>
             </div>
-            <p className="text-[11px] text-stone-500 mt-0.5 flex flex-wrap items-center gap-1.5 font-sans">
-              <span>Atendente Oficial WhatsApp</span>
+            <p className="text-xs text-stone-500 mt-0.5 flex flex-wrap items-center gap-2">
+              <span>Atendente Virtual Oficial do WhatsApp</span>
               <span className="text-stone-300">•</span>
-              <span className="font-mono text-stone-600 font-medium">{conversations.length} {conversations.length === 1 ? 'conversa' : 'conversas'}</span>
+              <span className="font-mono text-stone-600 font-medium">{conversations.length} {conversations.length === 1 ? 'conversa gravada' : 'conversas gravadas'}</span>
               {lastUpdated && (
                 <>
                   <span className="text-stone-300">•</span>
-                  <span className="text-stone-400 font-mono text-[10px]">Sincronizado às {lastUpdated}</span>
+                  <span className="text-stone-400 font-mono text-[11px]">Sincronizado às {lastUpdated}</span>
                 </>
               )}
             </p>
@@ -892,50 +893,51 @@ export default function AgentManager() {
         </div>
 
         {/* Controles de Autoridade */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
           <button
             type="button"
             onClick={() => setShowMetricsDashboard(prev => !prev)}
-            className={`min-h-[34px] px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer border ${
+            className={`min-h-[40px] px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer border ${
               showMetricsDashboard
-                ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                ? 'bg-stone-900 text-white border-stone-900 shadow-xs'
                 : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
             }`}
             title="Exibir ou ocultar telemetria de atendimento"
           >
-            <TrendingUp size={14} className={showMetricsDashboard ? "text-amber-400" : "text-stone-500"} />
-            <span>Telemetria</span>
-            {showMetricsDashboard ? <ChevronUp size={13} className="text-stone-400" /> : <ChevronDown size={13} className="text-stone-400" />}
+            <TrendingUp size={15} className={showMetricsDashboard ? "text-amber-400" : "text-stone-500"} />
+            <span className="hidden sm:inline">Telemetria & Desempenho</span>
+            <span className="sm:hidden">Telemetria</span>
+            {showMetricsDashboard ? <ChevronUp size={14} className="text-stone-400" /> : <ChevronDown size={14} className="text-stone-400" />}
           </button>
 
           <button
             type="button"
             onClick={toggleBot}
             disabled={updating}
-            className={`min-h-[34px] px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs disabled:opacity-60 ${
+            className={`min-h-[40px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs disabled:opacity-60 ${
               isActive 
                 ? 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200/90 hover:border-rose-300' 
-                : 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-emerald-600/25'
+                : 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-emerald-600/25 shadow-md ring-2 ring-emerald-500/20'
             }`}
           >
-            <Power size={13} className={updating ? "animate-spin" : ""} />
+            <Power size={15} className={updating ? "animate-spin" : ""} />
             {updating 
-              ? 'Gravando...' 
-              : (isActive ? 'Pausar Atendimento' : 'Ativar Atendimento')}
+              ? 'Gravando status...' 
+              : (isActive ? 'Pausar Atendimento Geral' : 'Ativar Atendimento Geral')}
           </button>
         </div>
       </div>
 
-      {/* Telemetria de Atendimento Compacta */}
+      {/* Telemetria de Atendimento e Desempenho Hoje */}
       {showMetricsDashboard && (
-        <div className="bg-white rounded-xl border border-stone-200 shadow-2xs px-3.5 py-2 sm:px-4 sm:py-2.5 space-y-2 shrink-0 animate-in fade-in duration-150">
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-1.5 border-b border-stone-100">
-            <div className="flex items-center gap-1.5">
-              <Sparkles size={13} className="text-amber-500 shrink-0" />
-              <h3 className="font-bold text-[11px] uppercase tracking-wider text-stone-800 font-sans">
+        <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs p-4 sm:p-5 space-y-4 animate-in fade-in duration-200">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-stone-100">
+            <div className="flex items-center gap-2">
+              <Sparkles size={16} className="text-amber-500 shrink-0" />
+              <h3 className="font-bold text-xs uppercase tracking-wider text-stone-800 font-sans">
                 Telemetria de Atendimento no WhatsApp
               </h3>
-              <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300/80">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300/80 shadow-2xs">
                 Hoje
               </span>
             </div>
@@ -944,111 +946,129 @@ export default function AgentManager() {
               <button
                 type="button"
                 onClick={() => setShowLearningDrawer(prev => !prev)}
-                className={`text-[11px] font-semibold flex items-center gap-1 px-2.5 py-1 rounded-md border transition-all cursor-pointer ${
+                className={`text-xs font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
                   showLearningDrawer
-                    ? 'bg-amber-500 text-stone-950 border-amber-500 font-bold'
-                    : 'bg-stone-50 hover:bg-amber-50 text-stone-700 border-stone-200'
+                    ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-2xs font-bold'
+                    : 'bg-stone-50 hover:bg-amber-50/80 text-stone-700 hover:text-amber-900 border-stone-200'
                 }`}
               >
-                <span>💡 Regras ({showLearningDrawer ? 'Ocultar' : 'Ver'})</span>
+                <span>💡 Diretrizes de Atendimento ({showLearningDrawer ? 'Ocultar' : 'Ver Regras'})</span>
               </button>
               <button
                 type="button"
                 onClick={fetchDailyMetrics}
                 disabled={loadingMetrics}
-                className="text-[11px] font-medium text-stone-600 hover:text-stone-900 flex items-center gap-1 px-2 py-1 rounded-md border border-stone-200 hover:bg-stone-50 transition-colors cursor-pointer"
+                className="text-xs font-medium text-stone-600 hover:text-stone-900 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition-colors cursor-pointer"
                 title="Recalcular métricas de hoje"
               >
-                <RefreshCw size={11} className={loadingMetrics ? "animate-spin text-amber-600" : "text-stone-500"} />
+                <RefreshCw size={12} className={loadingMetrics ? "animate-spin text-amber-600" : "text-stone-500"} />
                 <span>Atualizar</span>
               </button>
             </div>
           </div>
 
-          {/* Grid de 3 Métricas Compactas */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 divide-y sm:divide-y-0 sm:divide-x divide-stone-100">
-            {/* Métrica 1 */}
-            <div className="pt-0 sm:px-2 first:pl-0 flex items-center justify-between sm:block">
-              <div>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 font-sans block">Clientes Atendidos</span>
-                <div className="text-xl sm:text-2xl font-black font-sans text-stone-950 tracking-tight leading-none mt-0.5">
-                  {metrics.totalConversationsToday}
-                </div>
+          {/* Grid de 3 Métricas Bolder de Alto Contraste */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 divide-y sm:divide-y-0 sm:divide-x divide-stone-100">
+            {/* Métrica 1: Clientes Hoje */}
+            <div className="pt-1 sm:pt-0 sm:px-3 first:pl-0">
+              <div className="flex items-center justify-between text-stone-500 text-xs mb-1">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 font-sans">Clientes Atendidos</span>
+                <Users size={15} className="text-stone-400" />
               </div>
-              <div className="text-[10px] text-stone-500 mt-1 flex flex-wrap items-center gap-1 font-sans">
-                <span className="inline-flex items-center gap-0.5 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded text-[10px]">
-                  <Bot size={10} className="text-emerald-600" /> {metrics.aiHandledConversations} pela IA
+              <div className="text-xl sm:text-2xl font-bold font-sans text-stone-900 tracking-tight">
+                {metrics.totalConversationsToday}
+              </div>
+              <div className="text-xs text-stone-500 mt-1.5 flex flex-wrap items-center gap-1.5 font-sans">
+                <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px]">
+                  <Bot size={11} className="text-emerald-600" /> {metrics.aiHandledConversations} pela IA
                 </span>
-                <span className="inline-flex items-center gap-0.5 font-semibold text-amber-800 bg-amber-50 border border-amber-200/80 px-1.5 py-0.5 rounded text-[10px]">
-                  <User size={10} className="text-amber-600" /> {metrics.humanHandledConversations} manual
+                <span className="inline-flex items-center gap-1 font-semibold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px]">
+                  <User size={11} className="text-amber-600" /> {metrics.humanHandledConversations} manual
                 </span>
               </div>
             </div>
 
-            {/* Métrica 2 */}
-            <div className="pt-1.5 sm:pt-0 sm:px-2 flex items-center justify-between sm:block">
-              <div>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 font-sans block">Volume de Mensagens</span>
-                <div className="text-xl sm:text-2xl font-black font-sans text-stone-950 tracking-tight leading-none mt-0.5">
-                  {metrics.totalClientMessages + metrics.totalBotMessages + metrics.totalHumanMessages}
-                </div>
+            {/* Métrica 2: Mensagens Trocadas */}
+            <div className="pt-3 sm:pt-0 sm:px-3">
+              <div className="flex items-center justify-between text-stone-500 text-xs mb-1">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 font-sans">Volume de Mensagens</span>
+                <MessageSquare size={15} className="text-stone-400" />
               </div>
-              <div className="text-[10px] text-stone-500 mt-1 flex flex-wrap items-center gap-1 font-sans">
-                <span className="inline-flex items-center gap-0.5 font-semibold text-sky-800 bg-sky-50 border border-sky-200/80 px-1.5 py-0.5 rounded text-[10px]">
+              <div className="text-xl sm:text-2xl font-bold font-sans text-stone-900 tracking-tight">
+                {metrics.totalClientMessages + metrics.totalBotMessages + metrics.totalHumanMessages}
+              </div>
+              <div className="text-xs text-stone-500 mt-1.5 flex flex-wrap items-center gap-1.5 font-sans">
+                <span className="inline-flex items-center gap-1 font-semibold text-sky-800 bg-sky-50 border border-sky-200/80 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px]">
                   {metrics.totalClientMessages} de clientes
                 </span>
-                <span className="inline-flex items-center gap-0.5 font-semibold text-stone-700 bg-stone-100 border border-stone-200/80 px-1.5 py-0.5 rounded text-[10px]">
+                <span className="inline-flex items-center gap-1 font-semibold text-stone-700 bg-stone-100 border border-stone-200/80 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px]">
                   {metrics.totalBotMessages + metrics.totalHumanMessages} da pizzaria
                 </span>
               </div>
             </div>
 
-            {/* Métrica 3 */}
-            <div className="pt-1.5 sm:pt-0 sm:px-2 flex items-center justify-between sm:block">
-              <div>
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-stone-400 font-sans block">Agilidade da Resposta</span>
-                <div className="text-xl sm:text-2xl font-black font-sans text-emerald-600 tracking-tight leading-none mt-0.5">
-                  {metrics.avgResponseTimeSec > 0 ? `${metrics.avgResponseTimeSec}s` : '< 5s'}
-                </div>
+            {/* Métrica 3: Agilidade */}
+            <div className="pt-3 sm:pt-0 sm:px-3">
+              <div className="flex items-center justify-between text-stone-500 text-xs mb-1">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 font-sans">Agilidade da Resposta</span>
+                <Clock size={15} className="text-emerald-500" />
               </div>
-              <div className="text-[10px] text-stone-500 mt-1 flex items-center gap-1 font-sans">
-                <span className="inline-flex items-center gap-0.5 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-1.5 py-0.5 rounded text-[10px]">
+              <div className="text-xl sm:text-2xl font-bold font-sans text-emerald-600 tracking-tight">
+                {metrics.avgResponseTimeSec > 0 ? `${metrics.avgResponseTimeSec}s` : '< 5s'}
+              </div>
+              <div className="text-xs text-stone-500 mt-1.5 flex items-center gap-1.5 font-sans">
+                <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md text-[10px] sm:text-[11px]">
                   ⚡ Resposta Instantânea
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Drawer de Diretrizes Compacto */}
+          {/* Drawer de Diretrizes Oficiais (Cromaticamente Estruturado) */}
           {showLearningDrawer && (
-            <div className="bg-amber-500/5 rounded-xl p-2.5 border border-amber-500/20 space-y-2 animate-in fade-in duration-150 max-h-40 overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-stone-700">
-                <div className="p-2 rounded-lg bg-emerald-50/70 border border-emerald-200/90 flex gap-2">
-                  <CreditCard size={14} className="text-emerald-700 shrink-0 mt-0.5" />
-                  <div className="text-[11px] leading-snug">
-                    <strong className="text-emerald-950 block">Pagamento Oficial</strong>
-                    MB WAY (+351 914 044 317) ou Dinheiro. Transferência proibida.
+            <div className="bg-amber-500/5 rounded-xl p-4 border border-amber-500/20 space-y-3 animate-in fade-in duration-150">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-900 uppercase tracking-wide">
+                <Sparkles size={14} className="text-amber-600" />
+                <span>Diretrizes e Regras Operacionais da Giovanna</span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-stone-700">
+                <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/90 shadow-2xs flex gap-3 text-stone-700">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <CreditCard size={16} />
+                  </div>
+                  <div>
+                    <span className="font-bold text-emerald-950 block mb-0.5">Pagamento Oficial</span>
+                    Aceitar exclusivamente <strong>MB WAY (+351 914 044 317)</strong> ou <strong>Dinheiro (Numerário)</strong>. Transferência bancária é proibida.
                   </div>
                 </div>
-                <div className="p-2 rounded-lg bg-amber-50/70 border border-amber-200/90 flex gap-2">
-                  <Coins size={14} className="text-amber-700 shrink-0 mt-0.5" />
-                  <div className="text-[11px] leading-snug">
-                    <strong className="text-amber-950 block">Troco Inteligente</strong>
-                    Questionar sempre se tem valor exato ou troco (€ 20, € 50).
+
+                <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/90 shadow-2xs flex gap-3 text-stone-700">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs font-bold">
+                    <Coins size={16} />
+                  </div>
+                  <div>
+                    <span className="font-bold text-amber-950 block mb-0.5">Troco Inteligente em Dinheiro</span>
+                    Ao optar por dinheiro, a IA sempre questiona se o cliente tem o valor exato ou precisa de troco para nota específica (ex: € 20, € 50).
                   </div>
                 </div>
-                <div className="p-2 rounded-lg bg-sky-50/70 border border-sky-200/90 flex gap-2">
-                  <CheckCircle2 size={14} className="text-sky-700 shrink-0 mt-0.5" />
-                  <div className="text-[11px] leading-snug">
-                    <strong className="text-sky-950 block">Bebidas Oficiais</strong>
-                    Coca-Cola 1L (Normal/Zero), Sagres e Águas minerais.
+
+                <div className="p-3.5 rounded-xl bg-sky-50/70 border border-sky-200/90 shadow-2xs flex gap-3 text-stone-700">
+                  <div className="w-8 h-8 rounded-lg bg-sky-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <CheckCircle2 size={16} />
+                  </div>
+                  <div>
+                    <span className="font-bold text-sky-950 block mb-0.5">Cardápio & Bebidas</span>
+                    Disponíveis Coca-Cola 1L (Normal e Zero), cervejas Sagres e águas minerais.
                   </div>
                 </div>
-                <div className="p-2 rounded-lg bg-purple-50/70 border border-purple-200/90 flex gap-2">
-                  <Clock size={14} className="text-purple-700 shrink-0 mt-0.5" />
-                  <div className="text-[11px] leading-snug">
-                    <strong className="text-purple-950 block">Prazos de Entrega</strong>
-                    Avisar prontamente no forno e na saída (estimativa até 60min).
+
+                <div className="p-3.5 rounded-xl bg-purple-50/70 border border-purple-200/90 shadow-2xs flex gap-3 text-stone-700">
+                  <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                    <Clock size={16} />
+                  </div>
+                  <div>
+                    <span className="font-bold text-purple-950 block mb-0.5">Prazos de Entrega</span>
+                    Avisar prontamente o cliente assim que o pedido entrar no forno ou sair para entrega (prazo estimado: até 60min).
                   </div>
                 </div>
               </div>
@@ -1057,8 +1077,8 @@ export default function AgentManager() {
         </div>
       )}
 
-      {/* Espelho de Conversas estilo WhatsApp Command Center (100% da Altura Restante no Desktop) */}
-      <div className="flex-1 min-h-0 bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col md:flex-row">
+      {/* Espelho de Conversas estilo WhatsApp Command Center */}
+      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col md:flex-row h-[600px] sm:h-[650px] lg:h-[680px] xl:h-[720px] min-h-[480px]">
         {/* Coluna Esquerda: Lista de Conversas (Em mobile, oculta quando conversa está aberta) */}
         <div className={`w-full md:w-80 lg:w-[330px] xl:w-[370px] shrink-0 border-r border-stone-200 flex-col h-full bg-stone-50/40 ${selectedPhone ? 'hidden md:flex' : 'flex'}`}>
           {/* Busca & Filtros com Layout Estruturado */}
