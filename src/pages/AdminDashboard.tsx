@@ -3015,17 +3015,39 @@ export default function AdminDashboard() {
                                     #{order.id}
                                   </span>
 
-                                  {/* Badge Tipo: Entrega vs Balcão */}
-                                  <span
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold ${
-                                      isDelivery
-                                        ? 'bg-sky-50 text-sky-800 border border-sky-200'
-                                        : 'bg-stone-100 text-stone-800 border border-stone-200'
-                                    }`}
-                                  >
-                                    {isDelivery ? <Bike size={12} className="text-sky-600" /> : <Store size={12} className="text-stone-600" />}
-                                    <span>{isDelivery ? 'Entrega' : 'Balcão'}</span>
-                                  </span>
+                                  {/* Badge Tipo: Entrega, Retirada, Balcão, Mesa */}
+                                  {(() => {
+                                    const normType = normalizeOrderType(order.orderType || order.order_type);
+                                    const isDel = normType === 'entrega';
+                                    const isRet = normType === 'retirada';
+                                    const isMesa = normType === 'mesa';
+                                    return (
+                                      <span
+                                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold border ${
+                                          isDel
+                                            ? 'bg-sky-50 text-sky-800 border-sky-200'
+                                            : isRet
+                                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                            : isMesa
+                                            ? 'bg-purple-50 text-purple-800 border-purple-200'
+                                            : 'bg-stone-100 text-stone-800 border-stone-200'
+                                        }`}
+                                      >
+                                        {isDel ? (
+                                          <Bike size={12} className="text-sky-600" />
+                                        ) : isRet ? (
+                                          <ShoppingBag size={12} className="text-amber-600" />
+                                        ) : isMesa ? (
+                                          <UtensilsCrossed size={12} className="text-purple-600" />
+                                        ) : (
+                                          <Store size={12} className="text-stone-600" />
+                                        )}
+                                        <span>
+                                          {isDel ? 'Entrega' : isRet ? 'Retirada' : isMesa ? 'Mesa' : 'Balcão'}
+                                        </span>
+                                      </span>
+                                    );
+                                  })()}
 
                                   {/* Badge Editado */}
                                   {(order.isEdited || order.is_edited) && (
@@ -3387,17 +3409,39 @@ export default function AdminDashboard() {
                                 </td>
 
                                 <td className="py-3 px-4">
-                                  <span
-                                    title={isDelivery && order.deliveryAddress ? `Endereço: ${order.deliveryAddress}` : undefined}
-                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-bold border ${
-                                      isDelivery
-                                        ? 'bg-sky-50 text-sky-800 border-sky-200'
-                                        : 'bg-stone-100 text-stone-700 border-stone-200'
-                                    }`}
-                                  >
-                                    {isDelivery ? <Bike size={12} className="text-sky-600" /> : <Store size={12} className="text-stone-500" />}
-                                    <span>{isDelivery ? 'Entrega' : 'Balcão'}</span>
-                                  </span>
+                                  {(() => {
+                                    const normType = normalizeOrderType(order.orderType || order.order_type);
+                                    const isDel = normType === 'entrega';
+                                    const isRet = normType === 'retirada';
+                                    const isMesa = normType === 'mesa';
+                                    return (
+                                      <span
+                                        title={isDel && order.deliveryAddress ? `Endereço: ${order.deliveryAddress}` : undefined}
+                                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono font-bold border ${
+                                          isDel
+                                            ? 'bg-sky-50 text-sky-800 border-sky-200'
+                                            : isRet
+                                            ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                            : isMesa
+                                            ? 'bg-purple-50 text-purple-800 border-purple-200'
+                                            : 'bg-stone-100 text-stone-700 border-stone-200'
+                                        }`}
+                                      >
+                                        {isDel ? (
+                                          <Bike size={12} className="text-sky-600" />
+                                        ) : isRet ? (
+                                          <ShoppingBag size={12} className="text-amber-600" />
+                                        ) : isMesa ? (
+                                          <UtensilsCrossed size={12} className="text-purple-600" />
+                                        ) : (
+                                          <Store size={12} className="text-stone-500" />
+                                        )}
+                                        <span>
+                                          {isDel ? 'Entrega' : isRet ? 'Retirada' : isMesa ? 'Mesa' : 'Balcão'}
+                                        </span>
+                                      </span>
+                                    );
+                                  })()}
                                 </td>
 
                                 <td className="py-3 px-4">
@@ -4696,7 +4740,79 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   const [deliveryZone, setDeliveryZone] = useState(order.deliveryZone || order.delivery_zone || '');
   const initialPm = (order.paymentMethod || order.payment_method || 'Dinheiro').toString().trim();
   const [paymentMethod, setPaymentMethod] = useState(initialPm.toLowerCase() === 'mbway' ? 'MB Way' : initialPm);
-  const [orderType, setOrderType] = useState(order.orderType || order.order_type || 'balcao');
+  const [orderType, setOrderType] = useState<string>(() => {
+    const raw = (order.orderType || order.order_type || '').toString().toLowerCase().trim();
+    if (raw === 'balcao' || raw === 'balcão') return 'balcao';
+    if (raw === 'retirada' || raw === 'takeaway' || raw === 'recolha') return 'retirada';
+    if (raw === 'mesa') return 'mesa';
+    if (raw === 'entrega' || raw === 'delivery') return 'entrega';
+    return normalizeOrderType(order.orderType || order.order_type);
+  });
+
+  const [zones, setZones] = useState<{ id: string; name: string; fee: number }[]>([]);
+  const [loadingZones, setLoadingZones] = useState(false);
+
+  const initialItemsSubtotal = React.useMemo(() => {
+    let raw = order.items;
+    if (typeof raw === 'string') {
+      try { raw = JSON.parse(raw); } catch (e) { raw = []; }
+    }
+    if (!Array.isArray(raw)) return 0;
+    return raw.reduce((acc: number, item: any) => {
+      const price = Number(item.priceCalculated ?? item.basePrice ?? item.price ?? 0);
+      const qty = Number(item.quantity || 1);
+      return acc + (price * qty);
+    }, 0);
+  }, []);
+
+  const [deliveryFee, setDeliveryFee] = useState<number>(() => {
+    const raw = (order.orderType || order.order_type || '').toString().toLowerCase().trim();
+    const isDel = raw === 'entrega' || raw === 'delivery';
+    if (!isDel) return 0;
+    const add = Number(order.additionalAmount || order.additional_amount || 0);
+    const disc = Number(order.discountAmount || order.discount_amount || 0);
+    const tot = Number(order.totalAmount || order.total_amount || 0);
+    const feeDiff = Math.max(0, tot - initialItemsSubtotal - add + disc);
+    return Number(feeDiff.toFixed(2));
+  });
+
+  useEffect(() => {
+    const loadDeliveryZones = async () => {
+      try {
+        setLoadingZones(true);
+        const { data, error } = await supabase
+          .from('delivery_zones')
+          .select('id, name, fee')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
+        if (!error && data && data.length > 0) {
+          const mapped = data.map((z: any) => ({
+            id: z.id,
+            name: z.name,
+            fee: Number(z.fee || 0)
+          }));
+          setZones(mapped);
+
+          // Se for entrega e tiver zona salva, mas deliveryFee for 0, sincroniza com o valor da zona
+          const rawType = (order.orderType || order.order_type || '').toString().toLowerCase().trim();
+          const isDel = rawType === 'entrega' || rawType === 'delivery';
+          const currentZone = (order.deliveryZone || order.delivery_zone || '').toString().trim();
+          if (isDel && currentZone) {
+            const matched = mapped.find(z => z.name.toLowerCase() === currentZone.toLowerCase());
+            if (matched && deliveryFee === 0) {
+              setDeliveryFee(matched.fee);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao carregar zonas de entrega:', err);
+      } finally {
+        setLoadingZones(false);
+      }
+    };
+    loadDeliveryZones();
+  }, []);
+
   const [items, setItems] = useState<any[]>(() => {
     let raw = order.items;
     if (typeof raw === 'string') {
@@ -4725,10 +4841,36 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     }, 0);
   }, [items]);
 
+  const activeDeliveryFee = orderType === 'entrega' ? Number(deliveryFee || 0) : 0;
+
   const finalTotal = React.useMemo(() => {
-    const tot = subtotal + Number(additionalAmount || 0) - Number(discountAmount || 0);
+    const tot = subtotal + activeDeliveryFee + Number(additionalAmount || 0) - Number(discountAmount || 0);
     return Math.max(0, tot);
-  }, [subtotal, additionalAmount, discountAmount]);
+  }, [subtotal, activeDeliveryFee, additionalAmount, discountAmount]);
+
+  const handleSelectOrderType = (newType: string) => {
+    setOrderType(newType);
+    if (newType !== 'entrega') {
+      // Retirada, Balcão ou Mesa: Remove taxa de entrega na hora
+      setDeliveryFee(0);
+    } else {
+      // Alternou para Entrega: se houver zona selecionada, restaura o valor correspondente
+      if (deliveryZone) {
+        const matched = zones.find(z => z.name.toLowerCase() === deliveryZone.toLowerCase());
+        if (matched) {
+          setDeliveryFee(matched.fee);
+        }
+      }
+    }
+  };
+
+  const handleSelectZone = (selectedName: string) => {
+    setDeliveryZone(selectedName);
+    const matched = zones.find(z => z.name.toLowerCase() === selectedName.toLowerCase());
+    if (matched) {
+      setDeliveryFee(matched.fee);
+    }
+  };
 
   const calculatedChange = React.useMemo(() => {
     if (paymentMethod !== 'Dinheiro' || !cashProvided || cashProvided <= 0) return 0;
@@ -5048,11 +5190,13 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
       nif: customerNif.trim() || null,
       customer_phone: customerPhone,
       order_type: orderType,
+      orderType: orderType,
       payment_method: paymentMethod,
-      delivery_address: deliveryAddress,
-      deliveryAddress: deliveryAddress,
-      delivery_zone: deliveryZone,
-      deliveryZone: deliveryZone,
+      paymentMethod: paymentMethod,
+      delivery_address: orderType === 'entrega' ? deliveryAddress : '',
+      deliveryAddress: orderType === 'entrega' ? deliveryAddress : '',
+      delivery_zone: orderType === 'entrega' ? deliveryZone : '',
+      deliveryZone: orderType === 'entrega' ? deliveryZone : '',
       items: items,
       discount_amount: Number(discountAmount) || 0,
       additional_amount: Number(additionalAmount) || 0,
@@ -5130,11 +5274,16 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
         </div>
 
         {/* Real-time total summary bar Compacto */}
-        <div className="bg-stone-900 px-3.5 py-1 border-b border-stone-800 flex items-center justify-between text-xs shrink-0">
-          <div className="flex items-center gap-2.5 font-mono text-[10px]">
+        <div className="bg-stone-900 px-3.5 py-1.5 border-b border-stone-800 flex items-center justify-between text-xs shrink-0">
+          <div className="flex items-center gap-2.5 font-mono text-[10px] flex-wrap">
             <span className="text-stone-300">
               Subtotal: <strong className="text-white font-bold">€ {subtotal.toFixed(2)}</strong>
             </span>
+            {orderType === 'entrega' && activeDeliveryFee > 0 && (
+              <span className="text-sky-400 font-semibold">
+                (+) Ent: € {activeDeliveryFee.toFixed(2)}
+              </span>
+            )}
             {Number(additionalAmount) > 0 && (
               <span className="text-amber-400 font-semibold">
                 (+) Adic: € {Number(additionalAmount).toFixed(2)}
@@ -5146,7 +5295,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 shrink-0">
             <span className="text-[9px] font-mono text-stone-400 uppercase">Total:</span>
             <span className="text-sm font-black text-rose-500 font-mono leading-none">€ {finalTotal.toFixed(2)}</span>
           </div>
@@ -5155,10 +5304,21 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
         {/* Form Body com Conteúdo Otimizado */}
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-3 py-2 space-y-2 flex flex-col justify-between">
           <div className="space-y-2">
-            {/* Section 1: Customer Info Compacto */}
-            <div className="bg-white p-2 rounded-lg border border-stone-200/90 shadow-2xs space-y-1.5">
-              <h4 className="text-[9px] font-mono font-bold text-stone-400 uppercase tracking-wider">Cliente & Entrega</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+            {/* Section 1: Customer Info & 1-Click Order Type */}
+            <div className="bg-white p-2.5 rounded-lg border border-stone-200/90 shadow-2xs space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-[9px] font-mono font-bold text-stone-400 uppercase tracking-wider">
+                  Cliente & Atendimento
+                </h4>
+                {orderType === 'entrega' && activeDeliveryFee > 0 && (
+                  <span className="text-[10px] font-mono font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded border border-sky-200">
+                    + € {activeDeliveryFee.toFixed(2)} Taxa de Entrega
+                  </span>
+                )}
+              </div>
+
+              {/* Linha 1: Dados do Cliente e Pagamento */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-1.5">
                 <div className="space-y-0.5">
                   <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">Nome</label>
                   <input
@@ -5189,59 +5349,125 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                   />
                 </div>
                 <div className="space-y-0.5">
-                  <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">Tipo</label>
-                  <select
-                    value={orderType}
-                    onChange={(e) => setOrderType(e.target.value)}
-                    className="w-full px-1.5 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors cursor-pointer"
-                  >
-                    <option value="entrega">Entrega (Delivery)</option>
-                    <option value="retirada">Retirada (Takeaway)</option>
-                    <option value="mesa">Consumo Local (Mesa)</option>
-                  </select>
-                </div>
-                <div className="space-y-0.5">
                   <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">Pagamento</label>
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full px-1.5 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors cursor-pointer"
+                    className="w-full px-2 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors cursor-pointer"
                   >
-                    <option value="Dinheiro">Dinheiro</option>
                     <option value="MB Way">MB Way</option>
+                    <option value="Dinheiro">Dinheiro (Numerário)</option>
+                    <option value="Cartão">Cartão (Multibanco)</option>
                   </select>
                 </div>
               </div>
 
-              {(orderType === 'entrega' || orderType === 'Delivery') && (
-                <div className="pt-1.5 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-                  <div className="sm:col-span-2 space-y-0.5">
-                    <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1">
-                      <MapPin size={10} className="text-amber-600" /> Endereço de Entrega
-                    </label>
-                    <input
-                      type="text"
-                      value={deliveryAddress}
-                      onChange={(e) => setDeliveryAddress(e.target.value)}
-                      className="w-full px-2 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-medium text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
-                      placeholder="Rua, número, andar, código postal..."
-                    />
+              {/* Linha 2: Tipo de Atendimento em 1 CLIQUE */}
+              <div className="space-y-1 pt-1.5 border-t border-stone-100">
+                <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">
+                  Tipo de Pedido (1 Clique para alterar)
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                  {[
+                    { key: 'entrega', label: 'Entrega', icon: Bike, desc: 'Delivery' },
+                    { key: 'retirada', label: 'Retirada', icon: ShoppingBag, desc: 'Takeaway' },
+                    { key: 'balcao', label: 'Balcão', icon: Store, desc: 'Balcão' },
+                    { key: 'mesa', label: 'Mesa', icon: UtensilsCrossed, desc: 'Consumo Local' }
+                  ].map((btn) => {
+                    const isSelected = orderType === btn.key;
+                    const IconComp = btn.icon;
+                    return (
+                      <button
+                        key={btn.key}
+                        type="button"
+                        onClick={() => handleSelectOrderType(btn.key)}
+                        className={`py-1.5 px-2 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer border text-center ${
+                          isSelected
+                            ? btn.key === 'entrega'
+                              ? 'bg-sky-600 text-white font-black border-sky-700 shadow-xs ring-2 ring-sky-300'
+                              : 'bg-stone-900 text-white font-black border-stone-950 shadow-xs ring-2 ring-stone-300'
+                            : 'bg-stone-50 text-stone-700 font-bold border-stone-200 hover:bg-stone-100'
+                        }`}
+                      >
+                        <IconComp size={13} className={isSelected ? 'text-white' : 'text-stone-500'} />
+                        <span className="text-[11px]">{btn.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Se for Entrega: Morada, Seleção de Zonas Cadastradas e Taxa Automática */}
+              {orderType === 'entrega' && (
+                <div className="pt-2 border-t border-stone-100 space-y-2 bg-sky-50/50 p-2 rounded-lg border border-sky-100">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                    {/* Endereço / Morada */}
+                    <div className="sm:col-span-6 space-y-0.5">
+                      <label className="block text-[8px] font-mono font-bold text-sky-950 uppercase tracking-wider flex items-center gap-1">
+                        <MapPin size={11} className="text-sky-600" /> Morada / Endereço de Entrega
+                      </label>
+                      <input
+                        type="text"
+                        value={deliveryAddress}
+                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-white rounded border border-sky-200 text-xs font-semibold text-stone-900 outline-none focus:border-sky-600 transition-colors shadow-2xs"
+                        placeholder="Rua, número, andar, código postal, pontos de ref..."
+                        required={orderType === 'entrega'}
+                      />
+                    </div>
+
+                    {/* Zona de Entrega (Select com Todas as Zonas Cadastradas) */}
+                    <div className="sm:col-span-4 space-y-0.5">
+                      <label className="block text-[8px] font-mono font-bold text-sky-950 uppercase tracking-wider flex items-center justify-between">
+                        <span>Zona de Entrega</span>
+                        {loadingZones && <span className="text-[7.5px] text-sky-600 font-normal">Carregando...</span>}
+                      </label>
+                      <select
+                        value={deliveryZone}
+                        onChange={(e) => handleSelectZone(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-white rounded border border-sky-200 text-xs font-bold text-stone-900 outline-none focus:border-sky-600 transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <option value="">-- Selecione a Zona --</option>
+                        {zones.map((z) => (
+                          <option key={z.id} value={z.name}>
+                            {z.name} (+ € {z.fee.toFixed(2)})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Taxa de Entrega (€) */}
+                    <div className="sm:col-span-2 space-y-0.5">
+                      <label className="block text-[8px] font-mono font-bold text-sky-950 uppercase tracking-wider text-center">
+                        Taxa (€)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.50"
+                        min="0"
+                        value={deliveryFee}
+                        onChange={(e) => setDeliveryFee(parseFloat(e.target.value) || 0)}
+                        className="w-full px-2 py-1.5 bg-white rounded border border-sky-200 text-xs font-black text-sky-800 outline-none focus:border-sky-600 transition-colors font-mono text-center shadow-2xs"
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-0.5">
-                    <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">
-                      Zona de Entrega
-                    </label>
-                    <input
-                      type="text"
-                      value={deliveryZone}
-                      onChange={(e) => setDeliveryZone(e.target.value)}
-                      className="w-full px-2 py-1 bg-stone-50 rounded border border-stone-200 text-[11px] font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
-                      placeholder="Ex: Zona 1, Centro..."
-                    />
+
+                  <div className="flex items-center justify-between text-[10px] text-sky-900 font-medium px-1">
+                    <span>
+                      {deliveryZone ? (
+                        <>Zona: <strong>{deliveryZone}</strong></>
+                      ) : (
+                        <span className="text-amber-800 font-semibold">⚠️ Selecione uma zona para somar a taxa</span>
+                      )}
+                    </span>
+                    <span className="font-mono font-bold text-sky-800">
+                      Taxa somada no total: + € {activeDeliveryFee.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               )}
 
+              {/* Se Pagamento em Dinheiro: Campo de Troco */}
               {paymentMethod === 'Dinheiro' && (
                 <div className="pt-1.5 border-t border-stone-100 grid grid-cols-2 gap-2">
                   <div className="space-y-0.5">
@@ -5252,11 +5478,11 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                       min="0"
                       value={cashProvided || ''}
                       onChange={(e) => setCashProvided(parseFloat(e.target.value) || 0)}
-                      className="w-full px-2 py-0.5 bg-stone-50 rounded border border-stone-200 text-xs font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
-                      placeholder="50.00"
+                      className="w-full px-2 py-1 bg-stone-50 rounded border border-stone-200 text-xs font-bold text-stone-900 outline-none focus:border-stone-900 focus:bg-white transition-colors"
+                      placeholder="Ex: 50.00"
                     />
                   </div>
-                  <div className="flex items-center justify-between bg-stone-50 px-2 py-0.5 rounded border border-stone-100">
+                  <div className="flex items-center justify-between bg-stone-50 px-2 py-1 rounded border border-stone-100">
                     <span className="text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">Troco:</span>
                     <span className="text-xs font-black text-emerald-600">€ {calculatedChange.toFixed(2)}</span>
                   </div>
@@ -5807,7 +6033,12 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
           <div className="mt-1 pt-1.5 border-t border-stone-200/80 flex items-center justify-between gap-2 bg-stone-950 text-white p-2 rounded-lg shadow-sm shrink-0">
             <div>
               <span className="block text-[8px] font-mono text-stone-400 uppercase">Total Recalculado</span>
-              <span className="text-xl font-black text-rose-500 leading-none font-mono">€ {finalTotal.toFixed(2)}</span>
+              <div className="flex items-baseline gap-2">
+                <span className="text-xl font-black text-rose-500 leading-none font-mono">€ {finalTotal.toFixed(2)}</span>
+                {orderType === 'entrega' && activeDeliveryFee > 0 && (
+                  <span className="text-[10px] text-sky-400 font-mono font-medium">(inclui €{activeDeliveryFee.toFixed(2)} entrega)</span>
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
