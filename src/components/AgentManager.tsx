@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { 
   Bot, Power, Loader2, MessageSquare, 
@@ -172,12 +172,12 @@ export default function AgentManager() {
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [conversationFilter, setConversationFilter] = useState<'all' | 'ai' | 'manual'>('all');
 
-  const handleCopyPhone = (phone: string, e: React.MouseEvent) => {
+  const handleCopyPhone = useCallback((phone: string, e: React.MouseEvent) => {
     e.stopPropagation();
     navigator.clipboard.writeText(phone);
     setCopiedPhone(true);
     setTimeout(() => setCopiedPhone(false), 2000);
-  };
+  }, []);
 
   // Estado das Conversas (Espelho WhatsApp Relacional)
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -213,9 +213,14 @@ export default function AgentManager() {
   const fetchDailyMetrics = async () => {
     setLoadingMetrics(true);
     try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayIso = today.toISOString();
+
       const { data: allMsgs } = await supabase
         .from('chat_messages')
-        .select('phone, sender, created_at');
+        .select('phone, sender, created_at')
+        .gte('created_at', todayIso);
 
       const msgs = allMsgs || [];
 
@@ -804,16 +809,20 @@ export default function AgentManager() {
     }
   };
 
-  const selectedConversation = conversations.find(c => c.phone === selectedPhone);
+  const selectedConversation = useMemo(() => {
+    return conversations.find(c => c.phone === selectedPhone);
+  }, [conversations, selectedPhone]);
 
-  const filteredConversations = conversations.filter(c => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch = (c.name || '').toLowerCase().includes(term) || (c.phone || '').includes(term);
-    if (!matchesSearch) return false;
-    if (conversationFilter === 'manual') return c.paused;
-    if (conversationFilter === 'ai') return !c.paused;
-    return true;
-  });
+  const filteredConversations = useMemo(() => {
+    const term = searchTerm.toLowerCase().trim();
+    return conversations.filter(c => {
+      const matchesSearch = !term || (c.name || '').toLowerCase().includes(term) || (c.phone || '').includes(term);
+      if (!matchesSearch) return false;
+      if (conversationFilter === 'manual') return c.paused;
+      if (conversationFilter === 'ai') return !c.paused;
+      return true;
+    });
+  }, [conversations, searchTerm, conversationFilter]);
 
   if (loading) {
     return (
@@ -1396,6 +1405,7 @@ export default function AgentManager() {
                                   alt={parsed.caption || "Foto recebida"}
                                   className="w-full max-h-60 object-cover select-none group-hover:scale-[1.02] transition-transform duration-200"
                                   loading="lazy"
+                                  decoding="async"
                                 />
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
                                   <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm backdrop-blur-xs">
