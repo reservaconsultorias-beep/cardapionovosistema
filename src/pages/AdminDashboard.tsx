@@ -1917,22 +1917,22 @@ export default function AdminDashboard() {
       </aside>
 
       {/* Main Content Area */}
-      <main className={`flex-1 min-w-0 px-4 md:px-8 min-h-[100dvh] relative overflow-y-auto ${
-        ['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) 
-          ? 'pt-4 pb-4 flex flex-col' 
-          : 'pt-2 md:pt-4 pb-8'
+      <main className={`flex-1 min-w-0 px-4 md:px-8 relative ${
+        ['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos', 'agente-ia'].includes(activeTab) 
+          ? 'pt-3 pb-3 flex flex-col min-h-[100dvh] md:h-screen md:max-h-screen md:overflow-hidden' 
+          : 'pt-2 md:pt-4 pb-8 min-h-[100dvh] overflow-y-auto'
       }`}>
         
 
         <div className={`max-w-7xl mx-auto w-full ${
-          ['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) 
+          ['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos', 'agente-ia'].includes(activeTab) 
             ? 'flex-1 flex flex-col min-h-0' 
             : 'space-y-4'
         }`}>
 
 
           {/* Header Section (Only for Non-Cockpit Views) */}
-          {!['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) && (
+          {!['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos', 'agente-ia'].includes(activeTab) && (
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pb-2.5 border-b border-stone-200/80 mb-4">
               <div>
                 <h1 className="text-xl font-bold tracking-tight text-stone-900">
@@ -2050,7 +2050,7 @@ export default function AdminDashboard() {
   
         {/* Agente IA Tab */}
         {activeTab === "agente-ia" && hasPermission('gerenciar_configuracoes') && (
-          <div className="mt-1">
+          <div className="flex-1 flex flex-col min-h-0 h-full mt-0">
             <AgentManager />
           </div>
         )}
