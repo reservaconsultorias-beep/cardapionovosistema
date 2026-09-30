@@ -5,7 +5,7 @@ import {
   Send, User, Search, PauseCircle, PlayCircle, X,
   Image as ImageIcon, FileText, Music, ZoomIn, Download, ExternalLink, ShieldCheck, CheckCheck,
   Users, Clock, TrendingUp, Sparkles, ChevronDown, ChevronUp, RefreshCw, Trash2,
-  CreditCard, Coins, CheckCircle2, ArrowUpRight, Copy, Check
+  CreditCard, Coins, CheckCircle2, ArrowUpRight, Copy, Check, ArrowLeft
 } from 'lucide-react';
 
 export interface ChatMessage {
@@ -1062,9 +1062,9 @@ export default function AgentManager() {
       )}
 
       {/* Espelho de Conversas estilo WhatsApp Command Center */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col md:flex-row h-[650px] lg:h-[680px] xl:h-[720px] min-h-[520px]">
-        {/* Coluna Esquerda: Lista de Conversas */}
-        <div className="w-full md:w-80 lg:w-[330px] xl:w-[370px] shrink-0 border-r border-stone-200 flex flex-col h-full bg-stone-50/40">
+      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col md:flex-row h-[600px] sm:h-[650px] lg:h-[680px] xl:h-[720px] min-h-[480px]">
+        {/* Coluna Esquerda: Lista de Conversas (Em mobile, oculta quando conversa está aberta) */}
+        <div className={`w-full md:w-80 lg:w-[330px] xl:w-[370px] shrink-0 border-r border-stone-200 flex-col h-full bg-stone-50/40 ${selectedPhone ? 'hidden md:flex' : 'flex'}`}>
           {/* Busca & Filtros com Layout Estruturado */}
           <div className="p-3 border-b border-stone-200 bg-white shrink-0 space-y-2">
             <div className="relative">
@@ -1074,7 +1074,7 @@ export default function AgentManager() {
                 placeholder="Buscar cliente ou telefone..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-stone-100/80 rounded-lg border border-transparent focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all placeholder:text-stone-400 font-sans"
+                className="w-full pl-8 pr-3 py-2 text-base sm:text-xs bg-stone-100/80 rounded-lg border border-transparent focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all placeholder:text-stone-400 font-sans"
               />
             </div>
 
@@ -1232,15 +1232,24 @@ export default function AgentManager() {
 
         {/* Coluna Direita: Painel do Chat ou Empty State Produtivo */}
         {selectedConversation ? (
-          <div className="flex-1 flex flex-col h-full min-w-0 bg-[#efeae2]">
+          <div className={`flex-1 flex-col h-full min-w-0 bg-[#efeae2] ${selectedPhone ? 'flex' : 'hidden md:flex'}`}>
             {/* Topo do Chat Selecionado com Controle Imediato */}
             {(() => {
               const isHeaderPizzeriaName = selectedConversation.name && selectedConversation.name.toLowerCase().includes("41 menu");
               const headerDisplayName = (!selectedConversation.name || isHeaderPizzeriaName) ? (selectedConversation.phone || 'Cliente') : selectedConversation.name;
               return (
-                <div className="px-4 py-3 bg-white border-b border-stone-200 flex items-center justify-between gap-3 shrink-0">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center font-bold text-xs shrink-0 border border-stone-200">
+                <div className="px-3 sm:px-4 py-3 bg-white border-b border-stone-200 flex items-center justify-between gap-2 sm:gap-3 shrink-0">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    {/* Botão de Retorno Mobile */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPhone(null)}
+                      className="md:hidden p-2 -ml-1 text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-xl transition-colors cursor-pointer shrink-0 active:scale-95"
+                      title="Voltar para a lista de conversas"
+                    >
+                      <ArrowLeft size={18} />
+                    </button>
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center font-bold text-xs shrink-0 border border-stone-200">
                       {headerDisplayName ? headerDisplayName.charAt(0).toUpperCase() : <User size={14} />}
                     </div>
                     <div className="min-w-0">
@@ -1520,20 +1529,20 @@ export default function AgentManager() {
             </div>
 
             {/* Input de Envio de Mensagem Manual */}
-            <form onSubmit={sendManualMessage} className="p-3 bg-white border-t border-stone-100 flex items-center gap-2.5 shrink-0">
+            <form onSubmit={sendManualMessage} className="p-3 bg-white border-t border-stone-100 flex items-center gap-2 sm:gap-2.5 shrink-0">
               <input
                 type="text"
                 placeholder={selectedConversation.paused 
-                  ? "Digite uma resposta manual para enviar ao cliente no WhatsApp..." 
-                  : "Digite uma resposta (isso pausará a IA neste chat automaticamente)..."}
+                  ? "Digite uma resposta manual para o cliente..." 
+                  : "Digite uma resposta (isso pausará a IA)..."}
                 value={manualMessage}
                 onChange={e => setManualMessage(e.target.value)}
-                className="flex-1 px-4 py-2.5 text-xs sm:text-sm bg-stone-50 rounded-xl border border-stone-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all font-sans placeholder:text-stone-400"
+                className="flex-1 px-3.5 sm:px-4 py-2.5 text-base sm:text-xs md:text-sm bg-stone-50 rounded-xl border border-stone-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all font-sans placeholder:text-stone-400"
               />
               <button
                 type="submit"
                 disabled={!manualMessage.trim() || sendingManual}
-                className="min-h-[42px] px-4 sm:px-5 py-2.5 bg-stone-900 hover:bg-amber-600 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-40 cursor-pointer shadow-xs shrink-0"
+                className="min-h-[42px] px-3.5 sm:px-5 py-2.5 bg-stone-900 hover:bg-amber-600 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-1.5 sm:gap-2 transition-all disabled:opacity-40 cursor-pointer shadow-xs shrink-0 active:scale-95"
               >
                 {sendingManual ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                 <span>Enviar</span>
@@ -1541,7 +1550,7 @@ export default function AgentManager() {
             </form>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-stone-50/40">
+          <div className={`flex-1 flex-col items-center justify-center p-6 sm:p-8 text-center bg-stone-50/40 ${selectedPhone ? 'hidden md:flex' : 'flex'}`}>
             <div className="max-w-md p-8 rounded-2xl bg-white border border-stone-200/90 shadow-xs flex flex-col items-center text-center">
               <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-500/20 flex items-center justify-center mb-4 ring-4 ring-amber-500/5">
                 <Bot size={28} />
