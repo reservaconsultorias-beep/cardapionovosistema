@@ -878,8 +878,8 @@ export default function AgentManager() {
             disabled={updating}
             className={`min-h-[40px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs disabled:opacity-60 ${
               isActive 
-                ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200' 
-                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 shadow-md ring-2 ring-emerald-500/20'
+                ? 'bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-200/90 hover:border-rose-300' 
+                : 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-emerald-600/25 shadow-md ring-2 ring-emerald-500/20'
             }`}
           >
             <Power size={15} className={updating ? "animate-spin" : ""} />
@@ -899,7 +899,7 @@ export default function AgentManager() {
               <h3 className="font-bold text-xs uppercase tracking-wider text-stone-800 font-sans">
                 Telemetria de Atendimento no WhatsApp
               </h3>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-300/80 shadow-2xs">
                 Hoje
               </span>
             </div>
@@ -934,19 +934,18 @@ export default function AgentManager() {
             {/* Métrica 1: Clientes Hoje */}
             <div className="pt-1 sm:pt-0 sm:px-3 first:pl-0">
               <div className="flex items-center justify-between text-stone-500 text-xs mb-1">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">Clientes Atendidos</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 font-sans">Clientes Atendidos</span>
                 <Users size={16} className="text-stone-400" />
               </div>
               <div className="text-2xl sm:text-3xl font-black font-sans text-stone-950 tracking-tight">
                 {metrics.totalConversationsToday}
               </div>
-              <div className="text-xs text-stone-500 mt-1.5 flex items-center gap-2">
-                <span className="inline-flex items-center gap-1 font-semibold text-emerald-700">
-                  <Bot size={12} /> {metrics.aiHandledConversations} pela IA
+              <div className="text-xs text-stone-500 mt-2 flex flex-wrap items-center gap-1.5 font-sans">
+                <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md text-[11px]">
+                  <Bot size={12} className="text-emerald-600" /> {metrics.aiHandledConversations} pela IA
                 </span>
-                <span className="text-stone-300">•</span>
-                <span className="inline-flex items-center gap-1 font-semibold text-amber-700">
-                  <User size={12} /> {metrics.humanHandledConversations} manual
+                <span className="inline-flex items-center gap-1 font-semibold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-md text-[11px]">
+                  <User size={12} className="text-amber-600" /> {metrics.humanHandledConversations} manual
                 </span>
               </div>
             </div>
@@ -954,35 +953,40 @@ export default function AgentManager() {
             {/* Métrica 2: Mensagens Trocadas */}
             <div className="pt-3 sm:pt-0 sm:px-3">
               <div className="flex items-center justify-between text-stone-500 text-xs mb-1">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">Volume de Mensagens</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 font-sans">Volume de Mensagens</span>
                 <MessageSquare size={16} className="text-stone-400" />
               </div>
               <div className="text-2xl sm:text-3xl font-black font-sans text-stone-950 tracking-tight">
                 {metrics.totalClientMessages + metrics.totalBotMessages + metrics.totalHumanMessages}
               </div>
-              <div className="text-xs text-stone-500 mt-1.5 flex items-center gap-2">
-                <span className="font-semibold text-stone-700">{metrics.totalClientMessages} de clientes</span>
-                <span className="text-stone-300">•</span>
-                <span className="font-semibold text-stone-700">{metrics.totalBotMessages + metrics.totalHumanMessages} da pizzaria</span>
+              <div className="text-xs text-stone-500 mt-2 flex flex-wrap items-center gap-1.5 font-sans">
+                <span className="inline-flex items-center gap-1 font-semibold text-sky-800 bg-sky-50 border border-sky-200/80 px-2 py-0.5 rounded-md text-[11px]">
+                  {metrics.totalClientMessages} de clientes
+                </span>
+                <span className="inline-flex items-center gap-1 font-semibold text-stone-700 bg-stone-100 border border-stone-200/80 px-2 py-0.5 rounded-md text-[11px]">
+                  {metrics.totalBotMessages + metrics.totalHumanMessages} da pizzaria
+                </span>
               </div>
             </div>
 
             {/* Métrica 3: Agilidade */}
             <div className="pt-3 sm:pt-0 sm:px-3">
               <div className="flex items-center justify-between text-stone-500 text-xs mb-1">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">Agilidade da Resposta</span>
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500 font-sans">Agilidade da Resposta</span>
                 <Clock size={16} className="text-emerald-500" />
               </div>
               <div className="text-2xl sm:text-3xl font-black font-sans text-emerald-600 tracking-tight">
                 {metrics.avgResponseTimeSec > 0 ? `${metrics.avgResponseTimeSec}s` : '< 5s'}
               </div>
-              <div className="text-xs text-stone-400 mt-1.5">
-                Tempo médio da IA por mensagem
+              <div className="text-xs text-stone-500 mt-2 flex items-center gap-1.5 font-sans">
+                <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-md text-[11px]">
+                  ⚡ Resposta Instantânea
+                </span>
               </div>
             </div>
           </div>
 
-          {/* Drawer de Diretrizes Oficiais (Alta Legibilidade) */}
+          {/* Drawer de Diretrizes Oficiais (Cromaticamente Estruturado) */}
           {showLearningDrawer && (
             <div className="bg-amber-500/5 rounded-xl p-4 border border-amber-500/20 space-y-3 animate-in fade-in duration-150">
               <div className="flex items-center gap-2 text-xs font-bold text-amber-900 uppercase tracking-wide">
@@ -990,42 +994,42 @@ export default function AgentManager() {
                 <span>Diretrizes e Regras Operacionais da Giovanna</span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-stone-700">
-                <div className="p-3 rounded-lg bg-white border border-stone-200/90 shadow-2xs flex gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
+                <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/90 shadow-2xs flex gap-3 text-stone-700">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                     <CreditCard size={16} />
                   </div>
                   <div>
-                    <span className="font-bold text-stone-900 block mb-0.5">Pagamento Estrito</span>
+                    <span className="font-bold text-emerald-950 block mb-0.5">Pagamento Oficial</span>
                     Aceitar exclusivamente <strong>MB WAY (+351 914 044 317)</strong> ou <strong>Dinheiro (Numerário)</strong>. Transferência bancária é proibida.
                   </div>
                 </div>
 
-                <div className="p-3 rounded-lg bg-white border border-stone-200/90 shadow-2xs flex gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200">
+                <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/90 shadow-2xs flex gap-3 text-stone-700">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500 text-stone-950 flex items-center justify-center shrink-0 shadow-2xs font-bold">
                     <Coins size={16} />
                   </div>
                   <div>
-                    <span className="font-bold text-stone-900 block mb-0.5">Troco Inteligente em Dinheiro</span>
+                    <span className="font-bold text-amber-950 block mb-0.5">Troco Inteligente em Dinheiro</span>
                     Ao optar por dinheiro, a IA sempre questiona se o cliente tem o valor exato ou precisa de troco para nota específica (ex: € 20, € 50).
                   </div>
                 </div>
 
-                <div className="p-3 rounded-lg bg-white border border-stone-200/90 shadow-2xs flex gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 border border-blue-200">
+                <div className="p-3.5 rounded-xl bg-sky-50/70 border border-sky-200/90 shadow-2xs flex gap-3 text-stone-700">
+                  <div className="w-8 h-8 rounded-lg bg-sky-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                     <CheckCircle2 size={16} />
                   </div>
                   <div>
-                    <span className="font-bold text-stone-900 block mb-0.5">Cardápio & Bebidas</span>
+                    <span className="font-bold text-sky-950 block mb-0.5">Cardápio & Bebidas</span>
                     Disponíveis Coca-Cola 1L (Normal e Zero), cervejas Sagres e águas minerais.
                   </div>
                 </div>
 
-                <div className="p-3 rounded-lg bg-white border border-stone-200/90 shadow-2xs flex gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center shrink-0 border border-stone-200">
+                <div className="p-3.5 rounded-xl bg-purple-50/70 border border-purple-200/90 shadow-2xs flex gap-3 text-stone-700">
+                  <div className="w-8 h-8 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                     <Clock size={16} />
                   </div>
                   <div>
-                    <span className="font-bold text-stone-900 block mb-0.5">Prazos de Entrega</span>
+                    <span className="font-bold text-purple-950 block mb-0.5">Prazos de Entrega</span>
                     Avisar prontamente o cliente assim que o pedido entrar no forno ou sair para entrega (prazo estimado: até 60min).
                   </div>
                 </div>
@@ -1048,7 +1052,7 @@ export default function AgentManager() {
                 placeholder="Buscar cliente ou número de telefone..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-stone-100/90 rounded-lg border border-transparent focus:border-stone-300 focus:bg-white focus:outline-none transition-all placeholder:text-stone-400 font-sans"
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-stone-100/90 rounded-lg border border-transparent focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all placeholder:text-stone-400 font-sans"
               />
             </div>
 
@@ -1093,7 +1097,7 @@ export default function AgentManager() {
                     onClick={() => setSelectedPhone(c.phone)}
                     className={`w-full text-left p-3 transition-all flex items-start gap-3 cursor-pointer ${
                       isSelected 
-                        ? 'bg-amber-50/80 border-l-4 border-amber-500' 
+                        ? 'bg-amber-500/10 border-l-4 border-amber-500 shadow-2xs' 
                         : 'hover:bg-stone-100/60 bg-white'
                     }`}
                   >
@@ -1127,26 +1131,26 @@ export default function AgentManager() {
 
                       <div className="flex items-center justify-between gap-2">
                         <div className="text-xs text-stone-500 truncate leading-snug flex items-center gap-1 min-w-0">
-                          {c.last_sender === 'bot' && <span className="text-emerald-700 font-semibold shrink-0">IA: </span>}
-                          {c.last_sender === 'human' && <span className="text-blue-700 font-semibold shrink-0">Você: </span>}
+                          {c.last_sender === 'bot' && <span className="text-emerald-700 font-bold shrink-0">IA: </span>}
+                          {c.last_sender === 'human' && <span className="text-sky-700 font-bold shrink-0">Você: </span>}
                           {c.last_message && (c.last_message.startsWith('📷') || c.last_message.includes('[FOTO:') || c.last_message.includes('[Foto')) ? (
-                            <span className="flex items-center gap-1 text-emerald-700 font-medium truncate">
-                              <ImageIcon size={12} className="shrink-0 text-emerald-600" />
+                            <span className="inline-flex items-center gap-1 text-emerald-800 bg-emerald-50/80 px-1.5 py-0.5 rounded border border-emerald-200/50 text-[11px] font-medium truncate">
+                              <ImageIcon size={11} className="shrink-0 text-emerald-600" />
                               <span className="truncate">{c.last_message.replace(/^\[(?:FOTO:[^\]]+\]\s*|Foto\/Comprovante[^\]]*\]\s*)/i, '').trim() || 'Foto / Comprovante'}</span>
                             </span>
                           ) : c.last_message && (c.last_message.startsWith('🎵') || c.last_message.includes('[AUDIO:') || c.last_message.includes('voz]')) ? (
-                            <span className="flex items-center gap-1 text-amber-700 font-medium truncate">
-                              <Music size={12} className="shrink-0 text-amber-600" />
+                            <span className="inline-flex items-center gap-1 text-amber-800 bg-amber-50/80 px-1.5 py-0.5 rounded border border-amber-200/50 text-[11px] font-medium truncate">
+                              <Music size={11} className="shrink-0 text-amber-600" />
                               <span className="truncate">Mensagem de voz</span>
                             </span>
                           ) : c.last_message && (c.last_message.startsWith('🎭') || c.last_message.startsWith('🏷️') || c.last_message.includes('[FIGURINHA:') || c.last_message.includes('Figurinha')) ? (
-                            <span className="flex items-center gap-1 text-purple-700 font-medium truncate">
+                            <span className="inline-flex items-center gap-1 text-purple-800 bg-purple-50/80 px-1.5 py-0.5 rounded border border-purple-200/50 text-[11px] font-medium truncate">
                               <span className="text-xs shrink-0">🎭</span>
                               <span className="truncate">Figurinha</span>
                             </span>
                           ) : c.last_message && (c.last_message.startsWith('📄') || c.last_message.includes('[DOC:')) ? (
-                            <span className="flex items-center gap-1 text-blue-700 font-medium truncate">
-                              <FileText size={12} className="shrink-0 text-blue-600" />
+                            <span className="inline-flex items-center gap-1 text-sky-800 bg-sky-50/80 px-1.5 py-0.5 rounded border border-sky-200/50 text-[11px] font-medium truncate">
+                              <FileText size={11} className="shrink-0 text-sky-600" />
                               <span className="truncate">Documento</span>
                             </span>
                           ) : (
@@ -1154,7 +1158,7 @@ export default function AgentManager() {
                           )}
                         </div>
                         {c.paused && (
-                          <span className="shrink-0 text-[10px] font-sans font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-900 border border-amber-500/25">
+                          <span className="shrink-0 text-[10px] font-sans font-bold px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-900 border border-amber-400/40">
                             Manual
                           </span>
                         )}
@@ -1189,7 +1193,7 @@ export default function AgentManager() {
                           href={`https://wa.me/${selectedConversation.phone.replace(/\D/g, '')}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-[11px] font-mono text-emerald-700 hover:text-emerald-800 flex items-center gap-0.5 hover:underline"
+                          className="text-xs font-mono font-medium text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/80 px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
                           title="Abrir no WhatsApp Web"
                         >
                           <span>{selectedConversation.phone}</span>
@@ -1212,7 +1216,7 @@ export default function AgentManager() {
                     disabled={togglingChatPause}
                     className={`min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
                       selectedConversation.paused
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                        ? 'bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-600 text-white shadow-emerald-600/20'
                         : 'bg-stone-100 hover:bg-amber-50 text-stone-700 hover:text-amber-900 border border-stone-200 hover:border-amber-300'
                     }`}
                     title={selectedConversation.paused ? "Retomar respostas automáticas da IA neste chat" : "Pausar IA neste chat para intervir manualmente"}
@@ -1259,14 +1263,16 @@ export default function AgentManager() {
                             ? 'bg-transparent shadow-none p-0'
                             : `rounded-xl px-3 pt-2 pb-1.5 text-xs sm:text-[13px] leading-relaxed shadow-xs ${
                                 isClient
-                                  ? 'bg-white text-stone-900 rounded-tl-xs border border-stone-200/50'
-                                  : 'bg-[#dcf8c6] text-stone-950 rounded-tr-xs border border-emerald-200/50'
+                                  ? 'bg-white text-stone-900 rounded-tl-xs border border-stone-200/60 shadow-xs'
+                                  : (isHuman 
+                                      ? 'bg-[#e0f2fe] text-stone-950 rounded-tr-xs border border-sky-200/70 shadow-xs'
+                                      : 'bg-[#dcf8c6] text-stone-950 rounded-tr-xs border border-emerald-200/60 shadow-xs')
                               }`
                         }`}
                       >
                         {/* Nome do remetente interno */}
                         {!isClient && !isSticker && (
-                          <div className={`text-[11px] font-bold mb-1 leading-none ${isBot ? 'text-emerald-700' : 'text-blue-700'}`}>
+                          <div className={`text-[11px] font-bold mb-1 leading-none ${isBot ? 'text-emerald-700' : 'text-sky-700'}`}>
                             {isBot ? 'Giovanna' : 'Você (Atendente)'}
                           </div>
                         )}
@@ -1278,8 +1284,8 @@ export default function AgentManager() {
 
                         {/* Selo especial para comprovantes de pagamento / MB WAY */}
                         {parsed.isReceipt && (
-                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2 rounded-md bg-emerald-100 text-emerald-900 text-xs font-bold border border-emerald-300 shadow-2xs">
-                            <ShieldCheck size={14} className="text-emerald-700 shrink-0" />
+                          <div className="inline-flex items-center gap-1.5 px-3 py-1 mb-2 rounded-lg bg-emerald-600 text-white text-xs font-bold shadow-xs">
+                            <ShieldCheck size={14} className="text-white shrink-0" />
                             <span>Comprovante de Pagamento MB WAY</span>
                           </div>
                         )}
@@ -1331,7 +1337,7 @@ export default function AgentManager() {
 
                         {/* Renderização de Áudio / Mensagem de Voz */}
                         {parsed.mediaType === 'audio' && (
-                          <div className="my-1 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col gap-1.5 min-w-[240px] max-w-full shadow-2xs">
+                          <div className="my-1 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200/80 flex flex-col gap-1.5 min-w-[240px] max-w-full shadow-2xs">
                             <div className="flex items-center gap-2">
                               <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                                 <Music size={14} />
@@ -1350,7 +1356,7 @@ export default function AgentManager() {
                         {parsed.mediaType === 'document' && (
                           <div className="my-1 p-2.5 rounded-lg bg-stone-50 border border-stone-200 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2 min-w-0">
-                              <FileText size={20} className="text-blue-500 shrink-0" />
+                              <FileText size={20} className="text-sky-600 shrink-0" />
                               <span className="text-xs font-medium text-stone-800 truncate">{parsed.displayText}</span>
                             </div>
                             {parsed.mediaUrl && (
@@ -1358,7 +1364,7 @@ export default function AgentManager() {
                                 href={parsed.mediaUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="text-blue-600 hover:text-blue-800 p-1.5 hover:bg-blue-50 rounded-lg transition-colors"
+                                className="text-sky-700 hover:text-sky-900 p-1.5 hover:bg-sky-50 rounded-lg transition-colors"
                                 title="Baixar documento"
                               >
                                 <Download size={14} />
@@ -1425,12 +1431,12 @@ export default function AgentManager() {
                   : "Digite uma resposta (isso pausará a IA neste chat automaticamente)..."}
                 value={manualMessage}
                 onChange={e => setManualMessage(e.target.value)}
-                className="flex-1 px-3.5 py-2 text-xs bg-stone-50 rounded-xl border border-stone-200 focus:border-stone-400 focus:bg-white focus:outline-none transition-all font-sans placeholder:text-stone-400"
+                className="flex-1 px-3.5 py-2 text-xs bg-stone-50 rounded-xl border border-stone-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all font-sans placeholder:text-stone-400"
               />
               <button
                 type="submit"
                 disabled={!manualMessage.trim() || sendingManual}
-                className="min-h-[38px] px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-40 cursor-pointer shadow-xs"
+                className="min-h-[38px] px-4 py-2 bg-stone-900 hover:bg-amber-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-40 cursor-pointer shadow-xs"
               >
                 {sendingManual ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                 <span>Enviar</span>
