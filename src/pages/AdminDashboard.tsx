@@ -59,7 +59,8 @@ import {
   Cell,
   Legend
 } from "recharts";
-import { ALL_MENU_ITEMS, MenuItem } from "../data/menu";
+import { ALL_MENU_ITEMS, MenuItem, ExtraIngredient, pizzaExtras } from "../data/menu";
+import { useExtras } from "../hooks/useExtras";
 import { useMenu } from "../hooks/useMenu";
 import { supabase } from '../lib/supabase';
 import { normalizeOrderType, isOrderActive, normalizePaymentMethod } from '../utils/paymentAndOrderHelper';
@@ -4879,12 +4880,43 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
 
   // Smart Search & Editing States (CRM Pattern)
   const [editingItemIndex, setEditingItemIndex] = useState<number | null>(null);
-  const [categoryFilter, setCategoryFilter] = useState<'all' | 'pizzas' | 'esfihas' | 'bebidas' | 'outros'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'pizzas' | 'esfihas' | 'bebidas' | 'extras' | 'outros'>('all');
   const [searchingFlavorSlot, setSearchingFlavorSlot] = useState<number | null>(null);
   const [flavorSearchQuery, setFlavorSearchQuery] = useState('');
   const [isProductSearchOpen, setIsProductSearchOpen] = useState(false);
   const productSearchContainerRef = useRef<HTMLDivElement>(null);
   const flavorSearchInputRef = useRef<HTMLInputElement>(null);
+
+  // Extras do Cardápio & Seleção Atual para o Item em Edição
+  const liveExtras = useExtras();
+  const availableExtras: ExtraIngredient[] = (liveExtras && liveExtras.length > 0) ? liveExtras : pizzaExtras;
+  const [selectedExtras, setSelectedExtras] = useState<ExtraIngredient[]>([]);
+
+  const handleToggleExtra = (extra: ExtraIngredient) => {
+    setSelectedExtras(prev => {
+      const exists = prev.some(e => e.id === extra.id || e.name.toLowerCase() === extra.name.toLowerCase());
+      if (exists) {
+        return prev.filter(e => e.id !== extra.id && e.name.toLowerCase() !== extra.name.toLowerCase());
+      } else {
+        return [...prev, { id: extra.id, name: extra.name, price: Number(extra.price) || 0 }];
+      }
+    });
+  };
+
+  const getExtraIcon = (name: string) => {
+    const n = (name || '').toLowerCase();
+    if (n.includes('bacon')) return '🥓';
+    if (n.includes('catupiry') || n.includes('requeijão')) return '🧀';
+    if (n.includes('queijo') || n.includes('mozzarella') || n.includes('muçarela')) return '🧀';
+    if (n.includes('cebola')) return '🧅';
+    if (n.includes('cogumelo') || n.includes('champignon')) return '🍄';
+    if (n.includes('azeitona')) return '🫒';
+    if (n.includes('fiambre') || n.includes('presunto')) return '🍖';
+    if (n.includes('milho')) return '🌽';
+    if (n.includes('ovo')) return '🥚';
+    if (n.includes('alho')) return '🧄';
+    return '➕';
+  };
 
   useEffect(() => {
     if (searchingFlavorSlot !== null) {
@@ -4972,12 +5004,12 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
 
   const getPizzaPriceForSize = (item: any, sizeKey: string) => {
     if (!item) return 0;
-    if (sizeKey === 'priceP') return item.priceP || (item.priceM ? item.priceM - 2 : 0) || item.priceSingle || 0;
-    if (sizeKey === 'priceM') return item.priceM || item.priceSingle || 0;
-    if (sizeKey === 'priceG') return item.priceG || item.priceM || item.priceSingle || 0;
-    if (sizeKey === 'priceBig') return item.priceBig || item.priceG || item.priceSingle || 0;
-    if (sizeKey === 'priceSuperBig') return item.priceSuperBig || item.priceBig || item.priceG || item.priceSingle || 0;
-    return item.priceSingle || item.price || 0;
+    if (sizeKey === 'priceP') return item.priceP || (item.priceM ? item.priceM - 2 : 0) || item.priceSingle || item.basePrice || item.price || 0;
+    if (sizeKey === 'priceM') return item.priceM || item.priceSingle || item.basePrice || item.price || 0;
+    if (sizeKey === 'priceG') return item.priceG || item.priceM || item.priceSingle || item.basePrice || item.price || 0;
+    if (sizeKey === 'priceBig') return item.priceBig || item.priceG || item.priceSingle || item.basePrice || item.price || 0;
+    if (sizeKey === 'priceSuperBig') return item.priceSuperBig || item.priceBig || item.priceG || item.priceSingle || item.basePrice || item.price || 0;
+    return item.priceSingle || item.basePrice || item.price || 0;
   };
 
   const handleSelectSize = (sizeKey: string) => {
@@ -4993,6 +5025,14 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   };
 
   const handleSelectProduct = (m: any) => {
+    if (m.isExtraItem && m.extraData) {
+      if (editingItemIndex !== null || selectedProductId) {
+        handleToggleExtra(m.extraData);
+        setIsProductSearchOpen(false);
+        return;
+      }
+    }
+
     setSelectedProductId(m.id);
     setSelectedProductSearch(m.name);
     setIsProductSearchOpen(false);
@@ -5013,13 +5053,30 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     if (!item) return;
     setEditingItemIndex(idx);
 
-    const sz = (item.size || '').toLowerCase();
+    // Carregar adicionais extras já existentes no item
+    if (item.extras && Array.isArray(item.extras)) {
+      setSelectedExtras(item.extras.map((e: any) => ({
+        id: e.id || `ex-${e.name}`,
+        name: e.name,
+        price: Number(e.price) || 0
+      })));
+    } else if (item.selectedExtras && Array.isArray(item.selectedExtras)) {
+      setSelectedExtras(item.selectedExtras.map((e: any) => ({
+        id: e.id || `ex-${e.name}`,
+        name: e.name,
+        price: Number(e.price) || 0
+      })));
+    } else {
+      setSelectedExtras([]);
+    }
+
+    const combinedSizeStr = `${item.size || ''} ${item.name || ''}`.toLowerCase();
     let sizeKey = 'priceSingle';
-    if (sz.includes('super big') || sz.includes('4 sab')) sizeKey = 'priceSuperBig';
-    else if (sz.includes('big') || sz.includes('3 sab')) sizeKey = 'priceBig';
-    else if (sz.includes('grande') || sz.includes('(g)') || sz === 'g' || sz.includes('2 sab')) sizeKey = 'priceG';
-    else if (sz.includes('média') || sz.includes('media') || sz.includes('(m)') || sz === 'm') sizeKey = 'priceM';
-    else if (sz.includes('pequena') || sz.includes('(p)') || sz === 'p') sizeKey = 'priceP';
+    if (combinedSizeStr.includes('super big') || combinedSizeStr.includes('4 sab')) sizeKey = 'priceSuperBig';
+    else if (combinedSizeStr.includes('big') || combinedSizeStr.includes('3 sab')) sizeKey = 'priceBig';
+    else if (combinedSizeStr.includes('grande') || combinedSizeStr.includes('(g)') || combinedSizeStr.includes('(gr)') || combinedSizeStr.includes('2 sab')) sizeKey = 'priceG';
+    else if (combinedSizeStr.includes('média') || combinedSizeStr.includes('media') || combinedSizeStr.includes('(m)') || combinedSizeStr.includes('(md)')) sizeKey = 'priceM';
+    else if (combinedSizeStr.includes('pequena') || combinedSizeStr.includes('(p)') || combinedSizeStr.includes('(pq)')) sizeKey = 'priceP';
 
     setSelectedSize(sizeKey);
 
@@ -5077,6 +5134,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     setSelectedSize('priceSingle');
     setSearchingFlavorSlot(null);
     setFlavorSearchQuery('');
+    setSelectedExtras([]);
   };
 
   const getFractionText = (slotIndex: number, total: number) => {
@@ -5087,11 +5145,45 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     return `${slotIndex + 1}º Sabor`;
   };
 
+  const currentBasePrice = React.useMemo(() => {
+    if (isCurrentSelectionPizza && selectedBaseMenuItem) {
+      const extraFlavors = customAdditionalFlavors
+        .filter(f => f.id || f.search)
+        .map(f => menuItems.find(m => m.id === f.id) || { id: f.id, name: f.search, priceSingle: 0 });
+      if (selectedSize === 'priceP') return getPizzaPriceForSize(selectedBaseMenuItem, 'priceP');
+      if (selectedSize === 'priceM') return getPizzaPriceForSize(selectedBaseMenuItem, 'priceM');
+      if (selectedSize === 'priceG') {
+        const allPricesG = [getPizzaPriceForSize(selectedBaseMenuItem, 'priceG'), ...extraFlavors.map(f => getPizzaPriceForSize(f, 'priceG'))];
+        return Math.max(...allPricesG) || getPizzaPriceForSize(selectedBaseMenuItem, 'priceG');
+      }
+      if (selectedSize === 'priceBig') {
+        const allPricesBig = [getPizzaPriceForSize(selectedBaseMenuItem, 'priceBig'), ...extraFlavors.map(f => getPizzaPriceForSize(f, 'priceBig'))];
+        return Math.max(...allPricesBig) || getPizzaPriceForSize(selectedBaseMenuItem, 'priceBig');
+      }
+      if (selectedSize === 'priceSuperBig') {
+        const allPricesSB = [getPizzaPriceForSize(selectedBaseMenuItem, 'priceSuperBig'), ...extraFlavors.map(f => getPizzaPriceForSize(f, 'priceSuperBig'))];
+        return Math.max(...allPricesSB) || getPizzaPriceForSize(selectedBaseMenuItem, 'priceSuperBig');
+      }
+    }
+    if (editingItemIndex !== null && items[editingItemIndex]) {
+      const it = items[editingItemIndex];
+      const prevExtrasSum = (it.extras || []).reduce((s: number, e: any) => s + (Number(e.price) || 0), 0);
+      return it.basePrice ?? (it.priceCalculated ? it.priceCalculated - prevExtrasSum : it.price ?? 0);
+    }
+    return selectedBaseMenuItem?.priceSingle || selectedBaseMenuItem?.price || 0;
+  }, [isCurrentSelectionPizza, selectedBaseMenuItem, selectedSize, customAdditionalFlavors, editingItemIndex, items]);
+
+  const currentExtrasTotal = React.useMemo(() => {
+    return selectedExtras.reduce((sum, e) => sum + (Number(e.price) || 0), 0);
+  }, [selectedExtras]);
+
+  const currentItemFinalPrice = currentBasePrice + currentExtrasTotal;
+
   const handleAddItem = () => {
-    if (!selectedProductId && !selectedProductSearch.trim()) return;
+    if (!selectedProductId && !selectedProductSearch.trim() && editingItemIndex === null) return;
     const menuItem = menuItems.find(m => m.id === selectedProductId) || {
       id: selectedProductId || `custom-${Date.now()}`,
-      name: selectedProductSearch.trim(),
+      name: selectedProductSearch.trim() || (editingItemIndex !== null ? items[editingItemIndex]?.name : ''),
       priceSingle: 0
     };
 
@@ -5101,23 +5193,32 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
 
     const totalFlavors = 1 + extraFlavors.length;
 
-    let price = getPizzaPriceForSize(menuItem, selectedSize);
+    let basePrice = getPizzaPriceForSize(menuItem, selectedSize);
     let sizeName = 'Único';
-    if (selectedSize === 'priceP') { price = getPizzaPriceForSize(menuItem, 'priceP'); sizeName = 'Pequena (P)'; }
-    else if (selectedSize === 'priceM') { price = getPizzaPriceForSize(menuItem, 'priceM'); sizeName = 'Média (M)'; }
+    if (selectedSize === 'priceP') { basePrice = getPizzaPriceForSize(menuItem, 'priceP'); sizeName = 'Pequena (P)'; }
+    else if (selectedSize === 'priceM') { basePrice = getPizzaPriceForSize(menuItem, 'priceM'); sizeName = 'Média (M)'; }
     else if (selectedSize === 'priceG') {
       const allPricesG = [getPizzaPriceForSize(menuItem, 'priceG'), ...extraFlavors.map(f => getPizzaPriceForSize(f, 'priceG'))];
-      price = Math.max(...allPricesG) || price;
+      basePrice = Math.max(...allPricesG) || basePrice;
       sizeName = 'Grande (G)';
     } else if (selectedSize === 'priceBig') {
       const allPricesBig = [getPizzaPriceForSize(menuItem, 'priceBig'), ...extraFlavors.map(f => getPizzaPriceForSize(f, 'priceBig'))];
-      price = Math.max(...allPricesBig) || price;
+      basePrice = Math.max(...allPricesBig) || basePrice;
       sizeName = 'Big';
     } else if (selectedSize === 'priceSuperBig') {
       const allPricesSB = [getPizzaPriceForSize(menuItem, 'priceSuperBig'), ...extraFlavors.map(f => getPizzaPriceForSize(f, 'priceSuperBig'))];
-      price = Math.max(...allPricesSB) || price;
+      basePrice = Math.max(...allPricesSB) || basePrice;
       sizeName = 'Super Big';
     }
+
+    if (basePrice === 0 && editingItemIndex !== null) {
+      const prevItem = items[editingItemIndex];
+      const prevExtrasSum = (prevItem.extras || []).reduce((s: number, e: any) => s + (Number(e.price) || 0), 0);
+      basePrice = prevItem.basePrice ?? (prevItem.priceCalculated ? prevItem.priceCalculated - prevExtrasSum : prevItem.price ?? 0);
+    }
+
+    const extrasTotalPrice = selectedExtras.reduce((sum, e) => sum + (Number(e.price) || 0), 0);
+    const finalPriceWithExtras = Number((basePrice + extrasTotalPrice).toFixed(2));
 
     let itemName = menuItem.name;
     if (extraFlavors.length > 0) {
@@ -5131,9 +5232,10 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
       name: itemName,
       quantity: editingItemIndex !== null ? (items[editingItemIndex]?.quantity || 1) : 1,
       size: sizeName,
-      priceCalculated: price,
-      basePrice: price,
-      price: price,
+      basePrice: basePrice,
+      priceCalculated: finalPriceWithExtras,
+      price: finalPriceWithExtras,
+      extras: selectedExtras.map(e => ({ id: e.id, name: e.name, price: Number(e.price) || 0 })),
       additionalFlavors: extraFlavors
     };
 
@@ -5158,6 +5260,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     setSelectedSize('priceSingle');
     setSearchingFlavorSlot(null);
     setFlavorSearchQuery('');
+    setSelectedExtras([]);
   };
 
   const handleUpdateQty = (index: number, delta: number) => {
@@ -5217,10 +5320,11 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
 
   const filteredMenuItems = React.useMemo(() => {
     const q = selectedProductSearch.toLowerCase().trim();
-    return menuItems.filter(m => {
+    let list = menuItems.filter(m => {
       if (categoryFilter === 'pizzas' && !isPizzaItem(m)) return false;
       if (categoryFilter === 'esfihas' && !isEsfihaItem(m)) return false;
       if (categoryFilter === 'bebidas' && !isBebidaItem(m)) return false;
+      if (categoryFilter === 'extras') return false;
       if (categoryFilter === 'outros' && (isPizzaItem(m) || isEsfihaItem(m) || isBebidaItem(m))) return false;
 
       // When a pizza size is active, only allow pizzas!
@@ -5231,7 +5335,23 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
       if (!q) return true;
       return m.name.toLowerCase().includes(q) || (m.ingredients && m.ingredients.toLowerCase().includes(q));
     });
-  }, [menuItems, selectedProductSearch, categoryFilter, selectedSize]);
+
+    if (categoryFilter === 'extras' || (categoryFilter === 'all' && q.length > 0)) {
+      const extraItems = availableExtras
+        .filter(ex => !q || ex.name.toLowerCase().includes(q))
+        .map(ex => ({
+          id: ex.id,
+          name: ex.name,
+          priceSingle: ex.price,
+          category: 'extras',
+          isExtraItem: true,
+          extraData: ex
+        }));
+      list = [...list, ...extraItems];
+    }
+
+    return list;
+  }, [menuItems, availableExtras, selectedProductSearch, categoryFilter, selectedSize]);
 
   const filteredSlotPizzas = React.useMemo(() => {
     const q = flavorSearchQuery.toLowerCase().trim();
@@ -5497,7 +5617,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
               </div>
 
               {/* Current Items Table Compacto */}
-              <div className="border border-stone-200/80 rounded overflow-hidden bg-stone-50/60 max-h-28 overflow-y-auto">
+              <div className="border border-stone-200/80 rounded overflow-hidden bg-stone-50/60 max-h-36 overflow-y-auto">
                 {items.length === 0 ? (
                   <div className="p-2 text-center text-xs text-stone-400">Nenhum item no pedido.</div>
                 ) : (
@@ -5506,12 +5626,26 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                       const price = Number(item.priceCalculated || item.price || 0);
                       const qty = Number(item.quantity || 1);
                       return (
-                        <div key={idx} className="px-2 py-1 flex items-center justify-between gap-2 bg-white hover:bg-stone-50 transition-colors">
+                        <div key={idx} className="px-2 py-1.5 flex items-center justify-between gap-2 bg-white hover:bg-stone-50 transition-colors">
                           <div className="flex-1 min-w-0">
                             <div className="font-bold text-xs text-stone-900 truncate">{formatItemNameForPrint(item)}</div>
                             <div className="text-[9px] text-stone-400 font-medium">
                               {item.size ? `${item.size} | ` : ''}€ {price.toFixed(2)} un.
                             </div>
+                            {/* Tags de Extras Adicionados */}
+                            {item.extras && item.extras.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-0.5">
+                                {item.extras.map((ex: any, exIdx: number) => (
+                                  <span
+                                    key={exIdx}
+                                    className="text-[8.5px] font-bold bg-rose-50 text-rose-700 border border-rose-200 px-1.5 py-0.2 rounded flex items-center gap-0.5 shadow-2xs"
+                                  >
+                                    <span>+{ex.name}</span>
+                                    <span className="font-mono text-[8px] text-rose-800">(€{Number(ex.price).toFixed(2)})</span>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
                           </div>
 
                           {/* Qty Controls */}
@@ -5595,6 +5729,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                     { id: 'pizzas', label: '🍕 Pizzas' },
                     { id: 'esfihas', label: '🥟 Esfihas' },
                     { id: 'bebidas', label: '🥤 Bebidas' },
+                    { id: 'extras', label: '🥓 Extras' },
                     { id: 'outros', label: '🍟 Outros' }
                   ].map(cat => (
                     <button
@@ -5627,7 +5762,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                           setSelectedProductId('');
                         }
                       }}
-                      placeholder={categoryFilter === 'pizzas' ? "Buscar pizza por nome ou número..." : "Pesquisar sabor ou produto..."}
+                      placeholder={categoryFilter === 'pizzas' ? "Buscar pizza por nome ou número..." : categoryFilter === 'extras' ? "Pesquisar adicional extra (bacon, queijo...)" : "Pesquisar sabor, produto ou adicional extra..."}
                       className="w-full pl-7 pr-7 py-1.5 bg-white rounded-lg border border-stone-200 text-xs font-bold text-stone-900 outline-none focus:border-stone-900 focus:ring-1 focus:ring-stone-900 transition-all"
                     />
                     {selectedProductSearch && (
@@ -5650,26 +5785,34 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                     <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-stone-300 rounded-lg shadow-xl z-40 max-h-48 overflow-y-auto divide-y divide-stone-100">
                       {filteredMenuItems.length === 0 ? (
                         <div className="p-2.5 text-center text-xs text-stone-400">
-                          Nenhum produto encontrado.
+                          Nenhum produto ou adicional encontrado.
                         </div>
                       ) : (
                         filteredMenuItems.map(m => {
                           const isP = isPizzaItem(m);
+                          const isEx = Boolean(m.isExtraItem);
                           const displayPrice = isP
                             ? (m.priceG || m.priceM || m.priceSingle || 0)
                             : (m.priceSingle || m.price || 0);
+                          const isSelectedExtra = isEx && selectedExtras.some(e => e.id === m.id || e.name.toLowerCase() === m.name.toLowerCase());
                           return (
                             <div
                               key={m.id}
                               onClick={() => handleSelectProduct(m)}
                               className={`p-2 text-xs cursor-pointer flex items-center justify-between hover:bg-stone-50 transition-colors ${
-                                selectedProductId === m.id ? 'bg-amber-50/60 font-bold' : ''
+                                selectedProductId === m.id || isSelectedExtra ? 'bg-amber-50/60 font-bold' : ''
                               }`}
                             >
                               <div className="flex-1 min-w-0 pr-2">
                                 <div className="font-bold text-stone-900 truncate flex items-center gap-1.5">
                                   {isP && <span className="text-[10px]">🍕</span>}
+                                  {isEx && <span className="text-[10px]">{getExtraIcon(m.name)}</span>}
                                   <span>{m.name}</span>
+                                  {isEx && (
+                                    <span className="text-[9px] font-bold text-rose-600 bg-rose-50 px-1 rounded border border-rose-200">
+                                      Adicional Extra
+                                    </span>
+                                  )}
                                 </div>
                                 {m.ingredients && (
                                   <div className="text-[10px] text-stone-400 truncate">{m.ingredients}</div>
@@ -5962,11 +6105,56 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                   </div>
                 )}
 
+                {/* Seletor de Adicionais Extras (Bacon, Queijo, etc.) */}
+                {(isCurrentSelectionPizza || editingItemIndex !== null || selectedProductId) && (
+                  <div className="space-y-1.5 pt-2 border-t border-stone-200/60 bg-white/80 p-2 rounded-lg border border-stone-200/90 shadow-2xs">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[9px] font-mono font-bold text-stone-600 uppercase tracking-wider flex items-center gap-1.5">
+                        <span>🥓 Adicionais Extras</span>
+                        {selectedExtras.length > 0 && (
+                          <span className="text-rose-600 font-bold bg-rose-50 px-1.5 py-0.2 rounded border border-rose-200 text-[8.5px]">
+                            + € {selectedExtras.reduce((s, e) => s + (Number(e.price) || 0), 0).toFixed(2)}
+                          </span>
+                        )}
+                      </label>
+                      <span className="text-[8.5px] text-stone-400 font-medium">
+                        {selectedExtras.length === 0 ? 'Toque no adicional para incluir' : `${selectedExtras.length} selecionado(s)`}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
+                      {availableExtras.map((extra) => {
+                        const isSelected = selectedExtras.some(e => e.id === extra.id || e.name.toLowerCase() === extra.name.toLowerCase());
+                        return (
+                          <button
+                            key={extra.id}
+                            type="button"
+                            onClick={() => handleToggleExtra(extra)}
+                            className={`py-1.5 px-2 rounded-md flex items-center justify-between transition-all cursor-pointer border text-left ${
+                              isSelected
+                                ? 'bg-rose-50 text-rose-900 border-rose-300 font-black shadow-2xs ring-1 ring-rose-400'
+                                : 'bg-white text-stone-700 font-bold border-stone-200 hover:bg-stone-50 hover:border-stone-300'
+                            }`}
+                          >
+                            <div className="flex items-center gap-1 min-w-0">
+                              <span className="text-xs">{getExtraIcon(extra.name)}</span>
+                              <span className="text-[10px] truncate leading-tight">{extra.name}</span>
+                            </div>
+                            <span className={`text-[9px] font-mono shrink-0 ml-1 leading-none ${isSelected ? 'text-rose-700 font-black' : 'text-stone-500'}`}>
+                              +€{extra.price.toFixed(2)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 {/* Button to Include or Update Item */}
                 <button
                   type="button"
                   onClick={handleAddItem}
-                  disabled={!selectedProductId && !selectedProductSearch.trim()}
+                  disabled={!selectedProductId && !selectedProductSearch.trim() && editingItemIndex === null}
                   className={`w-full py-2 px-3 rounded-lg text-xs font-extrabold flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer ${
                     editingItemIndex !== null
                       ? 'bg-amber-500 hover:bg-amber-600 text-stone-950'
@@ -5974,7 +6162,10 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                   } disabled:opacity-40 disabled:cursor-not-allowed`}
                 >
                   <Check size={14} className="stroke-[2.5]" />
-                  <span>{editingItemIndex !== null ? 'Salvar Alteração no Pedido' : 'Incluir no Pedido'}</span>
+                  <span>
+                    {editingItemIndex !== null ? 'Salvar Alteração no Pedido' : 'Incluir no Pedido'}
+                    {currentItemFinalPrice > 0 && ` (€ ${currentItemFinalPrice.toFixed(2)} un.)`}
+                  </span>
                 </button>
               </div>
             </div>
