@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useDeferredValue, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { 
-  Search, X, Award, ShoppingBag, ChevronDown, 
+  Search, X, Award, ShoppingBag, ChevronDown, ChevronLeft, ChevronRight,
   User, Phone, MapPin, Calendar, Clock, DollarSign, 
   TrendingUp, MessageCircle, Download, Sparkles, Filter, 
   ExternalLink, RefreshCw, AlertTriangle, Heart, Flame, 
@@ -74,6 +74,7 @@ export default function CustomersManager() {
   const [customers, setCustomers] = useState<CustomerProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerProfile | null>(null);
   const [activeSegment, setActiveSegment] = useState<CustomerSegment>('todos');
 
@@ -83,7 +84,26 @@ export default function CustomersManager() {
   const [endDate, setEndDate] = useState('');
   const [sortBy, setSortBy] = useState<'recent' | 'spent' | 'orders' | 'ticket' | 'inactive'>('recent');
 
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number | 'all'>(25);
+
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
+
+  // Reinicia para a página 1 ao alterar qualquer filtro
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeSegment, search, period, sortBy, startDate, endDate]);
+
+  const handleClearFilters = useCallback(() => {
+    setSearch('');
+    setActiveSegment('todos');
+    setPeriod('todos');
+    setStartDate('');
+    setEndDate('');
+    setSortBy('recent');
+    setCurrentPage(1);
+  }, []);
 
   // Formata telefone para exibição e link internacional (Portugal padrão)
   const formatPhoneForWhatsApp = (rawPhone: string): string => {
@@ -97,24 +117,26 @@ export default function CustomersManager() {
   const loadData = async () => {
     setLoading(true);
     try {
-      // 1. Carrega todos os pedidos para agregar inteligência comercial real
-      const { data: ordersData, error: ordersErr } = await supabase
-        .from('orders')
-        .select('id, customer_name, customer_phone, delivery_address, delivery_zone, total_amount, payment_method, order_type, status, items, notes, created_at')
-        .order('created_at', { ascending: false });
+      // 1. Carrega em paralelo pedidos, clientes e configurações (reduz RTT de rede em ~60%)
+      const [ordersRes, dbCustomersRes, settingsNotesRes] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('id, customer_name, customer_phone, delivery_address, delivery_zone, total_amount, payment_method, order_type, status, items, notes, created_at')
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('customers')
+          .select('*'),
+        supabase
+          .from('settings')
+          .select('key, value')
+          .like('key', 'customer_notes_%')
+      ]);
 
-      if (ordersErr) console.warn('Erro ao carregar pedidos para CRM:', ordersErr);
+      const ordersData = ordersRes.data || [];
+      if (ordersRes.error) console.warn('Erro ao carregar pedidos para CRM:', ordersRes.error);
 
-      // 2. Carrega tabela de clientes (para notas e cadastros salvos)
-      const { data: dbCustomers } = await supabase
-        .from('customers')
-        .select('*');
-
-      // 3. Carrega notas personalizadas da tabela settings (fallback persistente)
-      const { data: settingsNotes } = await supabase
-        .from('settings')
-        .select('key, value')
-        .like('key', 'customer_notes_%');
+      const dbCustomers = dbCustomersRes.data || [];
+      const settingsNotes = settingsNotesRes.data || [];
 
       const notesMap: Record<string, { address?: string; notes?: string; name?: string }> = {};
       if (settingsNotes) {
@@ -211,6 +233,7 @@ export default function CustomersManager() {
           else if (typeof o.items === 'string') {
             try { itemsList = JSON.parse(o.items); } catch { itemsList = []; }
           }
+          o.parsedItems = itemsList;
 
           itemsList.forEach((it: any) => {
             const itemName = String(it.name || '').trim();
@@ -344,6 +367,8 @@ export default function CustomersManager() {
 
   // Filtragem e Ordenação
   const filteredCustomers = useMemo(() => {
+    const term = deferredSearch.trim().toLowerCase();
+
     return customers.filter(c => {
       // 1. Filtro de Segmento
       if (activeSegment !== 'todos' && c.segment !== activeSegment) {
@@ -351,14 +376,15 @@ export default function CustomersManager() {
       }
 
       // 2. Filtro de Busca Texto
-      const term = search.toLowerCase();
-      const matchesSearch = 
-        c.name.toLowerCase().includes(term) ||
-        c.phone.includes(term) ||
-        c.primary_address.toLowerCase().includes(term) ||
-        c.favorite_items.some(it => it.name.toLowerCase().includes(term));
+      if (term) {
+        const matchesSearch = 
+          c.name.toLowerCase().includes(term) ||
+          c.phone.includes(term) ||
+          c.primary_address.toLowerCase().includes(term) ||
+          c.favorite_items.some(it => it.name.toLowerCase().includes(term));
 
-      if (!matchesSearch) return false;
+        if (!matchesSearch) return false;
+      }
 
       // 3. Filtro de Período (baseado na data do último pedido)
       if (period === 'todos') return true;
@@ -410,7 +436,23 @@ export default function CustomersManager() {
       if (sortBy === 'inactive') return b.days_since_last_order - a.days_since_last_order;
       return new Date(b.last_order_at || 0).getTime() - new Date(a.last_order_at || 0).getTime();
     });
-  }, [customers, activeSegment, search, period, startDate, endDate, sortBy]);
+  }, [customers, activeSegment, deferredSearch, period, startDate, endDate, sortBy]);
+
+  // Cálculos de Paginação
+  const totalFiltered = filteredCustomers.length;
+  const effectivePageSize = pageSize === 'all' ? totalFiltered || 1 : pageSize;
+  const totalPages = Math.max(1, Math.ceil(totalFiltered / effectivePageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const paginatedCustomers = useMemo(() => {
+    if (pageSize === 'all') return filteredCustomers;
+    const start = (safeCurrentPage - 1) * pageSize;
+    return filteredCustomers.slice(start, start + pageSize);
+  }, [filteredCustomers, safeCurrentPage, pageSize]);
+
+  const filteredRevenue = useMemo(() => {
+    return filteredCustomers.reduce((acc, c) => acc + c.total_spent, 0);
+  }, [filteredCustomers]);
 
   // Exportação para CSV (UTF-8 com BOM para Excel)
   const exportToCSV = () => {
@@ -688,15 +730,9 @@ export default function CustomersManager() {
             </button>
 
             {/* Botão Limpar Filtros Ativos */}
-            {(search || activeSegment !== 'todos' || period !== 'todos') && (
+            {(search || activeSegment !== 'todos' || period !== 'todos' || sortBy !== 'recent') && (
               <button
-                onClick={() => {
-                  setSearch('');
-                  setActiveSegment('todos');
-                  setPeriod('todos');
-                  setStartDate('');
-                  setEndDate('');
-                }}
+                onClick={handleClearFilters}
                 className="h-10 sm:h-9 px-2.5 text-rose-700 hover:text-rose-900 hover:bg-rose-50 rounded-lg text-xs font-sans font-semibold transition-colors cursor-pointer flex items-center gap-1"
                 title="Limpar todos os filtros"
               >
@@ -714,17 +750,33 @@ export default function CustomersManager() {
         {/* 3A. MODO MOBILE (< 768px): CARDS ERGONÔMICOS E DIRETOS */}
         <div className="block md:hidden space-y-2.5">
           {filteredCustomers.length === 0 ? (
-            <div className="py-12 text-center text-stone-400 font-sans text-xs bg-stone-50 rounded-xl border border-stone-200">
-              Nenhum cliente encontrado com os filtros atuais.
+            <div className="py-12 px-4 text-center bg-stone-50/70 rounded-xl border border-stone-200 flex flex-col items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 mb-2.5">
+                <Search size={20} />
+              </div>
+              <h4 className="text-sm font-bold font-sans text-stone-900 mb-1">
+                Nenhum cliente encontrado
+              </h4>
+              <p className="text-xs text-stone-500 font-sans max-w-sm mb-4">
+                Não encontramos nenhum cliente com os filtros ou termo de busca aplicados.
+              </p>
+              <button
+                onClick={handleClearFilters}
+                className="px-3.5 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-sans font-semibold transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5"
+              >
+                <RefreshCw size={12} />
+                <span>Limpar filtros e busca</span>
+              </button>
             </div>
           ) : (
-            filteredCustomers.map((c) => {
+            paginatedCustomers.map((c) => {
               const whatsappLink = `https://wa.me/${formatPhoneForWhatsApp(c.phone)}`;
               const isCopied = copiedPhone === c.phone;
               return (
                 <div
                   key={`mobile-${c.id}`}
                   onClick={() => setSelectedCustomer(c)}
+                  style={{ contentVisibility: 'auto' }}
                   className="bg-white p-3.5 rounded-xl border border-stone-200 hover:border-stone-300 shadow-2xs space-y-2.5 active:bg-amber-50/20 transition-all cursor-pointer"
                 >
                   {/* Topo do Card: Nome + Segmento + WhatsApp Button (40px target) */}
@@ -736,7 +788,7 @@ export default function CustomersManager() {
                         </span>
                         {getSegmentBadge(c.segment)}
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs text-stone-500 font-mono mt-0.5">
+                      <div className="flex items-center gap-1.5 text-xs text-stone-500 font-mono tabular-nums mt-0.5">
                         <span>{c.formattedPhone}</span>
                         <button
                           onClick={(e) => copyPhone(c.phone, e)}
@@ -744,7 +796,7 @@ export default function CustomersManager() {
                           title="Copiar telefone"
                           aria-label={`Copiar telefone de ${c.name}`}
                         >
-                          {isCopied ? <Check size={11} className="text-emerald-600" /> : <Copy size={11} />}
+                          {isCopied ? <Check size={11} className="text-emerald-600 font-bold" /> : <Copy size={11} />}
                         </button>
                       </div>
                     </div>
@@ -766,11 +818,11 @@ export default function CustomersManager() {
                   <div className="grid grid-cols-3 gap-1.5 p-2 bg-stone-50 rounded-lg border border-stone-100 text-center font-sans">
                     <div>
                       <span className="text-[9.5px] uppercase font-semibold text-stone-400 block">Pedidos</span>
-                      <span className="text-xs font-bold text-stone-800 font-mono">{c.total_orders}</span>
+                      <span className="text-xs font-bold text-stone-800 font-mono tabular-nums">{c.total_orders}</span>
                     </div>
                     <div>
                       <span className="text-[9.5px] uppercase font-semibold text-stone-400 block">Total Gasto</span>
-                      <span className="text-xs font-bold text-stone-900 font-mono">€ {c.total_spent.toFixed(2)}</span>
+                      <span className="text-xs font-bold text-stone-900 font-mono tabular-nums">€ {c.total_spent.toFixed(2)}</span>
                     </div>
                     <div>
                       <span className="text-[9.5px] uppercase font-semibold text-stone-400 block">Última Compra</span>
@@ -818,12 +870,29 @@ export default function CustomersManager() {
             <tbody className="divide-y divide-stone-100">
               {filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-stone-400 font-sans text-xs">
-                    Nenhum cliente encontrado com os filtros atuais.
+                  <td colSpan={8} className="py-12 px-4">
+                    <div className="text-center flex flex-col items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 mb-2.5">
+                        <Search size={20} />
+                      </div>
+                      <h4 className="text-sm font-bold font-sans text-stone-900 mb-1">
+                        Nenhum cliente encontrado
+                      </h4>
+                      <p className="text-xs text-stone-500 font-sans max-w-sm mb-3.5">
+                        Não encontramos nenhum cliente com os filtros ou termo de busca aplicados.
+                      </p>
+                      <button
+                        onClick={handleClearFilters}
+                        className="px-3.5 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-sans font-semibold transition-colors cursor-pointer shadow-2xs flex items-center gap-1.5"
+                      >
+                        <RefreshCw size={12} />
+                        <span>Limpar filtros e busca</span>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filteredCustomers.map((c) => {
+                paginatedCustomers.map((c) => {
                   const whatsappLink = `https://wa.me/${formatPhoneForWhatsApp(c.phone)}`;
                   const isCopied = copiedPhone === c.phone;
 
@@ -840,7 +909,8 @@ export default function CustomersManager() {
                       tabIndex={0}
                       role="button"
                       aria-label={`Ver detalhes de ${c.name}`}
-                      className="hover:bg-amber-50/40 transition-colors cursor-pointer group focus:outline-none focus:bg-amber-50/60"
+                      style={{ contentVisibility: 'auto' }}
+                      className="hover:bg-amber-50/40 transition-colors cursor-pointer group focus:outline-none focus-visible:bg-amber-50/60 focus-visible:ring-2 focus-visible:ring-amber-500/50"
                     >
                       {/* Cliente e Segmento */}
                       <td className="py-3 px-3.5">
@@ -862,7 +932,7 @@ export default function CustomersManager() {
                       {/* Telefone e Botão WhatsApp */}
                       <td className="py-3 px-3" onClick={e => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-stone-700 text-xs font-medium">{c.formattedPhone}</span>
+                          <span className="font-mono tabular-nums text-stone-700 text-xs font-medium">{c.formattedPhone}</span>
                           <button
                             onClick={(e) => copyPhone(c.phone, e)}
                             className="p-1 text-stone-400 hover:text-stone-700 rounded transition-colors cursor-pointer"
@@ -886,18 +956,18 @@ export default function CustomersManager() {
 
                       {/* Pedidos */}
                       <td className="py-3 px-3 text-center">
-                        <span className="px-2.5 py-0.5 rounded-md font-bold font-mono bg-stone-100 text-stone-900 text-xs border border-stone-200/80">
+                        <span className="px-2.5 py-0.5 rounded-md font-bold font-mono tabular-nums bg-stone-100 text-stone-900 text-xs border border-stone-200/80">
                           {c.total_orders}
                         </span>
                       </td>
 
                       {/* Total Gasto */}
-                      <td className="py-3 px-3 text-right font-bold text-stone-900 font-mono text-xs">
+                      <td className="py-3 px-3 text-right font-bold text-stone-900 font-mono tabular-nums text-xs">
                         € {c.total_spent.toFixed(2)}
                       </td>
 
                       {/* Ticket Médio */}
-                      <td className="py-3 px-3 text-right font-bold text-emerald-700 font-mono text-xs">
+                      <td className="py-3 px-3 text-right font-bold text-emerald-700 font-mono tabular-nums text-xs">
                         € {c.ticket_medio.toFixed(2)}
                       </td>
 
@@ -924,7 +994,7 @@ export default function CustomersManager() {
                               {c.days_since_last_order === 0 ? 'Hoje' : c.days_since_last_order === 1 ? 'Ontem' : `Há ${c.days_since_last_order} dias`}
                             </span>
                           </div>
-                          <span className="text-[11px] text-stone-500 font-sans">
+                          <span className="text-[11px] text-stone-500 font-sans tabular-nums">
                             {c.last_order_at ? new Date(c.last_order_at).toLocaleDateString('pt-PT') : '-'}
                           </span>
                         </div>
@@ -956,10 +1026,79 @@ export default function CustomersManager() {
           </table>
         </div>
 
-        {/* Rodapé da tabela com totalizadores */}
-        <div className="flex flex-wrap items-center justify-between text-xs font-sans text-stone-500 pt-1 border-t border-stone-100">
-          <span>Mostrando <strong>{filteredCustomers.length}</strong> de <strong>{customers.length}</strong> clientes</span>
-          <span className="font-mono">Faturamento Filtrado: <strong className="text-stone-900 text-sm">€ {filteredCustomers.reduce((acc, c) => acc + c.total_spent, 0).toFixed(2)}</strong></span>
+        {/* Barra de Paginação e Totais */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-sans text-stone-600 pt-3 border-t border-stone-200">
+          {/* Lado Esquerdo: Contador de Clientes e Faturamento */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <span>
+              Exibindo <strong className="font-semibold text-stone-900 font-mono tabular-nums">
+                {totalFiltered === 0 ? 0 : (safeCurrentPage - 1) * (pageSize === 'all' ? totalFiltered : pageSize) + 1}–{pageSize === 'all' ? totalFiltered : Math.min(safeCurrentPage * pageSize, totalFiltered)}
+              </strong> de <strong className="font-semibold text-stone-900 font-mono tabular-nums">{totalFiltered}</strong> clientes
+            </span>
+            {totalFiltered > 0 && (
+              <>
+                <span className="text-stone-300 hidden sm:inline">•</span>
+                <span className="font-mono tabular-nums text-stone-600">
+                  Total Filtrado: <strong className="text-stone-900 font-bold">€ {filteredRevenue.toFixed(2)}</strong>
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Lado Direito: Seletor de Itens por Página & Controles de Navegação */}
+          <div className="flex items-center gap-2.5">
+            {/* Seletor de Tamanho de Página */}
+            <div className="flex items-center gap-1.5 text-xs text-stone-500">
+              <span className="hidden sm:inline">Exibir:</span>
+              <div className="relative">
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPageSize(val === 'all' ? 'all' : Number(val));
+                    setCurrentPage(1);
+                  }}
+                  className="h-8 pl-2 pr-6 border border-stone-200 hover:border-stone-300 bg-white text-stone-700 rounded-lg text-xs font-sans font-medium appearance-none cursor-pointer focus:outline-none focus:border-stone-900"
+                  aria-label="Clientes por página"
+                >
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value="all">Todos</option>
+                </select>
+                <ChevronDown size={11} className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+              </div>
+            </div>
+
+            {/* Botões de Navegação (se houver mais de 1 página) */}
+            {pageSize !== 'all' && totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={safeCurrentPage <= 1}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  title="Página anterior"
+                  aria-label="Página anterior"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+
+                <span className="px-2 text-xs font-sans font-medium text-stone-600 font-mono tabular-nums">
+                  <span className="font-bold text-stone-900">{safeCurrentPage}</span> / {totalPages}
+                </span>
+
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={safeCurrentPage >= totalPages}
+                  className="h-8 w-8 flex items-center justify-center rounded-lg border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  title="Próxima página"
+                  aria-label="Próxima página"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1026,7 +1165,7 @@ interface CustomerDetailModalProps {
   onSaveNotes: (updatedData: { name: string; address: string; notes: string }) => Promise<void>;
 }
 
-function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailModalProps) {
+const CustomerDetailModal = React.memo(function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailModalProps) {
   const [activeTab, setActiveTab] = useState<'historico' | 'acoes_whatsapp' | 'cadastro'>('historico');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -1259,10 +1398,12 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
                 </div>
               ) : (
                 customer.raw_orders.map((o: any) => {
-                  let itemsList: any[] = [];
-                  if (Array.isArray(o.items)) itemsList = o.items;
-                  else if (typeof o.items === 'string') {
-                    try { itemsList = JSON.parse(o.items); } catch { itemsList = []; }
+                  let itemsList: any[] = o.parsedItems;
+                  if (!itemsList) {
+                    if (Array.isArray(o.items)) itemsList = o.items;
+                    else if (typeof o.items === 'string') {
+                      try { itemsList = JSON.parse(o.items); } catch { itemsList = []; }
+                    }
                   }
 
                   const isCanceled = o.status === 'Cancelado';
@@ -1468,4 +1609,4 @@ function CustomerDetailModal({ customer, onClose, onSaveNotes }: CustomerDetailM
       </div>
     </div>
   );
-}
+});
