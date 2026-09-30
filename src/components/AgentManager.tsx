@@ -1079,36 +1079,36 @@ export default function AgentManager() {
       {/* Espelho de Conversas estilo WhatsApp Command Center */}
       <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col md:flex-row h-[520px] sm:h-[550px] lg:h-[570px] xl:h-[600px] min-h-[460px]">
         {/* Coluna Esquerda: Lista de Conversas (Em mobile, oculta quando conversa está aberta) */}
-        <div className={`w-full md:w-80 lg:w-[330px] xl:w-[370px] shrink-0 border-r border-stone-200 flex-col h-full bg-stone-50/40 ${selectedPhone ? 'hidden md:flex' : 'flex'}`}>
+        <div className={`w-full md:w-60 lg:w-64 xl:w-72 shrink-0 border-r border-stone-200 flex-col h-full bg-stone-50/40 ${selectedPhone ? 'hidden md:flex' : 'flex'}`}>
           {/* Busca & Filtros com Layout Estruturado */}
-          <div className="p-3 border-b border-stone-200 bg-white shrink-0 space-y-2">
+          <div className="p-2.5 border-b border-stone-200 bg-white shrink-0 space-y-1.5">
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
               <input
                 type="text"
                 placeholder="Buscar cliente ou telefone..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-8 py-2 text-base sm:text-xs bg-stone-100/80 rounded-lg border border-transparent focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all placeholder:text-stone-400 font-sans"
+                className="w-full pl-7 pr-7 py-1.5 text-xs bg-stone-100/80 rounded-lg border border-transparent focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all placeholder:text-stone-400 font-sans"
               />
               {searchTerm && (
                 <button
                   type="button"
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-0.5 rounded-full hover:bg-stone-200 transition-colors cursor-pointer"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-0.5 rounded-full hover:bg-stone-200 transition-colors cursor-pointer"
                   title="Limpar busca"
                 >
-                  <X size={13} />
+                  <X size={12} />
                 </button>
               )}
             </div>
 
             {/* Filtros Segmentados de Conversas */}
-            <div className="flex items-center gap-1 p-0.5 bg-stone-100/80 rounded-lg">
+            <div className="flex items-center gap-0.5 p-0.5 bg-stone-100/80 rounded-lg">
               <button
                 type="button"
                 onClick={() => setConversationFilter('all')}
-                className={`flex-1 py-1 px-2 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                className={`flex-1 py-0.5 px-1 rounded text-[10px] sm:text-[11px] font-semibold transition-all cursor-pointer ${
                   conversationFilter === 'all'
                     ? 'bg-white text-stone-900 shadow-2xs font-bold'
                     : 'text-stone-500 hover:text-stone-800'
@@ -1119,7 +1119,7 @@ export default function AgentManager() {
               <button
                 type="button"
                 onClick={() => setConversationFilter('ai')}
-                className={`flex-1 py-1 px-2 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                className={`flex-1 py-0.5 px-1 rounded text-[10px] sm:text-[11px] font-semibold transition-all cursor-pointer ${
                   conversationFilter === 'ai'
                     ? 'bg-white text-emerald-800 shadow-2xs font-bold'
                     : 'text-stone-500 hover:text-stone-800'
@@ -1130,7 +1130,7 @@ export default function AgentManager() {
               <button
                 type="button"
                 onClick={() => setConversationFilter('manual')}
-                className={`flex-1 py-1 px-2 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                className={`flex-1 py-0.5 px-1 rounded text-[10px] sm:text-[11px] font-semibold transition-all cursor-pointer ${
                   conversationFilter === 'manual'
                     ? 'bg-white text-amber-900 shadow-2xs font-bold'
                     : 'text-stone-500 hover:text-stone-800'
@@ -1140,20 +1140,20 @@ export default function AgentManager() {
               </button>
             </div>
 
-            <div className="flex items-center justify-between px-0.5 pt-0.5">
-              <span className="text-[11px] font-medium text-stone-500">
-                {filteredConversations.length} {filteredConversations.length === 1 ? 'conversa exibida' : 'conversas exibidas'}
+            <div className="flex items-center justify-between px-0.5">
+              <span className="text-[10px] font-medium text-stone-500">
+                {filteredConversations.length} {filteredConversations.length === 1 ? 'conversa' : 'conversas'}
               </span>
               {conversations.length > 0 && (
                 <button
                   type="button"
                   onClick={deleteAllConversations}
                   disabled={deletingAll}
-                  className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 border border-transparent hover:border-rose-200"
+                  className="text-[10px] font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-1.5 py-0.5 rounded flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50"
                   title="Excluir todas as conversas do histórico"
                 >
-                  <Trash2 size={11} className={deletingAll ? "animate-spin" : ""} />
-                  <span>{deletingAll ? 'Excluindo...' : 'Limpar Tudo'}</span>
+                  <Trash2 size={10} className={deletingAll ? "animate-spin" : ""} />
+                  <span>{deletingAll ? 'Excluindo...' : 'Limpar'}</span>
                 </button>
               )}
             </div>
@@ -1179,14 +1179,14 @@ export default function AgentManager() {
                   <button
                     key={c.phone}
                     onClick={() => setSelectedPhone(c.phone)}
-                    className={`w-full text-left p-3 transition-all flex items-start gap-3 cursor-pointer ${
+                    className={`w-full text-left p-2.5 transition-all flex items-start gap-2.5 cursor-pointer ${
                       isSelected 
                         ? 'bg-amber-500/10 border-l-4 border-amber-500 shadow-2xs' 
                         : 'hover:bg-stone-100/60 bg-white'
                     }`}
                   >
-                    <div className="relative w-9 h-9 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center font-bold text-xs shrink-0 border border-stone-200 mt-0.5">
-                      {displayName ? displayName.charAt(0).toUpperCase() : <User size={14} />}
+                    <div className="relative w-8 h-8 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center font-bold text-xs shrink-0 border border-stone-200 mt-0.5">
+                      {displayName ? displayName.charAt(0).toUpperCase() : <User size={13} />}
                       <span 
                         className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${c.paused ? 'bg-amber-500' : 'bg-emerald-500'}`} 
                         title={c.paused ? "IA Pausada neste chat (Intervenção Manual)" : "IA Respondendo"}
@@ -1313,12 +1313,12 @@ export default function AgentManager() {
                           </button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 text-xs">
-                        <span className={`w-2 h-2 rounded-full ${selectedConversation.paused ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'}`} />
-                        <span className={`font-semibold ${selectedConversation.paused ? 'text-amber-800' : 'text-emerald-800'}`}>
-                          {selectedConversation.paused ? 'Atendimento Manual Ativo (IA Pausada)' : 'Giovanna Respondendo Automaticamente'}
-                        </span>
-                      </div>
+                      {selectedConversation.paused && (
+                        <div className="flex items-center gap-1.5 text-xs text-amber-800">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          <span className="font-semibold text-[11px]">Atendimento Manual Ativo</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -1536,9 +1536,9 @@ export default function AgentManager() {
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Barra de Respostas Rápidas de 1 Clique */}
-            <div className="px-3 py-2 bg-stone-50 border-t border-stone-200 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
-              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1 font-sans">
+            {/* Barra de Respostas Rápidas de 1 Clique (Compacta sem rolagem lateral) */}
+            <div className="px-3 py-1.5 bg-stone-50 border-t border-stone-200 flex items-center gap-1 sm:gap-1.5 flex-wrap shrink-0">
+              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider shrink-0 mr-0.5 flex items-center gap-1 font-sans">
                 <Sparkles size={11} className="text-amber-500" /> Rápidas:
               </span>
               {QUICK_RESPONSES.map((qr, idx) => (
@@ -1546,7 +1546,7 @@ export default function AgentManager() {
                   key={idx}
                   type="button"
                   onClick={() => setManualMessage(qr.text)}
-                  className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium bg-white hover:bg-amber-50 hover:text-amber-900 hover:border-amber-300 text-stone-700 border border-stone-200 transition-all cursor-pointer active:scale-95 shadow-2xs font-sans"
+                  className="px-2 py-0.5 rounded-md text-[10.5px] font-medium bg-white hover:bg-amber-50 hover:text-amber-900 hover:border-amber-300 text-stone-700 border border-stone-200 transition-all cursor-pointer active:scale-95 shadow-2xs font-sans whitespace-nowrap"
                   title={`Inserir no campo: "${qr.text}"`}
                 >
                   {qr.label}
