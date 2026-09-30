@@ -4,7 +4,8 @@ import {
   Bot, Power, Loader2, MessageSquare, 
   Send, User, Search, PauseCircle, PlayCircle, X,
   Image as ImageIcon, FileText, Music, ZoomIn, Download, ExternalLink, ShieldCheck, CheckCheck,
-  Users, Clock, TrendingUp, Sparkles, ChevronDown, ChevronUp, RefreshCw, Trash2
+  Users, Clock, TrendingUp, Sparkles, ChevronDown, ChevronUp, RefreshCw, Trash2,
+  CreditCard, Coins, CheckCircle2, ArrowUpRight
 } from 'lucide-react';
 
 export interface ChatMessage {
@@ -802,195 +803,230 @@ export default function AgentManager() {
   }
 
   return (
-    <div className="space-y-3 max-w-7xl">
-      {/* Topo / Header Minimalista de Controle */}
-      <div className="bg-white rounded-xl border border-stone-200/80 px-4 py-3 shadow-xs flex flex-wrap items-center justify-between gap-3">
-        {/* Identificação da IA */}
-        <div className="flex items-center gap-3">
-          <div className={`relative w-10 h-10 rounded-full flex items-center justify-center font-bold transition-colors ${
+    <div className="space-y-4 max-w-7xl">
+      {/* Topo / Painel de Comando da Atendente Virtual */}
+      <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs p-4 sm:p-5 flex flex-wrap items-center justify-between gap-4">
+        {/* Identificação de Alto Impacto da IA */}
+        <div className="flex items-center gap-3.5 sm:gap-4">
+          <div className={`relative w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 transition-all ${
             isActive 
-              ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' 
-              : 'bg-amber-50 text-amber-600 border border-amber-200'
+              ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 ring-4 ring-emerald-500/10' 
+              : 'bg-amber-500/10 text-amber-600 border border-amber-500/30 ring-4 ring-amber-500/10'
           }`}>
-            <Bot size={22} className={updating ? "animate-pulse" : ""} />
+            <Bot size={26} className={updating ? "animate-pulse" : ""} />
             <span 
-              className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full ring-2 ring-white ${
-                isActive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+              className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full ring-2 ring-white flex items-center justify-center ${
+                isActive ? 'bg-emerald-500' : 'bg-amber-500'
               }`} 
-              title={isActive ? "IA Conectada" : "IA Pausada"}
-            />
+              title={isActive ? "IA Conectada e Operando" : "IA Pausada"}
+            >
+              {isActive && (
+                <span className="w-full h-full rounded-full bg-emerald-400 animate-ping opacity-75" />
+              )}
+            </span>
           </div>
 
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm sm:text-base font-bold text-stone-900 leading-tight">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-black text-stone-900 tracking-tight leading-tight font-sans">
                 Giovanna
               </h2>
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+              <span className={`inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-0.5 rounded-full border transition-all ${
                 isActive 
-                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300' 
+                  : 'bg-amber-50 text-amber-900 border-amber-300'
               }`}>
-                {isActive ? 'Ativa' : 'Pausada Global'}
+                <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                {isActive ? 'Operação Automática Ativa' : 'Pausada • Modo Manual'}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-stone-400 font-mono">
-              <span>{conversations.length} {conversations.length === 1 ? 'conversa' : 'conversas'}</span>
+            <p className="text-xs text-stone-500 mt-0.5 flex flex-wrap items-center gap-2">
+              <span>Atendente Virtual Oficial do WhatsApp</span>
+              <span className="text-stone-300">•</span>
+              <span className="font-mono text-stone-600 font-medium">{conversations.length} {conversations.length === 1 ? 'conversa gravada' : 'conversas gravadas'}</span>
               {lastUpdated && (
                 <>
-                  <span>•</span>
-                  <span>Atualizado às {lastUpdated}</span>
+                  <span className="text-stone-300">•</span>
+                  <span className="text-stone-400 font-mono text-[11px]">Sincronizado às {lastUpdated}</span>
                 </>
               )}
-            </div>
+            </p>
           </div>
         </div>
 
-        {/* Botão Master e Toggle de Métricas */}
-        <div className="flex items-center gap-2">
+        {/* Controles de Autoridade */}
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
           <button
+            type="button"
             onClick={() => setShowMetricsDashboard(prev => !prev)}
-            className={`px-3 py-2 rounded-lg font-medium text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer border shadow-2xs ${
+            className={`min-h-[40px] px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer border ${
               showMetricsDashboard
-                ? 'bg-amber-500/10 text-amber-900 border-amber-300 font-semibold'
+                ? 'bg-stone-900 text-white border-stone-900 shadow-xs'
                 : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
             }`}
-            title="Exibir ou ocultar métricas de atendimento da IA"
+            title="Exibir ou ocultar telemetria de atendimento"
           >
-            <TrendingUp size={14} className="text-amber-600 shrink-0" />
-            <span className="hidden sm:inline">Métricas de Atendimento</span>
-            <span className="sm:hidden">Métricas</span>
-            {showMetricsDashboard ? <ChevronUp size={13} className="text-stone-400" /> : <ChevronDown size={13} className="text-stone-400" />}
+            <TrendingUp size={15} className={showMetricsDashboard ? "text-amber-400" : "text-stone-500"} />
+            <span className="hidden sm:inline">Telemetria & Desempenho</span>
+            <span className="sm:hidden">Telemetria</span>
+            {showMetricsDashboard ? <ChevronUp size={14} className="text-stone-400" /> : <ChevronDown size={14} className="text-stone-400" />}
           </button>
 
           <button
+            type="button"
             onClick={toggleBot}
             disabled={updating}
-            className={`px-3.5 py-2 rounded-lg font-medium text-xs font-mono flex items-center gap-2 transition-all cursor-pointer shadow-xs ${
+            className={`min-h-[40px] px-4 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs disabled:opacity-60 ${
               isActive 
-                ? 'bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200' 
-                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200' 
+                : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 shadow-md ring-2 ring-emerald-500/20'
             }`}
           >
-            <Power size={14} className={updating ? "animate-spin" : ""} />
+            <Power size={15} className={updating ? "animate-spin" : ""} />
             {updating 
-              ? 'Salvando...' 
-              : (isActive ? 'Pausar IA Geral' : 'Ativar IA Geral')}
+              ? 'Gravando status...' 
+              : (isActive ? 'Pausar Atendimento Geral' : 'Ativar Atendimento Geral')}
           </button>
         </div>
       </div>
 
-      {/* Cockpit de Desempenho & Inteligência de I.A. */}
+      {/* Telemetria de Atendimento e Desempenho Hoje */}
       {showMetricsDashboard && (
-        <div className="bg-stone-900 text-white rounded-xl p-3.5 sm:p-4 shadow-sm border border-stone-800 space-y-3 transition-all animate-in fade-in duration-200">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-800 pb-2.5">
+        <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs p-4 sm:p-5 space-y-4 animate-in fade-in duration-200">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-stone-100">
             <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-amber-400 shrink-0" />
-              <span className="font-bold text-xs tracking-wider uppercase text-stone-200">Cockpit de Atendimento & Inteligência de I.A.</span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">Hoje</span>
+              <Sparkles size={16} className="text-amber-500 shrink-0" />
+              <h3 className="font-bold text-xs uppercase tracking-wider text-stone-800 font-sans">
+                Telemetria de Atendimento no WhatsApp
+              </h3>
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                Hoje
+              </span>
             </div>
+
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setShowLearningDrawer(prev => !prev)}
-                className="text-[11px] font-mono text-amber-400 hover:text-amber-300 flex items-center gap-1 px-2.5 py-1 rounded bg-amber-400/10 hover:bg-amber-400/20 border border-amber-400/20 transition-colors cursor-pointer"
+                className={`text-xs font-semibold flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all cursor-pointer ${
+                  showLearningDrawer
+                    ? 'bg-amber-500 text-stone-950 border-amber-500 shadow-2xs font-bold'
+                    : 'bg-stone-50 hover:bg-amber-50/80 text-stone-700 hover:text-amber-900 border-stone-200'
+                }`}
               >
-                <span>💡 Aprendizados de Hoje ({showLearningDrawer ? 'Ocultar' : 'Ver Regras'})</span>
+                <span>💡 Diretrizes de Atendimento ({showLearningDrawer ? 'Ocultar' : 'Ver Regras'})</span>
               </button>
               <button
+                type="button"
                 onClick={fetchDailyMetrics}
                 disabled={loadingMetrics}
-                className="text-[11px] font-mono text-stone-400 hover:text-white flex items-center gap-1 px-2 py-1 rounded hover:bg-stone-800 transition-colors cursor-pointer"
+                className="text-xs font-medium text-stone-600 hover:text-stone-900 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-stone-200 hover:bg-stone-50 transition-colors cursor-pointer"
                 title="Recalcular métricas de hoje"
               >
-                <RefreshCw size={12} className={loadingMetrics ? "animate-spin text-amber-400" : ""} />
+                <RefreshCw size={12} className={loadingMetrics ? "animate-spin text-amber-600" : "text-stone-500"} />
                 <span>Atualizar</span>
               </button>
             </div>
           </div>
 
-          {/* Grid de 3 Cards de Métricas */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-            {/* Card 1: Atendimentos Hoje */}
-            <div className="bg-stone-800/80 rounded-lg p-3 border border-stone-700/60 relative overflow-hidden">
-              <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
-                <span className="font-medium">Clientes Hoje</span>
-                <Users size={15} className="text-purple-400" />
+          {/* Grid de 3 Métricas Bolder de Alto Contraste */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 divide-y sm:divide-y-0 sm:divide-x divide-stone-100">
+            {/* Métrica 1: Clientes Hoje */}
+            <div className="pt-1 sm:pt-0 sm:px-3 first:pl-0">
+              <div className="flex items-center justify-between text-stone-500 text-xs mb-1">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">Clientes Atendidos</span>
+                <Users size={16} className="text-stone-400" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold font-mono text-white">
+              <div className="text-2xl sm:text-3xl font-black font-sans text-stone-950 tracking-tight">
                 {metrics.totalConversationsToday}
               </div>
-              <div className="text-[10.5px] text-stone-400 mt-1 flex items-center gap-1 font-mono">
-                <span className="text-emerald-400">🤖 {metrics.aiHandledConversations} IA</span>
-                <span>•</span>
-                <span className="text-amber-400">👤 {metrics.humanHandledConversations} Manuais</span>
+              <div className="text-xs text-stone-500 mt-1.5 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 font-semibold text-emerald-700">
+                  <Bot size={12} /> {metrics.aiHandledConversations} pela IA
+                </span>
+                <span className="text-stone-300">•</span>
+                <span className="inline-flex items-center gap-1 font-semibold text-amber-700">
+                  <User size={12} /> {metrics.humanHandledConversations} manual
+                </span>
               </div>
             </div>
 
-            {/* Card 2: Volume de Mensagens */}
-            <div className="bg-stone-800/80 rounded-lg p-3 border border-stone-700/60 relative overflow-hidden">
-              <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
-                <span className="font-medium">Mensagens Trocadas</span>
-                <MessageSquare size={15} className="text-blue-400" />
+            {/* Métrica 2: Mensagens Trocadas */}
+            <div className="pt-3 sm:pt-0 sm:px-3">
+              <div className="flex items-center justify-between text-stone-500 text-xs mb-1">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">Volume de Mensagens</span>
+                <MessageSquare size={16} className="text-stone-400" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold font-mono text-white">
+              <div className="text-2xl sm:text-3xl font-black font-sans text-stone-950 tracking-tight">
                 {metrics.totalClientMessages + metrics.totalBotMessages + metrics.totalHumanMessages}
               </div>
-              <div className="text-[10.5px] text-stone-400 mt-1 flex items-center gap-1 font-mono">
-                <span className="text-blue-300">{metrics.totalClientMessages} clientes</span>
-                <span>•</span>
-                <span className="text-stone-300">{metrics.totalBotMessages + metrics.totalHumanMessages} pizzaria</span>
+              <div className="text-xs text-stone-500 mt-1.5 flex items-center gap-2">
+                <span className="font-semibold text-stone-700">{metrics.totalClientMessages} de clientes</span>
+                <span className="text-stone-300">•</span>
+                <span className="font-semibold text-stone-700">{metrics.totalBotMessages + metrics.totalHumanMessages} da pizzaria</span>
               </div>
             </div>
 
-            {/* Card 3: Velocidade de Resposta */}
-            <div className="bg-stone-800/80 rounded-lg p-3 border border-stone-700/60 relative overflow-hidden">
-              <div className="flex items-center justify-between text-stone-400 text-xs mb-1">
-                <span className="font-medium">Velocidade da IA</span>
-                <Clock size={15} className="text-emerald-400" />
+            {/* Métrica 3: Agilidade */}
+            <div className="pt-3 sm:pt-0 sm:px-3">
+              <div className="flex items-center justify-between text-stone-500 text-xs mb-1">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-stone-500">Agilidade da Resposta</span>
+                <Clock size={16} className="text-emerald-500" />
               </div>
-              <div className="text-xl sm:text-2xl font-bold font-mono text-emerald-400">
+              <div className="text-2xl sm:text-3xl font-black font-sans text-emerald-600 tracking-tight">
                 {metrics.avgResponseTimeSec > 0 ? `${metrics.avgResponseTimeSec}s` : '< 5s'}
               </div>
-              <div className="text-[10.5px] text-stone-400 mt-1 font-mono">
-                Tempo médio de resposta
+              <div className="text-xs text-stone-400 mt-1.5">
+                Tempo médio da IA por mensagem
               </div>
             </div>
           </div>
 
-          {/* Aba de Aprendizado & Inteligência com Casos Reais de Hoje */}
+          {/* Drawer de Diretrizes Oficiais (Alta Legibilidade) */}
           {showLearningDrawer && (
-            <div className="bg-stone-950/90 rounded-lg p-3.5 border border-amber-500/30 space-y-2.5 animate-in fade-in duration-150">
-              <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
-                <Sparkles size={14} />
-                <span>Diretrizes e Aprendizados Consolidados para a Giovanna (Base de Casos Reais)</span>
+            <div className="bg-amber-500/5 rounded-xl p-4 border border-amber-500/20 space-y-3 animate-in fade-in duration-150">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-900 uppercase tracking-wide">
+                <Sparkles size={14} className="text-amber-600" />
+                <span>Diretrizes e Regras Operacionais da Giovanna</span>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] leading-relaxed text-stone-300">
-                <div className="p-2.5 rounded bg-stone-900 border border-stone-800 flex gap-2">
-                  <span className="text-base shrink-0">💶</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-stone-700">
+                <div className="p-3 rounded-lg bg-white border border-stone-200/90 shadow-2xs flex gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0 border border-emerald-200">
+                    <CreditCard size={16} />
+                  </div>
                   <div>
-                    <span className="font-semibold text-white block">Pagamento Oficial (Regra Estrita):</span>
-                    Aceitar apenas <strong>MB WAY (+351 914 044 317)</strong> e <strong>Dinheiro (Numerário)</strong>. Transferência bancária é desconsiderada como regra geral e nunca deve ser oferecida.
+                    <span className="font-bold text-stone-900 block mb-0.5">Pagamento Estrito</span>
+                    Aceitar exclusivamente <strong>MB WAY (+351 914 044 317)</strong> ou <strong>Dinheiro (Numerário)</strong>. Transferência bancária é proibida.
                   </div>
                 </div>
-                <div className="p-2.5 rounded bg-stone-900 border border-stone-800 flex gap-2">
-                  <span className="text-base shrink-0">🪙</span>
+
+                <div className="p-3 rounded-lg bg-white border border-stone-200/90 shadow-2xs flex gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0 border border-amber-200">
+                    <Coins size={16} />
+                  </div>
                   <div>
-                    <span className="font-semibold text-white block">Troco Inteligente em Dinheiro:</span>
-                    Sempre que o cliente optar por dinheiro, perguntar se possui valor exato ou se precisa de troco para alguma nota específica (ex: nota de € 20, € 50).
+                    <span className="font-bold text-stone-900 block mb-0.5">Troco Inteligente em Dinheiro</span>
+                    Ao optar por dinheiro, a IA sempre questiona se o cliente tem o valor exato ou precisa de troco para nota específica (ex: € 20, € 50).
                   </div>
                 </div>
-                <div className="p-2.5 rounded bg-stone-900 border border-stone-800 flex gap-2">
-                  <span className="text-base shrink-0">🥤</span>
+
+                <div className="p-3 rounded-lg bg-white border border-stone-200/90 shadow-2xs flex gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-700 flex items-center justify-center shrink-0 border border-blue-200">
+                    <CheckCircle2 size={16} />
+                  </div>
                   <div>
-                    <span className="font-semibold text-white block">Bebidas & Refrigerantes:</span>
-                    Confirmar prontamente que a pizzaria possui Coca-Cola 1L nas opções <strong>Normal</strong> e <strong>Zero</strong>, além de cervejas Sagres e águas.
+                    <span className="font-bold text-stone-900 block mb-0.5">Cardápio & Bebidas</span>
+                    Disponíveis Coca-Cola 1L (Normal e Zero), cervejas Sagres e águas minerais.
                   </div>
                 </div>
-                <div className="p-2.5 rounded bg-stone-900 border border-stone-800 flex gap-2">
-                  <span className="text-base shrink-0">⏱️</span>
+
+                <div className="p-3 rounded-lg bg-white border border-stone-200/90 shadow-2xs flex gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-stone-100 text-stone-700 flex items-center justify-center shrink-0 border border-stone-200">
+                    <Clock size={16} />
+                  </div>
                   <div>
-                    <span className="font-semibold text-white block">Status & Confirmações:</span>
-                    Avisar com prontidão quando o pedido já estiver no forno ou saindo para entrega com os estafetas (tempo médio estimado: até 60min).
+                    <span className="font-bold text-stone-900 block mb-0.5">Prazos de Entrega</span>
+                    Avisar prontamente o cliente assim que o pedido entrar no forno ou sair para entrega (prazo estimado: até 60min).
                   </div>
                 </div>
               </div>
@@ -999,52 +1035,52 @@ export default function AgentManager() {
         </div>
       )}
 
-      {/* Espelho de Conversas estilo ADO / WhatsApp Minimalista */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-xs overflow-hidden flex flex-col md:flex-row h-[calc(100vh-230px)] min-h-[400px]">
-        {/* Coluna Esquerda: Lista de Conversas (Alta Densidade) */}
-        <div className="w-full md:w-72 lg:w-80 border-r border-stone-200 flex flex-col h-full bg-stone-50/50">
-          {/* Busca Limpa Compacta e Ações */}
-          <div className="p-2 border-b border-stone-200/80 bg-white shrink-0 space-y-1.5">
+      {/* Espelho de Conversas estilo WhatsApp Command Center */}
+      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col md:flex-row h-[calc(100vh-210px)] min-h-[500px]">
+        {/* Coluna Esquerda: Lista de Conversas */}
+        <div className="w-full md:w-80 lg:w-96 border-r border-stone-200 flex flex-col h-full bg-stone-50/50">
+          {/* Busca & Ações com Alto Contraste */}
+          <div className="p-3 border-b border-stone-200 bg-white shrink-0 space-y-2">
             <div className="relative">
-              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
               <input
                 type="text"
-                placeholder="Buscar conversa ou telefone..."
+                placeholder="Buscar cliente ou número de telefone..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-7 pr-2.5 py-1 text-xs bg-stone-100/80 rounded-md border border-transparent focus:border-stone-300 focus:bg-white focus:outline-none transition-all"
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-stone-100/90 rounded-lg border border-transparent focus:border-stone-300 focus:bg-white focus:outline-none transition-all placeholder:text-stone-400 font-sans"
               />
             </div>
 
-            {conversations.length > 0 && (
-              <div className="flex items-center justify-between px-1 pt-0.5">
-                <span className="text-[10px] font-mono text-stone-500 font-medium">
-                  {filteredConversations.length} {filteredConversations.length === 1 ? 'conversa' : 'conversas'}
-                </span>
+            <div className="flex items-center justify-between px-0.5 pt-0.5">
+              <span className="text-xs font-semibold text-stone-600">
+                {filteredConversations.length} {filteredConversations.length === 1 ? 'conversa' : 'conversas'}
+              </span>
+              {conversations.length > 0 && (
                 <button
                   type="button"
                   onClick={deleteAllConversations}
                   disabled={deletingAll}
-                  className="text-[10px] font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 px-2 py-0.5 rounded flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 border border-transparent hover:border-red-200"
-                  title="Excluir todas as conversas e limpar histórico"
+                  className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 border border-transparent hover:border-rose-200"
+                  title="Excluir todas as conversas do histórico"
                 >
-                  <Trash2 size={11} className={deletingAll ? "animate-spin" : ""} />
-                  <span>{deletingAll ? 'Excluindo...' : 'Excluir Todas'}</span>
+                  <Trash2 size={12} className={deletingAll ? "animate-spin" : ""} />
+                  <span>{deletingAll ? 'Excluindo...' : 'Limpar Tudo'}</span>
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          {/* Lista de Contatos Alta Densidade com Scroll */}
-          <div className="flex-1 overflow-y-auto divide-y divide-stone-100/80">
+          {/* Lista de Contatos com Destaque de Estados */}
+          <div className="flex-1 overflow-y-auto divide-y divide-stone-100">
             {loadingConversations ? (
-              <div className="p-6 text-center text-xs font-mono text-stone-400 flex flex-col items-center gap-1.5">
-                <Loader2 size={15} className="animate-spin text-stone-400" />
-                Carregando conversas...
+              <div className="p-8 text-center text-xs font-mono text-stone-400 flex flex-col items-center gap-2">
+                <Loader2 size={18} className="animate-spin text-amber-500" />
+                Sincronizando conversas...
               </div>
             ) : filteredConversations.length === 0 ? (
-              <div className="p-6 text-center text-xs text-stone-400">
-                Nenhuma conversa no momento.
+              <div className="p-8 text-center text-xs text-stone-400">
+                Nenhuma conversa encontrada.
               </div>
             ) : (
               filteredConversations.map(c => {
@@ -1055,32 +1091,33 @@ export default function AgentManager() {
                   <button
                     key={c.phone}
                     onClick={() => setSelectedPhone(c.phone)}
-                    className={`w-full text-left px-2.5 py-1.5 transition-colors flex items-center gap-2.5 cursor-pointer ${
+                    className={`w-full text-left p-3 transition-all flex items-start gap-3 cursor-pointer ${
                       isSelected 
-                        ? 'bg-amber-50/90 border-l-2 border-amber-500' 
+                        ? 'bg-amber-50/80 border-l-4 border-amber-500' 
                         : 'hover:bg-stone-100/60 bg-white'
                     }`}
                   >
-                    <div className="relative w-7 h-7 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center font-bold text-[11px] shrink-0 border border-stone-200">
-                      {displayName ? displayName.charAt(0).toUpperCase() : <User size={12} />}
+                    <div className="relative w-9 h-9 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center font-bold text-xs shrink-0 border border-stone-200 mt-0.5">
+                      {displayName ? displayName.charAt(0).toUpperCase() : <User size={14} />}
                       <span 
-                        className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${c.paused ? 'bg-amber-500' : 'bg-emerald-500'}`} 
-                        title={c.paused ? "IA Pausada neste chat" : "IA Ativa"}
+                        className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full ring-2 ring-white ${c.paused ? 'bg-amber-500' : 'bg-emerald-500'}`} 
+                        title={c.paused ? "IA Pausada neste chat (Intervenção Manual)" : "IA Respondendo"}
                       />
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-1 leading-none mb-0.5">
-                        <span className="font-semibold text-xs text-stone-900 truncate">
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="font-bold text-xs text-stone-900 truncate">
                           {displayName}
                         </span>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[9px] font-mono text-stone-400">
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-[10px] font-mono text-stone-400">
                             {c.updated_at ? new Date(c.updated_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}
                           </span>
                           <button
+                            type="button"
                             onClick={(e) => deleteConversation(e, c.phone)}
-                            className="text-stone-300 hover:text-red-500 hover:bg-red-50 p-0.5 rounded transition-colors"
+                            className="text-stone-300 hover:text-rose-500 hover:bg-rose-50 p-1 rounded transition-colors"
                             title="Excluir conversa"
                           >
                             <X size={12} />
@@ -1088,28 +1125,28 @@ export default function AgentManager() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-1.5">
-                        <div className="text-[11px] text-stone-500 truncate leading-tight flex items-center gap-1 min-w-0">
-                          {c.last_sender === 'bot' && <span className="text-emerald-600 font-medium shrink-0">IA: </span>}
-                          {c.last_sender === 'human' && <span className="text-blue-600 font-medium shrink-0">Você: </span>}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="text-xs text-stone-500 truncate leading-snug flex items-center gap-1 min-w-0">
+                          {c.last_sender === 'bot' && <span className="text-emerald-700 font-semibold shrink-0">IA: </span>}
+                          {c.last_sender === 'human' && <span className="text-blue-700 font-semibold shrink-0">Você: </span>}
                           {c.last_message && (c.last_message.startsWith('📷') || c.last_message.includes('[FOTO:') || c.last_message.includes('[Foto')) ? (
                             <span className="flex items-center gap-1 text-emerald-700 font-medium truncate">
-                              <ImageIcon size={11} className="shrink-0 text-emerald-600" />
+                              <ImageIcon size={12} className="shrink-0 text-emerald-600" />
                               <span className="truncate">{c.last_message.replace(/^\[(?:FOTO:[^\]]+\]\s*|Foto\/Comprovante[^\]]*\]\s*)/i, '').trim() || 'Foto / Comprovante'}</span>
                             </span>
                           ) : c.last_message && (c.last_message.startsWith('🎵') || c.last_message.includes('[AUDIO:') || c.last_message.includes('voz]')) ? (
                             <span className="flex items-center gap-1 text-amber-700 font-medium truncate">
-                              <Music size={11} className="shrink-0 text-amber-600" />
+                              <Music size={12} className="shrink-0 text-amber-600" />
                               <span className="truncate">Mensagem de voz</span>
                             </span>
                           ) : c.last_message && (c.last_message.startsWith('🎭') || c.last_message.startsWith('🏷️') || c.last_message.includes('[FIGURINHA:') || c.last_message.includes('Figurinha')) ? (
                             <span className="flex items-center gap-1 text-purple-700 font-medium truncate">
-                              <span className="text-[11px] shrink-0">🎭</span>
+                              <span className="text-xs shrink-0">🎭</span>
                               <span className="truncate">Figurinha</span>
                             </span>
                           ) : c.last_message && (c.last_message.startsWith('📄') || c.last_message.includes('[DOC:')) ? (
                             <span className="flex items-center gap-1 text-blue-700 font-medium truncate">
-                              <FileText size={11} className="shrink-0 text-blue-600" />
+                              <FileText size={12} className="shrink-0 text-blue-600" />
                               <span className="truncate">Documento</span>
                             </span>
                           ) : (
@@ -1117,8 +1154,8 @@ export default function AgentManager() {
                           )}
                         </div>
                         {c.paused && (
-                          <span className="shrink-0 text-[8px] font-mono font-bold px-1 py-0.2 rounded bg-amber-100 text-amber-800">
-                            Pausa
+                          <span className="shrink-0 text-[10px] font-sans font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-900 border border-amber-500/25">
+                            Manual
                           </span>
                         )}
                       </div>
@@ -1130,57 +1167,65 @@ export default function AgentManager() {
           </div>
         </div>
 
-        {/* Coluna Direita: Painel do Chat */}
+        {/* Coluna Direita: Painel do Chat ou Empty State Produtivo */}
         {selectedConversation ? (
           <div className="flex-1 flex flex-col h-full bg-[#efeae2]">
-            {/* Topo do Chat Selecionado */}
+            {/* Topo do Chat Selecionado com Controle Imediato */}
             {(() => {
               const isHeaderPizzeriaName = selectedConversation.name && selectedConversation.name.toLowerCase().includes("41 menu");
               const headerDisplayName = (!selectedConversation.name || isHeaderPizzeriaName) ? (selectedConversation.phone || 'Cliente') : selectedConversation.name;
               return (
-                <div className="px-3 py-2 bg-white border-b border-stone-200 flex items-center justify-between gap-2 shrink-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center font-bold text-xs shrink-0 border border-stone-200">
-                      {headerDisplayName ? headerDisplayName.charAt(0).toUpperCase() : <User size={12} />}
+                <div className="px-4 py-3 bg-white border-b border-stone-200 flex items-center justify-between gap-3 shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-stone-100 text-stone-700 flex items-center justify-center font-bold text-xs shrink-0 border border-stone-200">
+                      {headerDisplayName ? headerDisplayName.charAt(0).toUpperCase() : <User size={14} />}
                     </div>
                     <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 leading-none mb-0.5">
-                        <h3 className="font-bold text-xs text-stone-900 truncate">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <h3 className="font-bold text-sm text-stone-900 truncate">
                           {headerDisplayName}
                         </h3>
-                        <span className="text-[10px] font-mono text-stone-400">
-                          {selectedConversation.phone}
-                        </span>
+                        <a
+                          href={`https://wa.me/${selectedConversation.phone.replace(/\D/g, '')}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-[11px] font-mono text-emerald-700 hover:text-emerald-800 flex items-center gap-0.5 hover:underline"
+                          title="Abrir no WhatsApp Web"
+                        >
+                          <span>{selectedConversation.phone}</span>
+                          <ArrowUpRight size={11} />
+                        </a>
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] leading-none">
-                        <span className={`w-1.5 h-1.5 rounded-full ${selectedConversation.paused ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                        <span className={selectedConversation.paused ? 'text-amber-700 font-medium' : 'text-emerald-700 font-medium'}>
-                          {selectedConversation.paused ? 'IA pausada neste chat' : 'IA respondendo'}
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className={`w-2 h-2 rounded-full ${selectedConversation.paused ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'}`} />
+                        <span className={`font-semibold ${selectedConversation.paused ? 'text-amber-800' : 'text-emerald-800'}`}>
+                          {selectedConversation.paused ? 'Atendimento Manual Ativo (IA Pausada)' : 'Giovanna Respondendo Automaticamente'}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Botão de Pausa Individual Discreto */}
+                  {/* Botão de Alternância de Pausa com Convencimento */}
                   <button
+                    type="button"
                     onClick={() => toggleChatPause(selectedConversation.phone, Boolean(selectedConversation.paused))}
                     disabled={togglingChatPause}
-                    className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-medium flex items-center gap-1 transition-all cursor-pointer ${
+                    className={`min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
                       selectedConversation.paused
-                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
-                        : 'bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200'
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20'
+                        : 'bg-stone-100 hover:bg-amber-50 text-stone-700 hover:text-amber-900 border border-stone-200 hover:border-amber-300'
                     }`}
-                    title={selectedConversation.paused ? "Retomar respostas automáticas da IA" : "Pausar IA neste chat para atender manualmente"}
+                    title={selectedConversation.paused ? "Retomar respostas automáticas da IA neste chat" : "Pausar IA neste chat para intervir manualmente"}
                   >
                     {selectedConversation.paused ? (
                       <>
-                        <PlayCircle size={13} className="text-white shrink-0" />
+                        <PlayCircle size={15} className="text-white shrink-0" />
                         <span>Retomar IA</span>
                       </>
                     ) : (
                       <>
-                        <PauseCircle size={13} className="text-stone-500 shrink-0" />
-                        <span>Pausar IA</span>
+                        <PauseCircle size={15} className="text-stone-500 shrink-0" />
+                        <span>Pausar IA (Intervir)</span>
                       </>
                     )}
                   </button>
@@ -1188,12 +1233,12 @@ export default function AgentManager() {
               );
             })()}
 
-            {/* Mensagens com Balões Padrão WhatsApp (Compacto) */}
-            <div className="flex-1 p-3 overflow-y-auto space-y-1.5 relative" style={{ backgroundImage: 'url("https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png")', opacity: 0.9 }}>
+            {/* Mensagens com Balões Padrão WhatsApp (Compacto & Legível) */}
+            <div className="flex-1 p-3.5 sm:p-4 overflow-y-auto space-y-2 relative" style={{ backgroundImage: 'url("https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png")', opacity: 0.95 }}>
               {loadingMessages ? (
                 <div className="h-full flex flex-col items-center justify-center gap-2 text-stone-400 relative z-10">
-                  <Loader2 size={18} className="animate-spin text-amber-500" />
-                  <span className="text-xs font-mono">Carregando histórico...</span>
+                  <Loader2 size={20} className="animate-spin text-amber-500" />
+                  <span className="text-xs font-mono">Carregando mensagens...</span>
                 </div>
               ) : activeMessages && activeMessages.length > 0 ? (
                 activeMessages.map((m, idx) => {
@@ -1201,7 +1246,6 @@ export default function AgentManager() {
                   const isBot = m.sender === 'bot';
                   const isHuman = m.sender === 'human';
                   const parsed = parseMessageContent(m.text, m.media_url, m.media_type, m.caption);
-
                   const isSticker = parsed.mediaType === 'sticker';
 
                   return (
@@ -1213,36 +1257,36 @@ export default function AgentManager() {
                         className={`relative max-w-[85%] sm:max-w-[75%] ${
                           isSticker
                             ? 'bg-transparent shadow-none p-0'
-                            : `rounded-lg px-2.5 pt-1.5 pb-1.5 text-[12.5px] leading-snug shadow-sm ${
+                            : `rounded-xl px-3 pt-2 pb-1.5 text-xs sm:text-[13px] leading-relaxed shadow-xs ${
                                 isClient
-                                  ? 'bg-white text-[#111b21] rounded-tl-sm'
-                                  : 'bg-[#d9fdd3] text-[#111b21] rounded-tr-sm'
+                                  ? 'bg-white text-stone-900 rounded-tl-xs border border-stone-200/50'
+                                  : 'bg-[#dcf8c6] text-stone-950 rounded-tr-xs border border-emerald-200/50'
                               }`
                         }`}
                       >
                         {/* Nome do remetente interno */}
                         {!isClient && !isSticker && (
-                          <div className={`text-[10.5px] font-medium mb-1 leading-none ${isBot ? 'text-emerald-600' : 'text-blue-500'}`}>
-                            {isBot ? 'Giovanna' : 'Você'}
+                          <div className={`text-[11px] font-bold mb-1 leading-none ${isBot ? 'text-emerald-700' : 'text-blue-700'}`}>
+                            {isBot ? 'Giovanna' : 'Você (Atendente)'}
                           </div>
                         )}
                         {isClient && !isSticker && selectedConversation.name && (
-                          <div className="text-[10.5px] font-medium mb-1 leading-none text-[#a80076]">
+                          <div className="text-[11px] font-bold mb-1 leading-none text-[#a80076]">
                             {selectedConversation.name}
                           </div>
                         )}
 
                         {/* Selo especial para comprovantes de pagamento / MB WAY */}
                         {parsed.isReceipt && (
-                          <div className="inline-flex items-center gap-1 px-1.5 py-0.5 mb-1.5 rounded bg-emerald-100/90 text-emerald-800 text-[10px] font-bold border border-emerald-300 shadow-2xs">
-                            <ShieldCheck size={11} className="text-emerald-700 shrink-0" />
-                            <span>Comprovante MB WAY</span>
+                          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-2 rounded-md bg-emerald-100 text-emerald-900 text-xs font-bold border border-emerald-300 shadow-2xs">
+                            <ShieldCheck size={14} className="text-emerald-700 shrink-0" />
+                            <span>Comprovante de Pagamento MB WAY</span>
                           </div>
                         )}
 
                         {/* Renderização de Imagem / Foto / Comprovante */}
                         {parsed.mediaType === 'image' && (
-                          <div className="my-0.5">
+                          <div className="my-1">
                             {parsed.mediaUrl ? (
                               <div 
                                 onClick={() => setSelectedImage({
@@ -1251,34 +1295,34 @@ export default function AgentManager() {
                                   sender: isClient ? (selectedConversation.name || 'Cliente') : (isBot ? 'Giovanna' : 'Você'),
                                   timestamp: m.timestamp
                                 })}
-                                className="group relative rounded-md overflow-hidden cursor-pointer border border-stone-200/70 bg-stone-100 hover:shadow-md transition-all max-w-[260px]"
+                                className="group relative rounded-lg overflow-hidden cursor-pointer border border-stone-200 bg-stone-100 hover:shadow-md transition-all max-w-[280px]"
                               >
                                 <img
                                   src={parsed.mediaUrl}
                                   alt={parsed.caption || "Foto recebida"}
-                                  className="w-full max-h-56 object-cover select-none group-hover:scale-[1.02] transition-transform duration-200"
+                                  className="w-full max-h-60 object-cover select-none group-hover:scale-[1.02] transition-transform duration-200"
                                   loading="lazy"
                                 />
                                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
-                                  <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/70 text-white text-[10px] font-medium px-2 py-1 rounded-full flex items-center gap-1 shadow-sm backdrop-blur-xs">
-                                    <ZoomIn size={11} />
+                                  <span className="opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm backdrop-blur-xs">
+                                    <ZoomIn size={12} />
                                     Ver comprovante
                                   </span>
                                 </div>
                               </div>
                             ) : (
-                              <div className="p-2.5 rounded bg-stone-50 border border-stone-200 flex items-center gap-2 text-stone-600 text-xs">
-                                <ImageIcon size={18} className="text-stone-400 shrink-0" />
+                              <div className="p-3 rounded-lg bg-stone-50 border border-stone-200 flex items-center gap-2.5 text-stone-600 text-xs">
+                                <ImageIcon size={20} className="text-stone-400 shrink-0" />
                                 <div>
-                                  <div className="font-semibold text-[11px] text-stone-700">Foto / Comprovante</div>
-                                  <div className="text-[10px] text-stone-400">Recebido via WhatsApp</div>
+                                  <div className="font-bold text-xs text-stone-700">Foto / Comprovante</div>
+                                  <div className="text-[11px] text-stone-400">Recebido via WhatsApp</div>
                                 </div>
                               </div>
                             )}
 
                             {/* Legenda da imagem se houver */}
                             {parsed.caption && (
-                              <div className="mt-1 text-[12px] whitespace-pre-wrap leading-snug text-stone-800">
+                              <div className="mt-1.5 text-xs whitespace-pre-wrap leading-relaxed text-stone-800">
                                 {parsed.caption}
                               </div>
                             )}
@@ -1287,15 +1331,15 @@ export default function AgentManager() {
 
                         {/* Renderização de Áudio / Mensagem de Voz */}
                         {parsed.mediaType === 'audio' && (
-                          <div className="my-1 p-2 rounded-lg bg-emerald-50/80 border border-emerald-200/80 flex flex-col gap-1.5 min-w-[230px] max-w-full shadow-2xs">
+                          <div className="my-1 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex flex-col gap-1.5 min-w-[240px] max-w-full shadow-2xs">
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                                <Music size={13} />
+                              <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                <Music size={14} />
                               </div>
-                              <span className="text-[11px] font-semibold text-emerald-900">Mensagem de voz</span>
+                              <span className="text-xs font-bold text-emerald-900">Mensagem de voz</span>
                             </div>
                             {parsed.mediaUrl ? (
-                              <audio controls preload="metadata" className="w-full h-8 mt-0.5 accent-emerald-600" src={parsed.mediaUrl} />
+                              <audio controls preload="metadata" className="w-full h-8 mt-1 accent-emerald-600" src={parsed.mediaUrl} />
                             ) : (
                               <span className="text-xs text-stone-500 italic">Áudio recebido via WhatsApp</span>
                             )}
@@ -1304,9 +1348,9 @@ export default function AgentManager() {
 
                         {/* Renderização de Documento / PDF */}
                         {parsed.mediaType === 'document' && (
-                          <div className="my-1 p-2 rounded-md bg-stone-50 border border-stone-200 flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              <FileText size={18} className="text-blue-500 shrink-0" />
+                          <div className="my-1 p-2.5 rounded-lg bg-stone-50 border border-stone-200 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FileText size={20} className="text-blue-500 shrink-0" />
                               <span className="text-xs font-medium text-stone-800 truncate">{parsed.displayText}</span>
                             </div>
                             {parsed.mediaUrl && (
@@ -1314,10 +1358,10 @@ export default function AgentManager() {
                                 href={parsed.mediaUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="text-blue-600 hover:text-blue-800 p-1 hover:bg-blue-50 rounded transition-colors"
+                                className="text-blue-600 hover:text-blue-800 p-1.5 hover:bg-blue-50 rounded-lg transition-colors"
                                 title="Baixar documento"
                               >
-                                <Download size={13} />
+                                <Download size={14} />
                               </a>
                             )}
                           </div>
@@ -1334,7 +1378,7 @@ export default function AgentManager() {
                                 loading="lazy"
                               />
                             ) : (
-                              <div className="p-2.5 rounded-lg bg-white/90 border border-stone-200 flex items-center gap-2 shadow-xs">
+                              <div className="p-3 rounded-xl bg-white border border-stone-200 flex items-center gap-2 shadow-xs">
                                 <span className="text-base">🎭</span>
                                 <span className="text-xs font-medium text-stone-700">Figurinha WhatsApp</span>
                               </div>
@@ -1348,14 +1392,14 @@ export default function AgentManager() {
                         )}
 
                         {/* Horário e Confirmação de Leitura */}
-                        <div className={`text-[9px] text-[#667781] text-right mt-0.5 -mb-0.5 flex items-center justify-end gap-1 ${
+                        <div className={`text-[10px] text-stone-500 text-right mt-1 -mb-0.5 flex items-center justify-end gap-1 ${
                           isSticker
-                            ? 'bg-white/80 backdrop-blur-xs px-1.5 py-0.5 rounded-full shadow-2xs font-mono ml-auto'
-                            : (parsed.displayText.length < 20 && parsed.mediaType === 'text' ? 'inline-block ml-3 translate-y-0.5' : 'block')
+                            ? 'bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded-full shadow-2xs font-mono ml-auto'
+                            : (parsed.displayText.length < 24 && parsed.mediaType === 'text' ? 'inline-block ml-3 translate-y-0.5' : 'block')
                         }`}>
                           <span>{m.timestamp ? new Date(m.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
                           {!isClient && (
-                            <CheckCheck size={11} className="text-emerald-600 inline shrink-0 -translate-y-0.2" />
+                            <CheckCheck size={13} className="text-emerald-600 inline shrink-0 -translate-y-0.2" />
                           )}
                         </div>
                       </div>
@@ -1364,39 +1408,63 @@ export default function AgentManager() {
                 })
               ) : (
                 <div className="h-full flex items-center justify-center relative z-10">
-                  <div className="bg-[#ffeecd] text-[#543b16] px-4 py-2 rounded-lg text-xs shadow-sm max-w-sm text-center">
-                    Nenhuma mensagem registrada. As mensagens enviadas para este contato aparecerão aqui.
+                  <div className="bg-white/95 text-stone-700 border border-stone-200 px-4 py-3 rounded-xl text-xs shadow-xs max-w-sm text-center">
+                    Nenhuma mensagem registrada. As mensagens enviadas ou recebidas para este contato aparecerão aqui em tempo real.
                   </div>
                 </div>
               )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Input de Envio de Mensagem Manual Compacto */}
-            <form onSubmit={sendManualMessage} className="p-2 bg-white border-t border-stone-200 flex items-center gap-1.5 shrink-0">
+            {/* Input de Envio de Mensagem Manual */}
+            <form onSubmit={sendManualMessage} className="p-3 bg-white border-t border-stone-200 flex items-center gap-2 shrink-0">
               <input
                 type="text"
                 placeholder={selectedConversation.paused 
-                  ? "Responder cliente no WhatsApp..." 
-                  : "Responder cliente (pausa a IA neste chat automaticamente)..."}
+                  ? "Digite uma resposta manual para enviar ao cliente no WhatsApp..." 
+                  : "Digite uma resposta (isso pausará a IA neste chat automaticamente)..."}
                 value={manualMessage}
                 onChange={e => setManualMessage(e.target.value)}
-                className="flex-1 px-3 py-1.5 text-xs bg-stone-50 rounded-md border border-stone-200 focus:border-stone-400 focus:bg-white focus:outline-none transition-all font-sans"
+                className="flex-1 px-3.5 py-2 text-xs bg-stone-50 rounded-xl border border-stone-200 focus:border-stone-400 focus:bg-white focus:outline-none transition-all font-sans placeholder:text-stone-400"
               />
               <button
                 type="submit"
                 disabled={!manualMessage.trim() || sendingManual}
-                className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-md text-xs font-mono font-medium flex items-center gap-1 transition-all disabled:opacity-40 cursor-pointer shadow-2xs"
+                className="min-h-[38px] px-4 py-2 bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-40 cursor-pointer shadow-xs"
               >
-                {sendingManual ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+                {sendingManual ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
                 <span>Enviar</span>
               </button>
             </form>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-stone-400 bg-stone-50/20">
-            <MessageSquare size={28} className="mb-1.5 text-stone-300" />
-            <p className="text-xs">Selecione uma conversa para visualizar.</p>
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-stone-50/40">
+            <div className="max-w-md p-8 rounded-2xl bg-white border border-stone-200/90 shadow-xs flex flex-col items-center text-center">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-600 border border-amber-500/20 flex items-center justify-center mb-4 ring-4 ring-amber-500/5">
+                <Bot size={28} />
+              </div>
+              <h3 className="text-base font-bold text-stone-900 tracking-tight mb-1.5 font-sans">
+                Central de Atendimento no WhatsApp
+              </h3>
+              <p className="text-xs text-stone-500 leading-relaxed mb-5">
+                A Giovanna atende clientes, tira dúvidas sobre o cardápio e lança pedidos diretamente no sistema. Selecione qualquer conversa na lista lateral para acompanhar o diálogo em tempo real ou intervir com atendimento manual.
+              </p>
+              <div className="w-full grid grid-cols-2 gap-2 text-left">
+                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80">
+                  <span className="text-[10px] font-semibold uppercase text-stone-400 block font-sans">Status Geral</span>
+                  <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5 mt-0.5 font-sans">
+                    <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                    {isActive ? 'Operação Ativa' : 'Pausada'}
+                  </span>
+                </div>
+                <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80">
+                  <span className="text-[10px] font-semibold uppercase text-stone-400 block font-sans">Conversas</span>
+                  <span className="text-xs font-bold text-stone-800 mt-0.5 block font-sans">
+                    {conversations.length} registradas
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
