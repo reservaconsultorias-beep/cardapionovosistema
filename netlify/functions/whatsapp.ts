@@ -32,6 +32,41 @@ export default async (req, context) => {
   try {
     const payload = await req.json();
 
+    // 🛡️ Trava Anti-Duplicação (Idempotência de 2 minutos):
+    // Impede que retentativas de webhook, cliques múltiplos ou chamadas repetidas da IA criem comandas duplicadas
+    if (payload.customer_phone) {
+      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      const rawDigits = String(payload.customer_phone).replace(/\D/g, '');
+      const lastDigits = rawDigits.slice(-9);
+
+      const { data: recentOrders, error: recentErr } = await supabase
+        .from('orders')
+        .select('id, tracking_code, customer_phone, total_amount, status, created_at')
+        .gte('created_at', twoMinutesAgo)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (!recentErr && recentOrders && recentOrders.length > 0) {
+        const duplicateOrder = recentOrders.find(o => {
+          const oDigits = String(o.customer_phone || '').replace(/\D/g, '');
+          const samePhone = oDigits.endsWith(lastDigits) || (lastDigits.length >= 8 && oDigits.includes(lastDigits));
+          const isPending = o.status === 'Pendente' || o.status === 'Preparando';
+          return samePhone && isPending;
+        });
+
+        if (duplicateOrder) {
+          console.warn(`[Anti-Duplicação 2min] Pedido recente já existente (#${duplicateOrder.id}) para cliente ${payload.customer_phone}. Evitando duplicação.`);
+          return new Response(JSON.stringify({
+            success: true,
+            order_id: duplicateOrder.id,
+            tracking_code: duplicateOrder.tracking_code,
+            duplicate_prevented: true,
+            message: 'Pedido recente reutilizado com sucesso (proteção anti-duplicação de 2 minutos ativa).'
+          }), { status: 200, headers });
+        }
+      }
+    }
+
     // Buscar sessão de caixa ativa se houver
     const { data: activeSession } = await supabase
       .from('cash_sessions')
