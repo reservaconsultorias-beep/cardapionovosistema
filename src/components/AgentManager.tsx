@@ -5,7 +5,7 @@ import {
   Send, User, Search, PauseCircle, PlayCircle, X,
   Image as ImageIcon, FileText, Music, ZoomIn, Download, ExternalLink, ShieldCheck, CheckCheck,
   Users, Clock, TrendingUp, Sparkles, ChevronDown, ChevronUp, RefreshCw, Trash2,
-  CreditCard, Coins, CheckCircle2, ArrowUpRight
+  CreditCard, Coins, CheckCircle2, ArrowUpRight, Copy, Check
 } from 'lucide-react';
 
 export interface ChatMessage {
@@ -155,11 +155,28 @@ export function parseMessageContent(text: string, mediaUrlProp?: string | null, 
   };
 }
 
+// Atalhos de Respostas Rápidas para o Operador
+const QUICK_RESPONSES = [
+  { label: '🍕 No Forno', text: 'Seu pedido já está no forno e logo sai para entrega!' },
+  { label: '🛵 Saiu p/ Entrega', text: 'Seu pedido acabou de sair com o estafeta para entrega!' },
+  { label: '🪙 Precisa de Troco?', text: 'Com certeza! Você tem o valor exato ou precisa de troco para alguma nota (ex: € 20, € 50)?' },
+  { label: '✅ MB WAY Confirmado', text: 'Confirmamos o recebimento do seu MB WAY com sucesso! Muito obrigado!' },
+  { label: '💳 Chave MB WAY', text: 'O nosso número oficial para MB WAY é: +351 914 044 317' }
+];
+
 export default function AgentManager() {
   const [isActive, setIsActive] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [copiedPhone, setCopiedPhone] = useState(false);
+
+  const handleCopyPhone = (phone: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(phone);
+    setCopiedPhone(true);
+    setTimeout(() => setCopiedPhone(false), 2000);
+  };
 
   // Estado das Conversas (Espelho WhatsApp Relacional)
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -1189,16 +1206,36 @@ export default function AgentManager() {
                         <h3 className="font-bold text-sm text-stone-900 truncate">
                           {headerDisplayName}
                         </h3>
-                        <a
-                          href={`https://wa.me/${selectedConversation.phone.replace(/\D/g, '')}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs font-mono font-medium text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/80 px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
-                          title="Abrir no WhatsApp Web"
-                        >
-                          <span>{selectedConversation.phone}</span>
-                          <ArrowUpRight size={11} />
-                        </a>
+                        <div className="flex items-center gap-1.5">
+                          <a
+                            href={`https://wa.me/${selectedConversation.phone.replace(/\D/g, '')}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-xs font-mono font-medium text-emerald-800 hover:text-emerald-950 bg-emerald-50 hover:bg-emerald-100/80 border border-emerald-200/80 px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors"
+                            title="Abrir no WhatsApp Web"
+                          >
+                            <span>{selectedConversation.phone}</span>
+                            <ArrowUpRight size={11} />
+                          </a>
+                          <button
+                            type="button"
+                            onClick={(e) => handleCopyPhone(selectedConversation.phone, e)}
+                            className="text-xs font-mono font-medium text-stone-600 hover:text-stone-900 bg-stone-100 hover:bg-stone-200/80 border border-stone-200 px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors cursor-pointer"
+                            title="Copiar número de telefone"
+                          >
+                            {copiedPhone ? (
+                              <>
+                                <Check size={11} className="text-emerald-600" />
+                                <span className="text-emerald-700 font-semibold">Copiado!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy size={11} className="text-stone-500" />
+                                <span>Copiar</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs">
                         <span className={`w-2 h-2 rounded-full ${selectedConversation.paused ? 'bg-amber-500' : 'bg-emerald-500 animate-pulse'}`} />
@@ -1422,8 +1459,26 @@ export default function AgentManager() {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Barra de Respostas Rápidas de 1 Clique */}
+            <div className="px-3 py-2 bg-stone-50 border-t border-stone-200 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
+              <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider shrink-0 mr-1 flex items-center gap-1 font-sans">
+                <Sparkles size={11} className="text-amber-500" /> Rápidas:
+              </span>
+              {QUICK_RESPONSES.map((qr, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setManualMessage(qr.text)}
+                  className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-medium bg-white hover:bg-amber-50 hover:text-amber-900 hover:border-amber-300 text-stone-700 border border-stone-200 transition-all cursor-pointer active:scale-95 shadow-2xs font-sans"
+                  title={`Inserir no campo: "${qr.text}"`}
+                >
+                  {qr.label}
+                </button>
+              ))}
+            </div>
+
             {/* Input de Envio de Mensagem Manual */}
-            <form onSubmit={sendManualMessage} className="p-3 bg-white border-t border-stone-200 flex items-center gap-2 shrink-0">
+            <form onSubmit={sendManualMessage} className="p-3 bg-white border-t border-stone-100 flex items-center gap-2 shrink-0">
               <input
                 type="text"
                 placeholder={selectedConversation.paused 
@@ -1455,7 +1510,7 @@ export default function AgentManager() {
               <p className="text-xs text-stone-500 leading-relaxed mb-5">
                 A Giovanna atende clientes, tira dúvidas sobre o cardápio e lança pedidos diretamente no sistema. Selecione qualquer conversa na lista lateral para acompanhar o diálogo em tempo real ou intervir com atendimento manual.
               </p>
-              <div className="w-full grid grid-cols-2 gap-2 text-left">
+              <div className="w-full grid grid-cols-2 gap-2 text-left mb-4">
                 <div className="p-3 rounded-xl bg-stone-50 border border-stone-200/80">
                   <span className="text-[10px] font-semibold uppercase text-stone-400 block font-sans">Status Geral</span>
                   <span className="text-xs font-bold text-stone-800 flex items-center gap-1.5 mt-0.5 font-sans">
@@ -1469,6 +1524,19 @@ export default function AgentManager() {
                     {conversations.length} registradas
                   </span>
                 </div>
+              </div>
+
+              {/* Dicas de Operação para Picos de Atendimento */}
+              <div className="w-full text-left p-3.5 rounded-xl bg-amber-50/50 border border-amber-200/60 text-xs text-stone-600 space-y-1.5">
+                <div className="font-bold text-amber-950 flex items-center gap-1.5 text-[11px] uppercase tracking-wide">
+                  <Sparkles size={12} className="text-amber-600" />
+                  <span>Dicas para o Horário de Pico</span>
+                </div>
+                <ul className="space-y-1 text-[11px] leading-relaxed text-stone-600 list-disc list-inside">
+                  <li><strong>Intervenção rápida:</strong> Digitar e enviar uma mensagem pausa a IA automaticamente.</li>
+                  <li><strong>Respostas em 1 clique:</strong> Use os atalhos rápidos de forno, entrega e troco.</li>
+                  <li><strong>Comprovantes:</strong> Fotos e PDFs com menção a MB WAY ganham selo verde destacado.</li>
+                </ul>
               </div>
             </div>
           </div>
