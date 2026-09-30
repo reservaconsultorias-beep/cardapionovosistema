@@ -60,7 +60,6 @@ import {
   Legend
 } from "recharts";
 import { ALL_MENU_ITEMS, MenuItem, ExtraIngredient, pizzaExtras } from "../data/menu";
-import { useExtras } from "../hooks/useExtras";
 import { useMenu } from "../hooks/useMenu";
 import { supabase } from '../lib/supabase';
 import { normalizeOrderType, isOrderActive, normalizePaymentMethod } from '../utils/paymentAndOrderHelper';
@@ -4888,9 +4887,29 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   const flavorSearchInputRef = useRef<HTMLInputElement>(null);
 
   // Extras do Cardápio & Seleção Atual para o Item em Edição
-  const liveExtras = useExtras();
-  const availableExtras: ExtraIngredient[] = (liveExtras && liveExtras.length > 0) ? liveExtras : pizzaExtras;
+  const [availableExtras, setAvailableExtras] = useState<ExtraIngredient[]>(pizzaExtras);
   const [selectedExtras, setSelectedExtras] = useState<ExtraIngredient[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadExtras = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('extras')
+          .select('id, name, price')
+          .eq('is_active', true)
+          .order('sort_order');
+        if (error) throw error;
+        if (data && data.length > 0 && isMounted) {
+          setAvailableExtras(data.map((e: any) => ({ id: e.id, name: e.name, price: Number(e.price) })));
+        }
+      } catch (err) {
+        console.warn('[EditOrderModal] Não foi possível carregar extras:', err);
+      }
+    };
+    loadExtras();
+    return () => { isMounted = false; };
+  }, []);
 
   const handleToggleExtra = (extra: ExtraIngredient) => {
     setSelectedExtras(prev => {

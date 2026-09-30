@@ -24,12 +24,17 @@ export function useExtras() {
 
   useEffect(() => {
     loadExtras();
+    const channelId = `public:extras-live-${Math.random().toString(36).substring(2, 9)}`;
     const channel = supabase
-      .channel('public:extras-live')
+      .channel(channelId)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'extras' }, () => loadExtras())
       .subscribe();
     return () => {
-      supabase.removeChannel(channel);
+      try {
+        supabase.removeChannel(channel);
+      } catch (e) {
+        // ignore cleanup error
+      }
     };
   }, []);
 
