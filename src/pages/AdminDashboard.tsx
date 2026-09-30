@@ -1920,19 +1920,23 @@ export default function AdminDashboard() {
       <main className={`flex-1 min-w-0 px-4 md:px-8 min-h-[100dvh] relative overflow-y-auto ${
         ['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) 
           ? 'pt-4 pb-4 flex flex-col' 
-          : 'pt-2 md:pt-4 pb-8'
+          : activeTab === 'agente-ia'
+            ? 'pt-2 md:pt-3 pb-4'
+            : 'pt-2 md:pt-4 pb-8'
       }`}>
         
 
         <div className={`max-w-7xl mx-auto w-full ${
           ['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) 
             ? 'flex-1 flex flex-col min-h-0' 
-            : 'space-y-4'
+            : activeTab === 'agente-ia'
+              ? 'space-y-3'
+              : 'space-y-4'
         }`}>
 
 
           {/* Header Section (Only for Non-Cockpit Views) */}
-          {!['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos'].includes(activeTab) && (
+          {!['despesas', 'relatorios', 'caixa', 'funil', 'visao-geral', 'pedidos', 'agente-ia'].includes(activeTab) && (
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2.5 pb-2.5 border-b border-stone-200/80 mb-4">
               <div>
                 <h1 className="text-xl font-bold tracking-tight text-stone-900">
