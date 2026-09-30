@@ -431,10 +431,16 @@ export default function AgentManager() {
     }
   }, [selectedPhone]);
 
+  const prevPhoneRef = useRef<string | null>(null);
+
   // Auto-scroll ao receber nova mensagem ou trocar de conversa
   useEffect(() => {
     if (selectedPhone && messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      const isSwitchingPhone = prevPhoneRef.current !== selectedPhone;
+      prevPhoneRef.current = selectedPhone;
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: isSwitchingPhone ? 'auto' : 'smooth' 
+      });
     }
   }, [selectedPhone, activeMessages]);
 
@@ -1083,8 +1089,18 @@ export default function AgentManager() {
                 placeholder="Buscar cliente ou telefone..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-2 text-base sm:text-xs bg-stone-100/80 rounded-lg border border-transparent focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all placeholder:text-stone-400 font-sans"
+                className="w-full pl-8 pr-8 py-2 text-base sm:text-xs bg-stone-100/80 rounded-lg border border-transparent focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all placeholder:text-stone-400 font-sans"
               />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 p-0.5 rounded-full hover:bg-stone-200 transition-colors cursor-pointer"
+                  title="Limpar busca"
+                >
+                  <X size={13} />
+                </button>
+              )}
             </div>
 
             {/* Filtros Segmentados de Conversas */}
