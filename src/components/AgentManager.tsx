@@ -170,6 +170,7 @@ export default function AgentManager() {
   const [updating, setUpdating] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const [conversationFilter, setConversationFilter] = useState<'all' | 'ai' | 'manual'>('all');
 
   const handleCopyPhone = (phone: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -807,7 +808,11 @@ export default function AgentManager() {
 
   const filteredConversations = conversations.filter(c => {
     const term = searchTerm.toLowerCase();
-    return (c.name || '').toLowerCase().includes(term) || (c.phone || '').includes(term);
+    const matchesSearch = (c.name || '').toLowerCase().includes(term) || (c.phone || '').includes(term);
+    if (!matchesSearch) return false;
+    if (conversationFilter === 'manual') return c.paused;
+    if (conversationFilter === 'ai') return !c.paused;
+    return true;
   });
 
   if (loading) {
@@ -1057,25 +1062,62 @@ export default function AgentManager() {
       )}
 
       {/* Espelho de Conversas estilo WhatsApp Command Center */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col md:flex-row h-[calc(100vh-210px)] min-h-[500px]">
+      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden flex flex-col md:flex-row h-[650px] lg:h-[680px] xl:h-[720px] min-h-[520px]">
         {/* Coluna Esquerda: Lista de Conversas */}
-        <div className="w-full md:w-80 lg:w-96 border-r border-stone-200 flex flex-col h-full bg-stone-50/50">
-          {/* Busca & Ações com Alto Contraste */}
+        <div className="w-full md:w-80 lg:w-[330px] xl:w-[370px] shrink-0 border-r border-stone-200 flex flex-col h-full bg-stone-50/40">
+          {/* Busca & Filtros com Layout Estruturado */}
           <div className="p-3 border-b border-stone-200 bg-white shrink-0 space-y-2">
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
               <input
                 type="text"
-                placeholder="Buscar cliente ou número de telefone..."
+                placeholder="Buscar cliente ou telefone..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-stone-100/90 rounded-lg border border-transparent focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all placeholder:text-stone-400 font-sans"
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-stone-100/80 rounded-lg border border-transparent focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all placeholder:text-stone-400 font-sans"
               />
             </div>
 
+            {/* Filtros Segmentados de Conversas */}
+            <div className="flex items-center gap-1 p-0.5 bg-stone-100/80 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setConversationFilter('all')}
+                className={`flex-1 py-1 px-2 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                  conversationFilter === 'all'
+                    ? 'bg-white text-stone-900 shadow-2xs font-bold'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                Todas ({conversations.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setConversationFilter('ai')}
+                className={`flex-1 py-1 px-2 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                  conversationFilter === 'ai'
+                    ? 'bg-white text-emerald-800 shadow-2xs font-bold'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                IA ({conversations.filter(c => !c.paused).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setConversationFilter('manual')}
+                className={`flex-1 py-1 px-2 rounded-md text-[11px] font-semibold transition-all cursor-pointer ${
+                  conversationFilter === 'manual'
+                    ? 'bg-white text-amber-900 shadow-2xs font-bold'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                Manual ({conversations.filter(c => c.paused).length})
+              </button>
+            </div>
+
             <div className="flex items-center justify-between px-0.5 pt-0.5">
-              <span className="text-xs font-semibold text-stone-600">
-                {filteredConversations.length} {filteredConversations.length === 1 ? 'conversa' : 'conversas'}
+              <span className="text-[11px] font-medium text-stone-500">
+                {filteredConversations.length} {filteredConversations.length === 1 ? 'conversa exibida' : 'conversas exibidas'}
               </span>
               {conversations.length > 0 && (
                 <button
@@ -1085,7 +1127,7 @@ export default function AgentManager() {
                   className="text-[11px] font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 border border-transparent hover:border-rose-200"
                   title="Excluir todas as conversas do histórico"
                 >
-                  <Trash2 size={12} className={deletingAll ? "animate-spin" : ""} />
+                  <Trash2 size={11} className={deletingAll ? "animate-spin" : ""} />
                   <span>{deletingAll ? 'Excluindo...' : 'Limpar Tudo'}</span>
                 </button>
               )}
@@ -1190,7 +1232,7 @@ export default function AgentManager() {
 
         {/* Coluna Direita: Painel do Chat ou Empty State Produtivo */}
         {selectedConversation ? (
-          <div className="flex-1 flex flex-col h-full bg-[#efeae2]">
+          <div className="flex-1 flex flex-col h-full min-w-0 bg-[#efeae2]">
             {/* Topo do Chat Selecionado com Controle Imediato */}
             {(() => {
               const isHeaderPizzeriaName = selectedConversation.name && selectedConversation.name.toLowerCase().includes("41 menu");
@@ -1295,10 +1337,10 @@ export default function AgentManager() {
                       className={`flex flex-col ${isClient ? 'items-start' : 'items-end'}`}
                     >
                       <div
-                        className={`relative max-w-[85%] sm:max-w-[75%] ${
+                        className={`relative max-w-[88%] sm:max-w-[72%] lg:max-w-[65%] ${
                           isSticker
                             ? 'bg-transparent shadow-none p-0'
-                            : `rounded-xl px-3 pt-2 pb-1.5 text-xs sm:text-[13px] leading-relaxed shadow-xs ${
+                            : `rounded-xl px-3.5 pt-2 pb-1.5 text-xs sm:text-[13px] leading-relaxed shadow-xs ${
                                 isClient
                                   ? 'bg-white text-stone-900 rounded-tl-xs border border-stone-200/60 shadow-xs'
                                   : (isHuman 
@@ -1478,7 +1520,7 @@ export default function AgentManager() {
             </div>
 
             {/* Input de Envio de Mensagem Manual */}
-            <form onSubmit={sendManualMessage} className="p-3 bg-white border-t border-stone-100 flex items-center gap-2 shrink-0">
+            <form onSubmit={sendManualMessage} className="p-3 bg-white border-t border-stone-100 flex items-center gap-2.5 shrink-0">
               <input
                 type="text"
                 placeholder={selectedConversation.paused 
@@ -1486,14 +1528,14 @@ export default function AgentManager() {
                   : "Digite uma resposta (isso pausará a IA neste chat automaticamente)..."}
                 value={manualMessage}
                 onChange={e => setManualMessage(e.target.value)}
-                className="flex-1 px-3.5 py-2 text-xs bg-stone-50 rounded-xl border border-stone-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all font-sans placeholder:text-stone-400"
+                className="flex-1 px-4 py-2.5 text-xs sm:text-sm bg-stone-50 rounded-xl border border-stone-200 focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 focus:bg-white focus:outline-none transition-all font-sans placeholder:text-stone-400"
               />
               <button
                 type="submit"
                 disabled={!manualMessage.trim() || sendingManual}
-                className="min-h-[38px] px-4 py-2 bg-stone-900 hover:bg-amber-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-40 cursor-pointer shadow-xs"
+                className="min-h-[42px] px-4 sm:px-5 py-2.5 bg-stone-900 hover:bg-amber-600 text-white rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-40 cursor-pointer shadow-xs shrink-0"
               >
-                {sendingManual ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                {sendingManual ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                 <span>Enviar</span>
               </button>
             </form>
