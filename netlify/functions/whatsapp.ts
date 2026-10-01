@@ -32,37 +32,43 @@ export default async (req, context) => {
   try {
     const payload = await req.json();
 
-    // 🛡️ Trava Anti-Duplicação (Idempotência de 2 minutos):
+    // 🛡️ Trava Anti-Duplicação Estrita (Idempotência de 10 minutos - Padrão iFood / Multipedidos):
     // Impede que retentativas de webhook, cliques múltiplos ou chamadas repetidas da IA criem comandas duplicadas
     if (payload.customer_phone) {
-      const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+      const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
       const rawDigits = String(payload.customer_phone).replace(/\D/g, '');
-      const lastDigits = rawDigits.slice(-9);
+      const lastDigits = rawDigits.length >= 8 ? rawDigits.slice(-8) : rawDigits;
 
-      const { data: recentOrders, error: recentErr } = await supabase
-        .from('orders')
-        .select('id, tracking_code, customer_phone, total_amount, status, created_at')
-        .gte('created_at', twoMinutesAgo)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      if (lastDigits.length >= 8) {
+        const { data: recentOrders, error: recentErr } = await supabase
+          .from('orders')
+          .select('id, tracking_code, customer_phone, total_amount, status, created_at')
+          .gte('created_at', tenMinutesAgo)
+          .order('created_at', { ascending: false })
+          .limit(10);
 
-      if (!recentErr && recentOrders && recentOrders.length > 0) {
-        const duplicateOrder = recentOrders.find(o => {
-          const oDigits = String(o.customer_phone || '').replace(/\D/g, '');
-          const samePhone = oDigits.endsWith(lastDigits) || (lastDigits.length >= 8 && oDigits.includes(lastDigits));
-          const isPending = o.status === 'Pendente' || o.status === 'Preparando';
-          return samePhone && isPending;
-        });
+        if (!recentErr && recentOrders && recentOrders.length > 0) {
+          const duplicateOrder = recentOrders.find(o => {
+            const oDigits = String(o.customer_phone || '').replace(/\D/g, '');
+            const samePhone = oDigits.endsWith(lastDigits) || oDigits.includes(lastDigits);
+            const st = String(o.status || '').toLowerCase().trim();
+            // Qualquer status de pedido ativo não finalizado
+            const isActiveOrder = ['pendente', 'preparando', 'em preparo', 'recebido', 'pronto', 'entrega', 'saiu para entrega'].includes(st);
+            // Ou se for exatamente o mesmo valor total nos últimos 10 minutos
+            const sameAmount = Math.abs((Number(o.total_amount) || 0) - (Number(payload.total_amount) || 0)) < 0.05;
+            return samePhone && (isActiveOrder || sameAmount);
+          });
 
-        if (duplicateOrder) {
-          console.warn(`[Anti-Duplicação 2min] Pedido recente já existente (#${duplicateOrder.id}) para cliente ${payload.customer_phone}. Evitando duplicação.`);
-          return new Response(JSON.stringify({
-            success: true,
-            order_id: duplicateOrder.id,
-            tracking_code: duplicateOrder.tracking_code,
-            duplicate_prevented: true,
-            message: 'Pedido recente reutilizado com sucesso (proteção anti-duplicação de 2 minutos ativa).'
-          }), { status: 200, headers });
+          if (duplicateOrder) {
+            console.warn(`[Anti-Duplicação 10min] Pedido recente já existente (#${duplicateOrder.id}) para cliente ${payload.customer_phone}. Evitando duplicação.`);
+            return new Response(JSON.stringify({
+              success: true,
+              order_id: duplicateOrder.id,
+              tracking_code: duplicateOrder.tracking_code,
+              duplicate_prevented: true,
+              message: 'Pedido já registrado no gestor com sucesso (proteção anti-duplicação de 10 minutos ativa).'
+            }), { status: 200, headers });
+          }
         }
       }
     }
