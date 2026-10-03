@@ -171,6 +171,8 @@ export default function AgentManager() {
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [conversationFilter, setConversationFilter] = useState<'all' | 'ai' | 'manual'>('all');
+  const [activeMbWayKey, setActiveMbWayKey] = useState<string>('351914044317');
+  const [savingMbWay, setSavingMbWay] = useState(false);
 
   const handleCopyPhone = useCallback((phone: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -447,19 +449,28 @@ export default function AgentManager() {
 
   const fetchBotStatus = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: settingsData, error } = await supabase
         .from('settings')
-        .select('value, updated_at')
-        .eq('key', 'bot_active')
-        .maybeSingle();
+        .select('key, value, updated_at')
+        .in('key', ['bot_active', 'active_mbway_key']);
       
       if (error) {
         console.error('Erro ao buscar status do bot:', error);
         setIsActive(true);
-      } else if (data) {
-        setIsActive(Boolean(data.value));
-        if (data.updated_at) {
-          setLastUpdated(new Date(data.updated_at).toLocaleTimeString('pt-BR'));
+      } else if (settingsData) {
+        const botSetting = settingsData.find(s => s.key === 'bot_active');
+        if (botSetting) {
+          setIsActive(Boolean(botSetting.value));
+          if (botSetting.updated_at) {
+            setLastUpdated(new Date(botSetting.updated_at).toLocaleTimeString('pt-BR'));
+          }
+        } else {
+          setIsActive(true);
+        }
+
+        const mbSetting = settingsData.find(s => s.key === 'active_mbway_key');
+        if (mbSetting && mbSetting.value) {
+          setActiveMbWayKey(String(mbSetting.value));
         }
       } else {
         setIsActive(true);
@@ -594,6 +605,31 @@ export default function AgentManager() {
       setUpdating(false);
     }
   };
+
+  const handleSelectMbWay = async (newKey: string) => {
+    if (newKey === activeMbWayKey || savingMbWay) return;
+    setSavingMbWay(true);
+    try {
+      const nowIso = new Date().toISOString();
+      const { error } = await supabase
+        .from('settings')
+        .upsert({ 
+          key: 'active_mbway_key', 
+          value: newKey, 
+          updated_at: nowIso 
+        }, { onConflict: 'key' });
+        
+      if (!error) {
+        setActiveMbWayKey(newKey);
+      }
+    } catch (err) {
+      console.error('Erro ao alternar chave MB WAY:', err);
+    } finally {
+      setSavingMbWay(false);
+    }
+  };
+
+  const formattedActiveMbWay = activeMbWayKey === '351912092269' ? '+351 912 092 269' : '+351 914 044 317';
 
   const toggleChatPause = async (phone: string, currentPaused: boolean) => {
     setTogglingChatPause(true);
@@ -927,6 +963,56 @@ export default function AgentManager() {
         </div>
       </div>
 
+      {/* Seletor da Chave MB WAY Ativa no Atendimento */}
+      <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs p-3 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 flex items-center justify-center shrink-0">
+            <CreditCard size={16} />
+          </div>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-stone-900 font-sans">Chave MB WAY Ativa da Giovanna</span>
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">
+                Enviada nos Pedidos
+              </span>
+            </div>
+            <p className="text-[11px] text-stone-500">
+              Escolha qual conta receberá os pagamentos via MB WAY no WhatsApp hoje.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => handleSelectMbWay('351912092269')}
+            disabled={savingMbWay}
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer border ${
+              activeMbWayKey === '351912092269'
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs ring-2 ring-emerald-500/20'
+                : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${activeMbWayKey === '351912092269' ? 'bg-white animate-pulse' : 'bg-stone-300'}`} />
+            <span>MB WAY 1 (912 092 269)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleSelectMbWay('351914044317')}
+            disabled={savingMbWay}
+            className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer border ${
+              activeMbWayKey === '351914044317'
+                ? 'bg-emerald-600 text-white border-emerald-600 shadow-2xs ring-2 ring-emerald-500/20'
+                : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${activeMbWayKey === '351914044317' ? 'bg-white animate-pulse' : 'bg-stone-300'}`} />
+            <span>MB WAY 2 (914 044 317)</span>
+          </button>
+        </div>
+      </div>
+
       {/* Telemetria de Atendimento e Desempenho Hoje */}
       {showMetricsDashboard && (
         <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs p-3 sm:p-3.5 space-y-2.5 animate-in fade-in duration-200">
@@ -1037,7 +1123,7 @@ export default function AgentManager() {
                   </div>
                   <div>
                     <span className="font-bold text-emerald-950 block mb-0.5 text-[11px]">Pagamento Oficial</span>
-                    <p className="text-[11px] leading-snug">Aceitar exclusivamente <strong>MB WAY (+351 914 044 317)</strong> ou <strong>Dinheiro (Numerário)</strong>. Transferência bancária é proibida.</p>
+                    <p className="text-[11px] leading-snug">Aceitar exclusivamente <strong>MB WAY ({formattedActiveMbWay})</strong> ou <strong>Dinheiro (Numerário)</strong>. Transferência bancária é proibida.</p>
                   </div>
                 </div>
 
@@ -1541,7 +1627,13 @@ export default function AgentManager() {
               <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider shrink-0 mr-0.5 flex items-center gap-1 font-sans">
                 <Sparkles size={11} className="text-amber-500" /> Rápidas:
               </span>
-              {QUICK_RESPONSES.map((qr, idx) => (
+              {[
+                { label: '🍕 No Forno', text: 'Seu pedido já está no forno e logo sai para entrega!' },
+                { label: '🛵 Saiu p/ Entrega', text: 'Seu pedido acabou de sair com o estafeta para entrega!' },
+                { label: '🪙 Precisa de Troco?', text: 'Com certeza! Você tem o valor exato ou precisa de troco para alguma nota (ex: € 20, € 50)?' },
+                { label: '✅ MB WAY Confirmado', text: 'Confirmamos o recebimento do seu MB WAY com sucesso! Muito obrigado!' },
+                { label: '💳 Chave MB WAY', text: `O nosso número oficial para MB WAY é: ${formattedActiveMbWay}` }
+              ].map((qr, idx) => (
                 <button
                   key={idx}
                   type="button"
