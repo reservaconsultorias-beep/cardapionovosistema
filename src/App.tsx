@@ -203,6 +203,49 @@ function App() {
     localStorage.setItem("pizzeria-cart", JSON.stringify(newCart));
   };
 
+  // Re-sincroniza preços dos produtos no carrinho caso o cardápio no Supabase tenha sido alterado
+  useEffect(() => {
+    if (!menuItems || menuItems.length === 0 || cart.length === 0) return;
+    let changed = false;
+    const updated = cart.map((item) => {
+      const fresh = menuItems.find((m) => m.id === item.menuItem?.id);
+      if (!fresh) return item;
+
+      let newBasePrice: number | undefined = undefined;
+      if (item.size === 'P') {
+        newBasePrice = fresh.priceP || (fresh.priceM ? Math.max(fresh.priceM - 2, 0) : undefined);
+      } else if (item.size === 'M') {
+        newBasePrice = fresh.priceM;
+      } else if (item.size === 'G') {
+        if (item.isHalfAndHalf && item.halfAndHalfFlavor) {
+          const freshSecond = menuItems.find((m) => m.id === item.halfAndHalfFlavor.id) || item.halfAndHalfFlavor;
+          newBasePrice = Math.max(fresh.priceG || 0, freshSecond.priceG || 0);
+        } else {
+          newBasePrice = fresh.priceG || fresh.priceSingle || fresh.priceM || 0;
+        }
+      } else {
+        newBasePrice = fresh.priceSingle;
+      }
+
+      if (newBasePrice !== undefined) {
+        const extrasSum = (item.extras || []).reduce((sum, e) => sum + (e.price || 0), 0);
+        const expectedPrice = Number((newBasePrice + extrasSum).toFixed(2));
+        if (Math.abs(expectedPrice - item.priceCalculated) > 0.001) {
+          changed = true;
+          return {
+            ...item,
+            menuItem: fresh,
+            priceCalculated: expectedPrice,
+          };
+        }
+      }
+      return item;
+    });
+    if (changed) {
+      saveCart(updated);
+    }
+  }, [menuItems]);
+
   const handleAddToCart = (newItem: CartItem, openCart: boolean = true) => {
     trackEvent('add_to_cart', { 
       item_id: newItem.menuItem.id, 
@@ -599,6 +642,7 @@ function App() {
             onRemoveItem={(id) => saveCart(cart.filter((c) => c.id !== id))}
             onClearCart={() => saveCart([])}
             onAddToCart={handleAddToCart}
+            menuItems={menuItems}
             isOpen={isCartOpen}
             onClose={() => setIsCartOpen(false)}
           />

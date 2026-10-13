@@ -28,6 +28,7 @@ import { useAnalytics } from '../hooks/useAnalytics';
 
 interface CartProps {
   items: CartItem[];
+  menuItems?: MenuItem[];
   onUpdateQuantity: (id: string, delta: number) => void;
   onRemoveItem: (id: string) => void;
   onClearCart: () => void;
@@ -38,6 +39,7 @@ interface CartProps {
 
 export default function Cart({
   items,
+  menuItems = [],
   onUpdateQuantity,
   onRemoveItem,
   onClearCart,
@@ -749,7 +751,8 @@ export default function Cart({
                 {(() => {
                   const hasBebida = items.some((i) => i.menuItem.category === "bebidas");
                   if (!hasBebida) {
-                    const sug = ALL_MENU_ITEMS.find((m) => m.id === "b-1");
+                    const availableList = menuItems && menuItems.length > 0 ? menuItems : ALL_MENU_ITEMS;
+                    const sug = availableList.find((m) => m.id === "b-1");
                     if (sug) {
                       return (
                         <div className="bg-gray-50 border border-gray-200/80 rounded-lg px-2 py-1.5 flex items-center justify-between text-[11px]">
