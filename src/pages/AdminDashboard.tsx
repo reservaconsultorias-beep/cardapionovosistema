@@ -226,6 +226,8 @@ export default function AdminDashboard() {
   const toggleSound = () => setSoundEnabled(prev => !prev);
   const [lastSeenOrderId, setLastSeenOrderId] = useState<number | null>(null);
   const lastSeenOrderIdRef = useRef(lastSeenOrderId);
+  const lastPlayedOrderIdRef = useRef<number | null>(null);
+  const lastSoundTimeRef = useRef<number>(0);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -769,16 +771,29 @@ export default function AdminDashboard() {
       setFilteredOrders(allOrdersAgg);
       if (data.recentOrders && data.recentOrders.length > 0) {
         const latestOrder = data.recentOrders[0];
+        const isNewOrder = lastSeenOrderIdRef.current !== null && latestOrder.id > lastSeenOrderIdRef.current;
         
-        if (lastSeenOrderIdRef.current !== null && latestOrder.id > lastSeenOrderIdRef.current) {
-          if (soundEnabledRef.current) {
-            playNotificationSound();
+        if (isNewOrder) {
+          const now = Date.now();
+          const alreadyPlayed = lastPlayedOrderIdRef.current === latestOrder.id;
+          const isThrottled = now - lastSoundTimeRef.current < 4000;
+
+          // Atualiza imediatamente para que execuções assíncronas concorrentes saibam que o pedido já foi visto
+          lastSeenOrderIdRef.current = latestOrder.id;
+          setLastSeenOrderId(latestOrder.id);
+
+          if (!alreadyPlayed && !isThrottled) {
+            lastPlayedOrderIdRef.current = latestOrder.id;
+            lastSoundTimeRef.current = now;
+
+            if (soundEnabledRef.current) {
+              playNotificationSound();
+            }
+            if (autoPrintRef.current) {
+              handlePrintOrder(latestOrder);
+            }
           }
-          if (autoPrintRef.current) {
-            handlePrintOrder(latestOrder);
-          }
-        }
-        if (lastSeenOrderIdRef.current === null || latestOrder.id > lastSeenOrderIdRef.current) {
+        } else if (lastSeenOrderIdRef.current === null || latestOrder.id > lastSeenOrderIdRef.current) {
           setLastSeenOrderId(latestOrder.id);
           lastSeenOrderIdRef.current = latestOrder.id;
         }
@@ -1041,19 +1056,24 @@ export default function AdminDashboard() {
       fetchDashboardData(true);
     }, 15000);
 
-    // Supabase Realtime para sincronização instantânea de pedidos entre telas e abas
+    // Supabase Realtime para sincronização instantânea de pedidos entre telas e abas (com debounce para evitar disparos duplicados)
+    let realtimeDebounceTimer: any = null;
     const channel = supabase
       .channel('admin-orders-realtime')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'orders' },
         () => {
-          fetchDashboardData(true);
+          clearTimeout(realtimeDebounceTimer);
+          realtimeDebounceTimer = setTimeout(() => {
+            fetchDashboardData(true);
+          }, 300);
         }
       )
       .subscribe();
     
     return () => {
+      clearTimeout(realtimeDebounceTimer);
       clearInterval(interval);
       supabase.removeChannel(channel);
     };
