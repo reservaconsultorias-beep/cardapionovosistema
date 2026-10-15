@@ -128,6 +128,32 @@ function App() {
   const [hasOpenedPromoAutomatically, setHasOpenedPromoAutomatically] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [cartBounce, setCartBounce] = useState(false);
+  const [lastOrder, setLastOrder] = useState<{ id: number, code: string } | null>(null);
+
+  useEffect(() => {
+    const readLastOrder = () => {
+      try {
+        const raw = localStorage.getItem('41menus_last_order');
+        if (!raw) {
+          setLastOrder(null);
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        // Mantém ativo por 6 horas a partir da criação
+        if (Date.now() - parsed.at < 6 * 60 * 60 * 1000) {
+          setLastOrder(parsed);
+        } else {
+          localStorage.removeItem('41menus_last_order');
+          setLastOrder(null);
+        }
+      } catch {
+        setLastOrder(null);
+      }
+    };
+    readLastOrder();
+    window.addEventListener('41menus-last-order', readLastOrder);
+    return () => window.removeEventListener('41menus-last-order', readLastOrder);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -434,12 +460,27 @@ function App() {
               )}
             </div>
             
-            <button
-              onClick={() => setIsPromoOpen(true)}
-              className="md:hidden font-bold text-[#ea1d2c] animate-pulse transition-colors text-xs border border-[#ea1d2c] rounded-full px-2 py-1"
-            >
-              PROMOÇÃO DO DIA
-            </button>
+            {lastOrder ? (
+              <a
+                href={`/track/${lastOrder.code}`}
+                className="md:hidden inline-flex items-center gap-1.5 bg-[#083d07] hover:bg-[#062c05] text-white font-bold text-xs rounded-full px-2.5 py-1 shadow-xs transition-all animate-pulse"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                <span>Pedido #{lastOrder.id}</span>
+              </a>
+            ) : (
+              <button
+                onClick={() => {
+                  const code = window.prompt("Insira o código de acompanhamento do seu pedido:");
+                  if (code && code.trim()) {
+                    window.location.href = `/track/${code.trim()}`;
+                  }
+                }}
+                className="md:hidden inline-flex items-center gap-1 bg-[#083d07] hover:bg-[#062c05] text-white font-bold text-xs rounded-full px-2.5 py-1 shadow-xs transition-all"
+              >
+                <span>Acompanhar Pedido</span>
+              </button>
+            )}
           </div>
           
           <div className="flex items-center gap-4 w-full md:w-auto">
@@ -453,12 +494,27 @@ function App() {
                  onChange={(e) => setSearchTerm(e.target.value)}
                />
             </div>
-            <button
-              onClick={() => setIsPromoOpen(true)}
-              className="hidden md:block font-bold text-[#ea1d2c] animate-pulse transition-colors text-sm"
-            >
-              PROMOÇÃO DO DIA
-            </button>
+            {lastOrder ? (
+              <a
+                href={`/track/${lastOrder.code}`}
+                className="hidden md:inline-flex items-center gap-2 bg-[#083d07] hover:bg-[#062c05] text-white font-bold text-xs px-4 py-2 rounded-full shadow-xs transition-all hover:scale-105 shrink-0"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>Acompanhar Pedido #{lastOrder.id}</span>
+              </a>
+            ) : (
+              <button
+                onClick={() => {
+                  const code = window.prompt("Insira o código de acompanhamento do seu pedido:");
+                  if (code && code.trim()) {
+                    window.location.href = `/track/${code.trim()}`;
+                  }
+                }}
+                className="hidden md:inline-flex items-center gap-1.5 bg-[#083d07] hover:bg-[#062c05] text-white font-bold text-xs px-3.5 py-2 rounded-full shadow-xs transition-all hover:scale-105 shrink-0"
+              >
+                <span>🔍 Acompanhar Pedido</span>
+              </button>
+            )}
           </div>
         </div>
       </header>

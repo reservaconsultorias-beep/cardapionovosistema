@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { CartItem } from "../types";
 import { hapticLight, hapticMedium, hapticSuccess } from "../utils/haptics";
 import {
+  MenuItem,
   RESTAURANT_WHATSAPP_PHONE,
   ALL_MENU_ITEMS,
 } from "../data/menu";
@@ -25,6 +26,7 @@ import {
   FileText
 } from "lucide-react";
 import { useAnalytics } from '../hooks/useAnalytics';
+import MbwayPaymentModal from './MbwayPaymentModal';
 
 interface CartProps {
   items: CartItem[];
@@ -80,6 +82,7 @@ export default function Cart({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [showMbwayModal, setShowMbwayModal] = useState(false);
   const [whatsappUrl, setWhatsappUrl] = useState("");
   const [savedOrderId, setSavedOrderId] = useState<number | null>(null);
   const [savedTrackingCode, setSavedTrackingCode] = useState<string | null>(null);
@@ -252,6 +255,7 @@ export default function Cart({
     const orderNumber = Math.floor(1000 + Math.random() * 9000);
 
     let newOrderId = null;
+    let newTrackingCode: string | null = null;
     let orderSavedSuccessfully = false;
     try {
       const { data: activeSession } = await supabase
@@ -296,9 +300,23 @@ export default function Cart({
       if (error) throw error;
       if (data && data.length > 0) {
         newOrderId = data[0].id;
+        newTrackingCode = data[0].tracking_code;
         setSavedOrderId(newOrderId);
-        setSavedTrackingCode(data[0].tracking_code);
+        setSavedTrackingCode(newTrackingCode);
         orderSavedSuccessfully = true;
+
+        if (newTrackingCode) {
+          try {
+            localStorage.setItem('41menus_last_order', JSON.stringify({ 
+              id: newOrderId, 
+              code: newTrackingCode, 
+              at: Date.now() 
+            }));
+            window.dispatchEvent(new Event('41menus-last-order'));
+          } catch (storageErr) {
+            console.warn('[Cart] Erro ao salvar 41menus_last_order:', storageErr);
+          }
+        }
 
         try {
           if (telefone) {
@@ -422,11 +440,20 @@ export default function Cart({
     text += `*TOTAL: € ${total.toFixed(2)}*\n`;
     text += `-----------------------------------\n`;
     text += `[PAGAMENTO]\n`;
-    text += `Forma: ${pagamento}\n`;
-    if (pagamento === "Numerário" && trocoPara) {
-      text += `Troco para: € ${trocoPara}\n`;
+    if (pagamento === "MB Way") {
+      text += `Forma: MB WAY\n`;
+      text += `Estado: Pagamento pendente de validação do comprovativo\n`;
+    } else {
+      text += `Forma: ${pagamento}\n`;
+      if (pagamento === "Numerário" && trocoPara) {
+        text += `Troco para: € ${trocoPara}\n`;
+      }
     }
     text += `-----------------------------------`;
+
+    if (newTrackingCode) {
+      text += `\n🔍 Acompanhe seu pedido:\n${window.location.origin}/track/${newTrackingCode}`;
+    }
 
     // Envio automático oficial do resumo para a pizzaria e cliente (impossibilita alteração pelo cliente)
     fetch('/.netlify/functions/send-order-whatsapp', {
@@ -445,7 +472,11 @@ export default function Cart({
     trackEvent('purchase', { total_value: total, order_id: newOrderId || orderNumber });
 
     setWhatsappUrl(contactWappUrl);
-    setIsSuccess(true);
+    if (pagamento === "MB Way") {
+      setShowMbwayModal(true);
+    } else {
+      setIsSuccess(true);
+    }
     onClearCart();
   };
 
@@ -453,12 +484,10 @@ export default function Cart({
   if (isSuccess) {
     const successActionButtons = (
       <div className="w-full max-w-xs mx-auto flex flex-col gap-2.5 mt-3">
-        {savedOrderId && (
+        {savedTrackingCode && (
           <a
             href={`/track/${savedTrackingCode}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full bg-[#8b0000] hover:bg-[#6b0000] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-sm transition-all cursor-pointer"
+            className="w-full bg-[#083d07] hover:bg-[#062c05] text-white font-bold py-3 px-4 rounded-xl text-center block hover:opacity-95 transition text-xs shadow-sm cursor-pointer"
           >
             🔍 Acompanhar Pedido
           </a>
@@ -958,14 +987,14 @@ export default function Cart({
                     <label className="block text-[10px] font-bold text-gray-600 mb-1 uppercase">
                       Pagamento
                     </label>
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-3 gap-1">
                       <button
                         type="button"
                         onClick={() => {
                           setPagamento("MB Way");
                           saveCustomerData({ pagamento: "MB Way" });
                         }}
-                        className={`h-7 px-2 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1 border cursor-pointer ${
+                        className={`h-7 px-1 rounded-lg font-bold text-[10.5px] transition-all flex items-center justify-center gap-1 border cursor-pointer ${
                           pagamento === "MB Way"
                             ? "bg-gray-900 text-white border-gray-900 shadow-2xs"
                             : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
@@ -980,13 +1009,28 @@ export default function Cart({
                           setPagamento("Numerário");
                           saveCustomerData({ pagamento: "Numerário" });
                         }}
-                        className={`h-7 px-2 rounded-lg font-bold text-[11px] transition-all flex items-center justify-center gap-1 border cursor-pointer ${
+                        className={`h-7 px-1 rounded-lg font-bold text-[10.5px] transition-all flex items-center justify-center gap-1 border cursor-pointer ${
                           pagamento === "Numerário"
                             ? "bg-gray-900 text-white border-gray-900 shadow-2xs"
                             : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                         }`}
                       >
                         <span>💵 Dinheiro</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPagamento("Cartão");
+                          saveCustomerData({ pagamento: "Cartão" });
+                        }}
+                        className={`h-7 px-1 rounded-lg font-bold text-[10.5px] transition-all flex items-center justify-center gap-1 border cursor-pointer ${
+                          pagamento === "Cartão"
+                            ? "bg-gray-900 text-white border-gray-900 shadow-2xs"
+                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span>💳 Cartão</span>
                       </button>
                     </div>
 
@@ -1120,6 +1164,26 @@ export default function Cart({
           />
           <div className="relative bg-white w-full max-h-[85vh] rounded-t-3xl overflow-y-auto shadow-2xl flex flex-col p-2">
             {CartContent}
+          </div>
+        </div>
+      )}
+
+      {/* Modal MB WAY com QR Code e Copiar Telemóvel */}
+      {showMbwayModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+            <MbwayPaymentModal
+              orderId={savedOrderId}
+              total={total}
+              trackingCode={savedTrackingCode}
+              whatsappUrl={whatsappUrl}
+              onClose={() => {
+                setShowMbwayModal(false);
+                setIsSuccess(false);
+                setCurrentStep('items');
+                onClose();
+              }}
+            />
           </div>
         </div>
       )}

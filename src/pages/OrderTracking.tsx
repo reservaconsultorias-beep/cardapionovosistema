@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-
-import { CheckCircle, Clock, Truck, ChefHat, ArrowLeft } from 'lucide-react';
+import { CheckCircle, Clock, Truck, ChefHat, ArrowLeft, XCircle, Store } from 'lucide-react';
 import { formatItemNameForPrint } from '../utils/printHelpers';
 
 export default function OrderTracking() {
@@ -13,10 +12,17 @@ export default function OrderTracking() {
 
   useEffect(() => {
     let isMounted = true;
+    const cleanCode = code ? code.trim() : '';
+
+    if (!cleanCode) {
+      setLoading(false);
+      setNotFound(true);
+      return;
+    }
 
     async function fetchOrder() {
       try {
-        const { data, error } = await supabase.rpc('get_order_by_tracking_code', { p_code: code });
+        const { data, error } = await supabase.rpc('get_order_by_tracking_code', { p_code: cleanCode });
         if (error) throw error;
         if (!isMounted) return;
         if (data && data.length > 0) {
@@ -31,6 +37,7 @@ export default function OrderTracking() {
             items: o.items,
             createdAt: o.created_at
           });
+          setNotFound(false);
         } else {
           setNotFound(true);
         }
@@ -43,81 +50,141 @@ export default function OrderTracking() {
     }
 
     fetchOrder();
-    const interval = setInterval(fetchOrder, 8000);
+
+    // Atualização automática contínua a cada 6 segundos
+    const interval = setInterval(fetchOrder, 6000);
+
+    // Atualização instantânea em tempo real via Supabase Realtime
+    const channel = supabase
+      .channel(`order_tracking_${cleanCode}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, () => {
+        fetchOrder();
+      })
+      .subscribe();
 
     return () => {
       isMounted = false;
       clearInterval(interval);
+      supabase.removeChannel(channel);
     };
   }, [code]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center">A carregar...</div>;
-
-  if (notFound || !order) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-4">
-        <h1 className="text-2xl font-bold mb-4">Pedido não encontrado</h1>
-        <Link to="/" className="text-red-700 underline">Voltar à loja</Link>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500 font-medium">
+        Localizando o seu pedido...
       </div>
     );
   }
 
-  const statusMap: Record<string, { icon: any, text: string, color: string }> = {
-    'Pendente': { icon: Clock, text: 'Pendente', color: 'text-gray-500' },
-    'Em Preparo': { icon: ChefHat, text: 'Em Preparo', color: 'text-orange-500' },
-    'Saiu para Entrega': { icon: Truck, text: 'Saiu para Entrega', color: 'text-blue-500' },
-    'Finalizado': { icon: CheckCircle, text: 'Finalizado', color: 'text-green-500' }
+  if (notFound || !order) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50 text-center">
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Pedido não encontrado</h1>
+        <p className="text-gray-500 mb-6 text-sm">Verifique se o link está correto ou entre em contato com a pizzaria.</p>
+        <Link to="/" className="text-red-700 font-semibold underline">Voltar ao Cardápio</Link>
+      </div>
+    );
+  }
+
+  const isDelivery = String(order.orderType || '').toLowerCase().includes('deliv') || String(order.orderType || '').toLowerCase().includes('entreg');
+
+  const statusMap: Record<string, { icon: any, text: string, color: string, desc: string }> = {
+    'Pendente': { 
+      icon: Clock, 
+      text: 'Aguardando Confirmação', 
+      color: 'text-amber-600 bg-amber-50 border-amber-200',
+      desc: 'O seu pedido foi recebido e aguarda aprovação da cozinha.' 
+    },
+    'Em Preparo': { 
+      icon: ChefHat, 
+      text: 'No Forno / Em Preparo', 
+      color: 'text-orange-600 bg-orange-50 border-orange-200',
+      desc: 'A nossa equipa já está a preparar as suas delícias no forno!' 
+    },
+    'Saiu para Entrega': { 
+      icon: isDelivery ? Truck : Store, 
+      text: isDelivery ? 'Saiu para Entrega' : 'Pronto para Retirada', 
+      color: 'text-blue-600 bg-blue-50 border-blue-200',
+      desc: isDelivery ? 'O estafeta já recolheu a sua entrega e está a caminho!' : 'O seu pedido está pronto no balcão à sua espera!' 
+    },
+    'Finalizado': { 
+      icon: CheckCircle, 
+      text: 'Entregue / Concluído', 
+      color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+      desc: 'Pedido concluído com sucesso. Bom apetite!' 
+    },
+    'Cancelado': { 
+      icon: XCircle, 
+      text: 'Pedido Cancelado', 
+      color: 'text-red-600 bg-red-50 border-red-200',
+      desc: 'Este pedido foi cancelado pela pizzaria.' 
+    }
   };
 
   const currentStatus = statusMap[order.status] || statusMap['Pendente'];
   const StatusIcon = currentStatus.icon;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-xl">
-        <div>
-          <Link to="/" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-900 mb-6">
-            <ArrowLeft size={16} className="mr-1" /> Voltar ao Início
-          </Link>
-          <h2 className="text-center text-3xl font-extrabold text-gray-900">
-            Acompanhar Pedido #{order.id}
+    <div className="min-h-screen bg-gray-50 flex justify-center py-10 px-4 sm:px-6">
+      <div className="max-w-md w-full bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-100 flex flex-col">
+        <Link to="/" className="inline-flex items-center text-sm text-gray-500 hover:text-gray-900 mb-6">
+          <ArrowLeft size={16} className="mr-1" /> Voltar ao Cardápio
+        </Link>
+
+        <div className="text-center pb-4 border-b border-gray-100">
+          <span className="text-xs font-bold tracking-wider text-gray-400 uppercase">41 Menus Delivery</span>
+          <h2 className="text-2xl font-black text-gray-900 mt-1">
+            Pedido #{order.id}
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Cliente: {order.customerName}
+          <p className="text-sm text-gray-600 mt-0.5">
+            Cliente: <span className="font-semibold text-gray-800">{order.customerName}</span>
           </p>
         </div>
 
-        <div className="mt-8 flex flex-col items-center justify-center space-y-4">
-          <div className={`p-6 rounded-full bg-gray-50 shadow-inner ${currentStatus.color}`}>
-            <StatusIcon size={64} />
+        {/* Card Central de Status */}
+        <div className="my-8 flex flex-col items-center text-center">
+          <div className={`p-5 rounded-full border shadow-xs mb-4 ${currentStatus.color}`}>
+            <StatusIcon size={52} />
           </div>
-          <h3 className={`text-2xl font-bold ${currentStatus.color}`}>
+          <h3 className="text-xl font-extrabold text-gray-900">
             {currentStatus.text}
           </h3>
-          <p className="text-gray-500 text-center">
-            {order.status === 'Pendente' && 'Aguardando o restaurante aceitar seu pedido.'}
-            {order.status === 'Em Preparo' && 'A nossa equipa está a preparar o seu pedido com muito carinho!'}
-            {order.status === 'Saiu para Entrega' && 'O seu pedido já está a caminho!'}
-            {order.status === 'Finalizado' && 'Pedido concluído. Bom apetite!'}
+          <p className="text-sm text-gray-500 mt-2 px-2">
+            {currentStatus.desc}
           </p>
+          <div className="inline-flex items-center gap-1.5 mt-4 text-[11px] text-gray-400 bg-gray-50 px-3 py-1 rounded-full border border-gray-100">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            Atualizando em tempo real
+          </div>
         </div>
 
-        <div className="mt-8 border-t border-gray-100 pt-6">
-          <h4 className="font-semibold text-gray-900 mb-4">Resumo do Pedido</h4>
-          <div className="space-y-3">
-            {order.items.map((item: any, i: number) => (
-              <div key={i} className="flex justify-between text-sm">
-                <span className="text-gray-600">{item.quantity}x {formatItemNameForPrint(item)}</span>
-                <span className="font-medium">€{(item.priceCalculated * item.quantity).toFixed(2)}</span>
-              </div>
-            ))}
+        {/* Resumo dos Itens */}
+        <div className="border-t border-gray-100 pt-6 mt-auto">
+          <h4 className="font-bold text-gray-900 text-sm mb-3">Resumo dos Itens</h4>
+          <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+            {order.items?.map((item: any, i: number) => {
+              const itemFormattedName = formatItemNameForPrint(item) || item.name || item.title;
+              const itemPrice = (item.priceCalculated || item.price || 0) * (item.quantity || 1);
+              return (
+                <div key={i} className="flex justify-between items-start text-xs sm:text-sm py-1 border-b border-gray-50 last:border-none">
+                  <span className="text-gray-700 font-medium">
+                    {item.quantity}x {itemFormattedName}
+                  </span>
+                  <span className="font-bold text-gray-900 shrink-0 ml-2">
+                    € {itemPrice.toFixed(2)}
+                  </span>
+                </div>
+              );
+            })}
           </div>
-          <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between font-bold text-lg">
+          
+          <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center text-base font-black text-gray-900">
             <span>Total</span>
-            <span>€{order.totalAmount.toFixed(2)}</span>
+            <span className="text-emerald-700">€ {Number(order.totalAmount || 0).toFixed(2)}</span>
           </div>
-          <div className="mt-2 text-sm text-gray-500 text-right">
-            Pago em {order.paymentMethod}
+          <div className="mt-2 text-xs text-gray-400 text-right">
+            Forma de pagamento: <span className="font-medium text-gray-600">{order.paymentMethod}</span>
           </div>
         </div>
       </div>
