@@ -463,7 +463,7 @@ function App() {
             {lastOrder ? (
               <a
                 href={`/track/${lastOrder.code}`}
-                className="md:hidden inline-flex items-center gap-1.5 bg-[#083d07] hover:bg-[#062c05] text-white font-bold text-xs rounded-full px-2.5 py-1 shadow-xs transition-all animate-pulse"
+                className="md:hidden inline-flex items-center gap-1.5 bg-black hover:bg-neutral-800 text-white font-bold text-xs rounded-full px-3 py-1.5 shadow-xs transition-all animate-pulse border border-neutral-800"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                 <span>Pedido #{lastOrder.id}</span>
@@ -476,7 +476,7 @@ function App() {
                     window.location.href = `/track/${code.trim()}`;
                   }
                 }}
-                className="md:hidden inline-flex items-center gap-1 bg-[#083d07] hover:bg-[#062c05] text-white font-bold text-xs rounded-full px-2.5 py-1 shadow-xs transition-all"
+                className="md:hidden inline-flex items-center gap-1 bg-black hover:bg-neutral-800 text-white font-bold text-xs rounded-full px-3 py-1.5 shadow-xs transition-all border border-neutral-800"
               >
                 <span>Acompanhar Pedido</span>
               </button>
@@ -497,7 +497,7 @@ function App() {
             {lastOrder ? (
               <a
                 href={`/track/${lastOrder.code}`}
-                className="hidden md:inline-flex items-center gap-2 bg-[#083d07] hover:bg-[#062c05] text-white font-bold text-xs px-4 py-2 rounded-full shadow-xs transition-all hover:scale-105 shrink-0"
+                className="hidden md:inline-flex items-center gap-2 bg-black hover:bg-neutral-800 text-white font-bold text-xs px-4 py-2 rounded-full shadow-xs transition-all hover:scale-105 shrink-0 border border-neutral-800"
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span>Acompanhar Pedido #{lastOrder.id}</span>
@@ -510,7 +510,7 @@ function App() {
                     window.location.href = `/track/${code.trim()}`;
                   }
                 }}
-                className="hidden md:inline-flex items-center gap-1.5 bg-[#083d07] hover:bg-[#062c05] text-white font-bold text-xs px-3.5 py-2 rounded-full shadow-xs transition-all hover:scale-105 shrink-0"
+                className="hidden md:inline-flex items-center gap-1.5 bg-black hover:bg-neutral-800 text-white font-bold text-xs px-4 py-2 rounded-full shadow-xs transition-all hover:scale-105 shrink-0 border border-neutral-800"
               >
                 <span>🔍 Acompanhar Pedido</span>
               </button>

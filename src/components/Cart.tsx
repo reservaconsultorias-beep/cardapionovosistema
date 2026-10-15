@@ -487,7 +487,7 @@ export default function Cart({
         {savedTrackingCode && (
           <a
             href={`/track/${savedTrackingCode}`}
-            className="w-full bg-[#083d07] hover:bg-[#062c05] text-white font-bold py-3 px-4 rounded-xl text-center block hover:opacity-95 transition text-xs shadow-sm cursor-pointer"
+            className="w-full bg-black hover:bg-neutral-800 text-white font-bold py-3 px-4 rounded-xl text-center block hover:opacity-95 transition text-xs shadow-sm cursor-pointer border border-neutral-800"
           >
             🔍 Acompanhar Pedido
           </a>

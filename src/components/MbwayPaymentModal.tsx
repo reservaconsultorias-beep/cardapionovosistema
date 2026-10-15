@@ -195,7 +195,7 @@ export default function MbwayPaymentModal({
         {trackingCode && (
           <a
             href={`/track/${trackingCode}`}
-            className="w-full bg-white border border-[#083d07] text-[#083d07] hover:bg-[#083d07] hover:text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs transition-all"
+            className="w-full bg-black hover:bg-neutral-800 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs transition-all border border-neutral-800"
           >
             <span>Acompanhar estado do pedido</span>
             <ExternalLink size={13} />
