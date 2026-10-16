@@ -117,11 +117,41 @@ const safeParseItems = (items: any): any[] => {
 const CHART_COLORS = ["#18181b", "#fdde58", "#3b82f6", "#10b981", "#f97316", "#a855f7"];
 
 
-const playNotificationSound = () => {
+let audioCtxInstance: AudioContext | null = null;
+const getOrCreateAudioContext = () => {
   try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-    const ctx = new AudioContext();
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return null;
+    if (!audioCtxInstance || audioCtxInstance.state === 'closed') {
+      audioCtxInstance = new AudioContextClass();
+    }
+    if (audioCtxInstance && audioCtxInstance.state === 'suspended') {
+      audioCtxInstance.resume().catch(() => {});
+    }
+    return audioCtxInstance;
+  } catch (e) {
+    console.warn("AudioContext initialization warning:", e);
+    return null;
+  }
+};
+
+// Desbloqueio global do áudio no primeiro clique/toque em qualquer lugar da tela
+if (typeof window !== 'undefined') {
+  const unlockAudio = () => {
+    getOrCreateAudioContext();
+  };
+  ['click', 'touchstart', 'keydown', 'pointerdown'].forEach(evt => {
+    window.addEventListener(evt, unlockAudio, { capture: true, once: false });
+  });
+}
+
+const playNotificationSound = async () => {
+  try {
+    const ctx = getOrCreateAudioContext();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') {
+      await ctx.resume().catch(() => {});
+    }
     
     const playChime = (time: number, freq: number, duration: number) => {
       const osc = ctx.createOscillator();
@@ -130,8 +160,8 @@ const playNotificationSound = () => {
       osc.frequency.setValueAtTime(freq, time);
       
       gainNode.gain.setValueAtTime(0, time);
-      gainNode.gain.linearRampToValueAtTime(0.6, time + 0.05);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, time + duration);
+      gainNode.gain.linearRampToValueAtTime(0.7, time + 0.04);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, time + duration);
       
       osc.connect(gainNode);
       gainNode.connect(ctx.destination);
@@ -140,13 +170,13 @@ const playNotificationSound = () => {
       osc.stop(time + duration);
     };
 
-    const t = ctx.currentTime;
-    // Turu-turu! (Sequence of notes)
+    const t = ctx.currentTime + 0.05;
+    // Turu-turu! (Sequence of notes) - Alerta sonoro oficial do 41 Menus
     playChime(t, 1318.51, 0.15); // E6
     playChime(t + 0.15, 1046.50, 0.2); // C6
     
     playChime(t + 0.4, 1318.51, 0.15); // E6
-    playChime(t + 0.55, 1046.50, 0.4); // C6
+    playChime(t + 0.55, 1046.50, 0.45); // C6
   } catch (e) {
     console.log("Audio play failed", e);
   }
@@ -226,6 +256,8 @@ export default function AdminDashboard() {
   const toggleSound = () => setSoundEnabled(prev => !prev);
   const [lastSeenOrderId, setLastSeenOrderId] = useState<number | null>(null);
   const lastSeenOrderIdRef = useRef(lastSeenOrderId);
+  const isInitialOrdersLoadDoneRef = useRef(false);
+  const playedOrdersSetRef = useRef<Set<number>>(new Set());
   const lastPlayedOrderIdRef = useRef<number | null>(null);
   const lastSoundTimeRef = useRef<number>(0);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -767,35 +799,56 @@ export default function AdminDashboard() {
         }
       };
 
+      // Auto-aceite automático: Qualquer pedido com status 'Pendente' é alterado para 'Em Preparo'
+      const pendingOrdersToAccept = allDbOrders.filter(o => o.status === 'Pendente');
+      if (pendingOrdersToAccept.length > 0) {
+        const pendingIds = pendingOrdersToAccept.map(o => o.id);
+        supabase.from('orders').update({ status: 'Em Preparo' }).in('id', pendingIds).then(({ error }) => {
+          if (error) console.error('[AdminDashboard] Erro no auto-aceite:', error);
+        });
+        allDbOrders.forEach(o => {
+          if (o.status === 'Pendente') o.status = 'Em Preparo';
+        });
+      }
+
       setDashboardData(data);
       setFilteredOrders(allOrdersAgg);
-      if (data.recentOrders && data.recentOrders.length > 0) {
-        const latestOrder = data.recentOrders[0];
-        const isNewOrder = lastSeenOrderIdRef.current !== null && latestOrder.id > lastSeenOrderIdRef.current;
-        
-        if (isNewOrder) {
-          const now = Date.now();
-          const alreadyPlayed = lastPlayedOrderIdRef.current === latestOrder.id;
-          const isThrottled = now - lastSoundTimeRef.current < 4000;
 
-          // Atualiza imediatamente para que execuções assíncronas concorrentes saibam que o pedido já foi visto
-          lastSeenOrderIdRef.current = latestOrder.id;
-          setLastSeenOrderId(latestOrder.id);
+      // Verificação inteligente de novos pedidos para alerta sonoro (1 vez por pedido)
+      const maxCurrentId = allDbOrders.length > 0 ? Math.max(...allDbOrders.map(o => Number(o.id) || 0)) : 0;
 
-          if (!alreadyPlayed && !isThrottled) {
-            lastPlayedOrderIdRef.current = latestOrder.id;
-            lastSoundTimeRef.current = now;
+      if (!isInitialOrdersLoadDoneRef.current) {
+        // Primeira carga da página: registra todos os pedidos existentes para NÃO tocar alarme retroativo
+        allDbOrders.forEach(o => playedOrdersSetRef.current.add(o.id));
+        lastSeenOrderIdRef.current = maxCurrentId;
+        setLastSeenOrderId(maxCurrentId);
+        isInitialOrdersLoadDoneRef.current = true;
+      } else {
+        // Cargas subsequentes (via polling de 15s ou Realtime do Supabase):
+        // Detecta qualquer pedido cujo ID seja maior que o último visto OU que não esteja no conjunto de tocados
+        const incomingNewOrders = allDbOrders.filter(o => 
+          (o.id > (lastSeenOrderIdRef.current ?? 0) || !playedOrdersSetRef.current.has(o.id)) &&
+          o.status !== 'Cancelado' && o.status !== 'cancelado'
+        );
+
+        if (incomingNewOrders.length > 0) {
+          if (maxCurrentId > (lastSeenOrderIdRef.current ?? 0)) {
+            lastSeenOrderIdRef.current = maxCurrentId;
+            setLastSeenOrderId(maxCurrentId);
+          }
+
+          const unplayed = incomingNewOrders.filter(o => !playedOrdersSetRef.current.has(o.id));
+          if (unplayed.length > 0) {
+            unplayed.forEach(o => playedOrdersSetRef.current.add(o.id));
 
             if (soundEnabledRef.current) {
               playNotificationSound();
             }
+
             if (autoPrintRef.current) {
-              handlePrintOrder(latestOrder);
+              handlePrintOrder(unplayed[0]);
             }
           }
-        } else if (lastSeenOrderIdRef.current === null || latestOrder.id > lastSeenOrderIdRef.current) {
-          setLastSeenOrderId(latestOrder.id);
-          lastSeenOrderIdRef.current = latestOrder.id;
         }
       }
       

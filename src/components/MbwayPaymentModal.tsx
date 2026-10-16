@@ -54,9 +54,9 @@ export default function MbwayPaymentModal({
     }
   };
 
-  // URL para geração dinâmica de QR Code visual com as informações do pagamento
+  // URL para geração dinâmica de QR Code visual com as informações do pagamento (cor preta na paleta do 41 Menus)
   const qrPayload = `MBWAY:${MBWAY_CONFIG.telefoneRecebedor}|VALOR:${effectiveAmount.toFixed(2)}|REF:${paymentReference}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrPayload)}&color=083d07`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrPayload)}&color=000000&bgcolor=ffffff`;
 
   return (
     <div className="w-full flex flex-col items-center text-center font-sans relative">
@@ -82,13 +82,13 @@ export default function MbwayPaymentModal({
         </h2>
         <div className="mt-2 flex items-baseline justify-center gap-1.5">
           <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Total a transferir:</span>
-          <span className="text-2xl font-black font-mono text-[#083d07]">
+          <span className="text-2xl font-black font-mono text-stone-900">
             {formattedAmount}
           </span>
         </div>
       </div>
 
-      {/* Área do QR Code MB WAY */}
+      {/* Área do QR Code MB WAY (Cor preta na paleta do 41 Menus) */}
       <div className="my-4 flex flex-col items-center">
         <div className="p-3 bg-white rounded-2xl border-2 border-stone-200 shadow-sm relative flex items-center justify-center min-w-[210px] min-h-[210px]">
           <img
@@ -122,7 +122,7 @@ export default function MbwayPaymentModal({
               className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer ${
                 copiedPhone
                   ? 'bg-emerald-600 text-white'
-                  : 'bg-[#083d07] hover:bg-[#0b520a] text-white'
+                  : 'bg-stone-900 hover:bg-black text-white'
               }`}
             >
               {copiedPhone ? <Check size={14} /> : <Copy size={14} />}
@@ -162,7 +162,7 @@ export default function MbwayPaymentModal({
       {/* Instruções de Pagamento PT-PT */}
       <div className="w-full max-w-sm mt-4 p-3.5 bg-stone-50 rounded-xl border border-stone-200 text-left space-y-2 text-xs text-stone-600">
         <div className="flex items-center gap-1.5 font-bold text-stone-800 text-[11px] uppercase tracking-wider">
-          <ShieldCheck size={14} className="text-[#083d07]" />
+          <ShieldCheck size={14} className="text-stone-900" />
           <span>Como pagar via MB WAY:</span>
         </div>
         <ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed text-stone-600 pl-0.5">
@@ -175,7 +175,7 @@ export default function MbwayPaymentModal({
         <div className="pt-2 border-t border-stone-200/80 flex items-start gap-2 text-[11px] text-amber-900 bg-amber-50/80 p-2 rounded-lg">
           <Clock size={13} className="text-amber-700 shrink-0 mt-0.5" />
           <span>
-            <strong>Nota:</strong> O pedido entrará em forno/preparação após a validação do comprovativo pela equipa da pizzaria.
+            <strong>Nota:</strong> O seu pedido já foi aceite automaticamente e está em preparo no forno!
           </span>
         </div>
       </div>

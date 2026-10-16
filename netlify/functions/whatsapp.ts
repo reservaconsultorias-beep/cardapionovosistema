@@ -89,7 +89,7 @@ export default async (req, context) => {
       customer_phone: payload.customer_phone,
       order_type: payload.order_type,
       payment_method: payload.payment_method,
-      status: 'Pendente',
+      status: 'Em Preparo',
       total_amount: payload.total_amount,
       delivery_address: payload.delivery_address || null,
       delivery_zone: payload.delivery_zone || null,

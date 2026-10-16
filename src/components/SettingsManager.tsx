@@ -631,7 +631,7 @@ export default function SettingsManager({
                       <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
                         {soundEnabled ? <><Bell size={13} className="text-emerald-600" /> Alerta Sonoro Ativo</> : <><BellOff size={13} className="text-stone-400" /> Som Mudo</>}
                       </span>
-                      <span className="text-[11px] text-stone-500">Toca repetidamente até o operador abrir a comanda.</span>
+                      <span className="text-[11px] text-stone-500">Toca 1 vez ao receber um novo pedido no sistema.</span>
                     </div>
                   </div>
 

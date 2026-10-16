@@ -86,6 +86,7 @@ export default function Cart({
   const [whatsappUrl, setWhatsappUrl] = useState("");
   const [savedOrderId, setSavedOrderId] = useState<number | null>(null);
   const [savedTrackingCode, setSavedTrackingCode] = useState<string | null>(null);
+  const [savedTotal, setSavedTotal] = useState<number>(0);
 
   const [zonesFees, setZonesFees] = useState<Record<string, number>>({});
   const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState(35);
@@ -108,7 +109,11 @@ export default function Cart({
           setShowNifInput(true);
         }
         if (parsed.orderType) setOrderType(parsed.orderType);
-        if (parsed.pagamento) setPagamento(parsed.pagamento);
+        if (parsed.pagamento && parsed.pagamento !== 'Cartão') {
+          setPagamento(parsed.pagamento);
+        } else {
+          setPagamento('MB Way');
+        }
       }
     } catch (e) {
       console.warn('[Cart] Error reading localStorage customer data', e);
@@ -270,7 +275,7 @@ export default function Cart({
         customer_phone: telefone,
         order_type: orderType,
         payment_method: pagamento,
-        status: 'Pendente',
+        status: 'Em Preparo', // Auto-aceite automático do pedido ao ser enviado
         total_amount: total,
         delivery_address: orderType === 'Delivery' ? morada : null,
         delivery_zone: orderType === 'Delivery' ? zona : null,
@@ -303,6 +308,7 @@ export default function Cart({
         newTrackingCode = data[0].tracking_code;
         setSavedOrderId(newOrderId);
         setSavedTrackingCode(newTrackingCode);
+        setSavedTotal(total);
         orderSavedSuccessfully = true;
 
         if (newTrackingCode) {
@@ -472,6 +478,7 @@ export default function Cart({
     trackEvent('purchase', { total_value: total, order_id: newOrderId || orderNumber });
 
     setWhatsappUrl(contactWappUrl);
+    setSavedTotal(total);
     if (pagamento === "MB Way") {
       setShowMbwayModal(true);
     } else {
@@ -987,14 +994,14 @@ export default function Cart({
                     <label className="block text-[10px] font-bold text-gray-600 mb-1 uppercase">
                       Pagamento
                     </label>
-                    <div className="grid grid-cols-3 gap-1">
+                    <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => {
                           setPagamento("MB Way");
                           saveCustomerData({ pagamento: "MB Way" });
                         }}
-                        className={`h-7 px-1 rounded-lg font-bold text-[10.5px] transition-all flex items-center justify-center gap-1 border cursor-pointer ${
+                        className={`h-8 px-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
                           pagamento === "MB Way"
                             ? "bg-gray-900 text-white border-gray-900 shadow-2xs"
                             : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
@@ -1009,28 +1016,13 @@ export default function Cart({
                           setPagamento("Numerário");
                           saveCustomerData({ pagamento: "Numerário" });
                         }}
-                        className={`h-7 px-1 rounded-lg font-bold text-[10.5px] transition-all flex items-center justify-center gap-1 border cursor-pointer ${
+                        className={`h-8 px-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5 border cursor-pointer ${
                           pagamento === "Numerário"
                             ? "bg-gray-900 text-white border-gray-900 shadow-2xs"
                             : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
                         }`}
                       >
-                        <span>💵 Dinheiro</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPagamento("Cartão");
-                          saveCustomerData({ pagamento: "Cartão" });
-                        }}
-                        className={`h-7 px-1 rounded-lg font-bold text-[10.5px] transition-all flex items-center justify-center gap-1 border cursor-pointer ${
-                          pagamento === "Cartão"
-                            ? "bg-gray-900 text-white border-gray-900 shadow-2xs"
-                            : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
-                        }`}
-                      >
-                        <span>💳 Cartão</span>
+                        <span>💵 Numerário</span>
                       </button>
                     </div>
 
@@ -1174,7 +1166,7 @@ export default function Cart({
           <div className="bg-white rounded-3xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
             <MbwayPaymentModal
               orderId={savedOrderId}
-              total={total}
+              total={savedTotal || total}
               trackingCode={savedTrackingCode}
               whatsappUrl={whatsappUrl}
               onClose={() => {
