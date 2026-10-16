@@ -472,8 +472,8 @@ export default function Cart({
       })
     }).catch(err => console.warn('[Cart] Aviso no envio automático WhatsApp:', err));
 
-    const contactText = `Olá! Gostaria de falar sobre o meu pedido #${newOrderId || orderNumber}.`;
-    const contactWappUrl = `https://api.whatsapp.com/send?phone=351938360931&text=${encodeURIComponent(contactText)}`;
+    const contactText = `Olá! Segue meu pedido feito pelo cardápio digital  número #${newOrderId || orderNumber}`;
+    const contactWappUrl = `https://api.whatsapp.com/send?phone=${RESTAURANT_WHATSAPP_PHONE}&text=${encodeURIComponent(contactText)}`;
 
     trackEvent('purchase', { total_value: total, order_id: newOrderId || orderNumber });
 
