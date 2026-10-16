@@ -461,7 +461,7 @@ export default function Cart({
       text += `\n🔍 Acompanhe seu pedido:\n${window.location.origin}/track/${newTrackingCode}`;
     }
 
-    // Envio automático oficial do resumo para a pizzaria e cliente (impossibilita alteração pelo cliente)
+    // Envio automático oficial do resumo exclusivamente para o WhatsApp do cliente
     fetch('/.netlify/functions/send-order-whatsapp', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

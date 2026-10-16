@@ -27,92 +27,47 @@ export default async (req: Request) => {
     const evolutionUrl = process.env.EVOLUTION_API_URL || 'https://funnyeagle-evolution.cloudfy.live';
     const evolutionApiKey = process.env.EVOLUTION_API_KEY || '1E0FE7D2CCFB-4757-B948-F350F94E227F';
     const instanceName = process.env.EVOLUTION_INSTANCE_NAME || 'agente41menus';
-    const pizzeriaPhone = '351938360931';
 
-    // 1. Enviar para o número da pizzaria (garante que a pizzaria recebe o resumo inalterável)
-    let puzzeriaResult = null;
-    try {
-      const evoPizzeriaRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': evolutionApiKey
-        },
-        body: JSON.stringify({
-          number: pizzeriaPhone,
-          text: message
-        })
-      });
-      if (evoPizzeriaRes.ok) {
-        puzzeriaResult = await evoPizzeriaRes.json();
-      }
-    } catch (e) {
-      console.warn('[AutoSend] Falha ao enviar para o WhatsApp da pizzaria:', e);
-    }
-
-    // 2. Se o cliente informou telefone, enviar também para o WhatsApp do cliente
+    // Envio exclusivo para o WhatsApp do cliente com a mensagem de confirmação e encaminhamento à cozinha
     let customerResult = null;
-    let confirmationResult = null;
     let formattedCustomerPhone = customerPhone;
+
     if (customerPhone) {
       // Se for número de Portugal com 9 dígitos iniciando em 9 ou 2, adicionar DDI 351
       if (customerPhone.length === 9 && (customerPhone.startsWith('9') || customerPhone.startsWith('2'))) {
         formattedCustomerPhone = '351' + customerPhone;
       }
 
-      if (formattedCustomerPhone !== pizzeriaPhone) {
-        // 2a. Enviar o resumo do pedido para o cliente
-        try {
-          const evoCustRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': evolutionApiKey
-            },
-            body: JSON.stringify({
-              number: formattedCustomerPhone,
-              text: message
-            })
-          });
-          if (evoCustRes.ok) {
-            customerResult = await evoCustRes.json();
-          }
-        } catch (e) {
-          console.warn('[AutoSend] Falha ao enviar para o WhatsApp do cliente:', e);
-        }
+      // Mensagem personalizada para o cliente contendo o aviso de recebimento/cozinha + resumo completo
+      const clientNotificationText = `🍕 *Olá! Recebemos o seu pedido e já estamos enviando para a cozinha!*\n\n${message}`;
 
-        // 2b. Enviar mensagem de confirmação automática para o cliente (após o resumo)
-        try {
-          // Pequeno delay para garantir que a confirmação chegue após o resumo
-          await new Promise(resolve => setTimeout(resolve, 1500));
-          const confirmMsg = 'Pedido confirmado, já encaminhamos para cozinha. ✅🍕';
-          const evoConfirmRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': evolutionApiKey
-            },
-            body: JSON.stringify({
-              number: formattedCustomerPhone,
-              text: confirmMsg
-            })
-          });
-          if (evoConfirmRes.ok) {
-            confirmationResult = await evoConfirmRes.json();
-          }
-        } catch (e) {
-          console.warn('[AutoSend] Falha ao enviar confirmação automática para o cliente:', e);
+      try {
+        const evoCustRes = await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': evolutionApiKey
+          },
+          body: JSON.stringify({
+            number: formattedCustomerPhone,
+            text: clientNotificationText
+          })
+        });
+
+        if (evoCustRes.ok) {
+          customerResult = await evoCustRes.json();
+        } else {
+          console.warn('[AutoSend] Resposta não-ok da Evolution API ao enviar para o cliente:', await evoCustRes.text());
         }
+      } catch (e) {
+        console.warn('[AutoSend] Falha ao enviar para o WhatsApp do cliente:', e);
       }
     }
 
     return new Response(JSON.stringify({
       success: true,
       orderId,
-      pizzeriaSent: !!puzzeriaResult,
       customerSent: !!customerResult,
-      confirmationSent: !!confirmationResult,
-      pizzeriaPhone,
       customerPhone: formattedCustomerPhone
     }), { status: 200, headers });
 
