@@ -1162,8 +1162,8 @@ export default function Cart({
 
       {/* Modal MB WAY com QR Code e Copiar Telemóvel */}
       {showMbwayModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-sm sm:max-w-md w-full p-4 sm:p-5 shadow-2xl relative overflow-hidden">
             <MbwayPaymentModal
               orderId={savedOrderId}
               total={savedTotal || total}

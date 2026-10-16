@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, ExternalLink, ArrowRight, ShieldCheck, Clock, X, Smartphone } from 'lucide-react';
+import { Copy, Check, ExternalLink, ArrowRight, ShieldCheck, X, Smartphone } from 'lucide-react';
 import { MBWAY_CONFIG } from '../config/mbwayConfig';
 
 interface MbwayPaymentModalProps {
@@ -44,171 +44,155 @@ export default function MbwayPaymentModal({
       }
       if (type === 'phone') {
         setCopiedPhone(true);
-        setTimeout(() => setCopiedPhone(false), 2500);
+        setTimeout(() => setCopiedPhone(false), 2000);
       } else {
         setCopiedRef(true);
-        setTimeout(() => setCopiedRef(false), 2500);
+        setTimeout(() => setCopiedRef(false), 2000);
       }
     } catch (err) {
       console.error('Falha ao copiar:', err);
     }
   };
 
-  // URL para geração dinâmica de QR Code visual com as informações do pagamento (cor preta na paleta do 41 Menus)
+  // URL para geração dinâmica de QR Code visual preto oficial do 41 Menus
   const qrPayload = `MBWAY:${MBWAY_CONFIG.telefoneRecebedor}|VALOR:${effectiveAmount.toFixed(2)}|REF:${paymentReference}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrPayload)}&color=000000&bgcolor=ffffff`;
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrPayload)}&color=000000&bgcolor=ffffff`;
 
   return (
-    <div className="w-full flex flex-col items-center text-center font-sans relative">
-      {/* Botão fechar */}
-      <button
-        type="button"
-        onClick={onClose}
-        className="absolute top-0 right-0 p-1.5 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
-        title="Fechar"
-      >
-        <X size={18} />
-      </button>
-
-      {/* Header com Logo MB WAY e Valor em Euros */}
-      <div className="w-full pb-4 border-b border-stone-100 flex flex-col items-center pr-6">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-700 border border-red-200 text-xs font-bold mb-2">
-          <Smartphone size={13} className="text-red-600" />
+    <div className="w-full flex flex-col items-center text-center font-sans select-none">
+      {/* Top Header: Badge + Botão Fechar */}
+      <div className="w-full flex items-center justify-between pb-2 border-b border-stone-100">
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[11px] font-bold">
+          <Smartphone size={12} className="text-red-600" />
           <span>Pedido {orderId ? `#${orderId}` : ''} Registado</span>
         </div>
         
-        <h2 className="text-xl font-black text-stone-900 tracking-tight flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          className="p-1 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
+          title="Fechar"
+        >
+          <X size={17} />
+        </button>
+      </div>
+
+      {/* Título e Valor a Transferir */}
+      <div className="w-full mt-2 flex items-center justify-between px-1">
+        <h2 className="text-base sm:text-lg font-black text-stone-900 tracking-tight flex items-center gap-1">
           Pague com <span className="text-[#005CA9] font-black">MB</span><span className="text-[#E31B23] font-black">WAY</span>
         </h2>
-        <div className="mt-2 flex items-baseline justify-center gap-1.5">
-          <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Total a transferir:</span>
-          <span className="text-2xl font-black font-mono text-stone-900">
+        <div className="flex items-baseline gap-1">
+          <span className="text-[10px] text-stone-500 uppercase font-bold tracking-wider">Total:</span>
+          <span className="text-xl sm:text-2xl font-black font-mono text-stone-900 tracking-tight">
             {formattedAmount}
           </span>
         </div>
       </div>
 
-      {/* Área do QR Code MB WAY (Cor preta na paleta do 41 Menus) */}
-      <div className="my-4 flex flex-col items-center">
-        <div className="p-3 bg-white rounded-2xl border-2 border-stone-200 shadow-sm relative flex items-center justify-center min-w-[210px] min-h-[210px]">
+      {/* QR Code Compacto e Nítido */}
+      <div className="my-2.5 flex flex-col items-center">
+        <div className="p-2 bg-white rounded-xl border border-stone-200 shadow-xs flex items-center justify-center">
           <img
             src={qrCodeUrl}
             alt="QR Code MB WAY do Pedido"
-            className="w-48 h-48 sm:w-52 sm:h-52 object-contain rounded-lg"
+            className="w-32 h-32 sm:w-36 sm:h-36 object-contain rounded"
           />
         </div>
-        <p className="text-[11px] text-stone-500 mt-2">
-          Aponte a câmara ou a app MB WAY para o código
+        <p className="text-[10.5px] text-stone-500 mt-1">
+          Aponte a câmara ou app MB WAY para pagar
         </p>
       </div>
 
-      {/* Bloco Copiar Telemóvel e Referência */}
-      <div className="w-full max-w-sm space-y-3">
-        {/* Telemóvel */}
-        <div>
-          <label className="block text-left text-xs font-bold text-stone-700 mb-1">
-            Telemóvel do Restaurante (MB WAY):
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              readOnly
-              value={MBWAY_CONFIG.telefoneRecebedorFormatado}
-              className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-800 font-mono font-bold select-all focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => copyToClipboard(MBWAY_CONFIG.telefoneRecebedor, 'phone')}
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer ${
-                copiedPhone
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-stone-900 hover:bg-black text-white'
-              }`}
-            >
-              {copiedPhone ? <Check size={14} /> : <Copy size={14} />}
-              <span>{copiedPhone ? 'Copiado!' : 'Copiar'}</span>
-            </button>
+      {/* Bloco Copiar Telemóvel e Referência em 2 Colunas (Sem rolagem) */}
+      <div className="w-full grid grid-cols-2 gap-2 text-left mb-2.5">
+        {/* Coluna 1: Telemóvel */}
+        <div className="bg-stone-50 border border-stone-200 rounded-xl p-2 flex flex-col justify-between">
+          <div>
+            <span className="block text-[9.5px] font-bold text-stone-500 uppercase tracking-wider">
+              Telemóvel
+            </span>
+            <span className="block text-xs font-mono font-bold text-stone-900 mt-0.5 truncate">
+              {MBWAY_CONFIG.telefoneRecebedorFormatado}
+            </span>
           </div>
+          <button
+            type="button"
+            onClick={() => copyToClipboard(MBWAY_CONFIG.telefoneRecebedor, 'phone')}
+            className={`mt-1.5 w-full py-1 px-2 rounded-lg text-[10.5px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              copiedPhone
+                ? 'bg-emerald-600 text-white'
+                : 'bg-stone-900 hover:bg-black text-white'
+            }`}
+          >
+            {copiedPhone ? <Check size={12} /> : <Copy size={12} />}
+            <span>{copiedPhone ? 'Copiado!' : 'Copiar'}</span>
+          </button>
         </div>
 
-        {/* Descrição / Referência */}
-        <div>
-          <label className="block text-left text-xs font-bold text-stone-700 mb-1">
-            Descrição / Referência da transferência:
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              readOnly
-              value={paymentReference}
-              className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-xs text-stone-800 font-mono select-all focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => copyToClipboard(paymentReference, 'ref')}
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 shadow-xs cursor-pointer ${
-                copiedRef
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-stone-200 hover:bg-stone-300 text-stone-800'
-              }`}
-            >
-              {copiedRef ? <Check size={14} /> : <Copy size={14} />}
-              <span>{copiedRef ? 'Copiado!' : 'Copiar'}</span>
-            </button>
+        {/* Coluna 2: Referência */}
+        <div className="bg-stone-50 border border-stone-200 rounded-xl p-2 flex flex-col justify-between">
+          <div>
+            <span className="block text-[9.5px] font-bold text-stone-500 uppercase tracking-wider">
+              Referência
+            </span>
+            <span className="block text-xs font-mono font-bold text-stone-900 mt-0.5 truncate">
+              {paymentReference}
+            </span>
           </div>
+          <button
+            type="button"
+            onClick={() => copyToClipboard(paymentReference, 'ref')}
+            className={`mt-1.5 w-full py-1 px-2 rounded-lg text-[10.5px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              copiedRef
+                ? 'bg-emerald-600 text-white'
+                : 'bg-stone-200 hover:bg-stone-300 text-stone-800'
+            }`}
+          >
+            {copiedRef ? <Check size={12} /> : <Copy size={12} />}
+            <span>{copiedRef ? 'Copiado!' : 'Copiar'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Instruções de Pagamento PT-PT */}
-      <div className="w-full max-w-sm mt-4 p-3.5 bg-stone-50 rounded-xl border border-stone-200 text-left space-y-2 text-xs text-stone-600">
-        <div className="flex items-center gap-1.5 font-bold text-stone-800 text-[11px] uppercase tracking-wider">
-          <ShieldCheck size={14} className="text-stone-900" />
-          <span>Como pagar via MB WAY:</span>
-        </div>
-        <ol className="list-decimal list-inside space-y-1 text-[11px] leading-relaxed text-stone-600 pl-0.5">
-          <li>Abra a sua aplicação <strong>MB WAY</strong> (ou do seu banco).</li>
-          <li>Selecione <strong>"Enviar Dinheiro"</strong>.</li>
-          <li>Introduza o telemóvel: <strong>{MBWAY_CONFIG.telefoneRecebedorFormatado}</strong> ({MBWAY_CONFIG.nomeTitular}).</li>
-          <li>Introduza o valor de <strong>{formattedAmount}</strong> e na mensagem coloque <strong>{paymentReference}</strong>.</li>
-          <li>Após concluir, clique no botão verde abaixo para enviar o pedido e o comprovativo via WhatsApp!</li>
-        </ol>
-        <div className="pt-2 border-t border-stone-200/80 flex items-start gap-2 text-[11px] text-amber-900 bg-amber-50/80 p-2 rounded-lg">
-          <Clock size={13} className="text-amber-700 shrink-0 mt-0.5" />
-          <span>
-            <strong>Nota:</strong> O seu pedido já foi aceite automaticamente e está em preparo no forno!
-          </span>
-        </div>
+      {/* Nota Compacta de Preparo */}
+      <div className="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-left flex items-center gap-2 mb-3">
+        <ShieldCheck size={15} className="text-stone-900 shrink-0" />
+        <p className="text-[10px] text-stone-600 leading-tight">
+          O pedido já está <strong>em preparo</strong>. Envie o valor e confirme via WhatsApp.
+        </p>
       </div>
 
-      {/* Ações Finais: WhatsApp & Acompanhar Pedido */}
-      <div className="w-full max-w-sm flex flex-col gap-2 mt-5">
+      {/* Ações: WhatsApp Principal + Linha Secundária */}
+      <div className="w-full flex flex-col gap-1.5">
         <a
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-sm shadow-md transition-all active:scale-[0.98]"
+          className="w-full bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs transition-all active:scale-[0.98]"
         >
           <span>Enviar pedido e comprovativo via WhatsApp</span>
-          <ArrowRight size={15} />
+          <ArrowRight size={14} />
         </a>
 
-        {trackingCode && (
-          <a
-            href={`/track/${trackingCode}`}
-            className="w-full bg-black hover:bg-neutral-800 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs transition-all border border-neutral-800"
+        <div className="flex items-center gap-2 w-full mt-0.5">
+          {trackingCode && (
+            <a
+              href={`/track/${trackingCode}`}
+              className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold py-1.5 px-2.5 rounded-lg flex items-center justify-center gap-1 text-[11px] transition-all"
+            >
+              <ExternalLink size={11} />
+              <span>Acompanhar</span>
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 border border-stone-200 hover:bg-stone-50 text-stone-600 font-bold py-1.5 px-2.5 rounded-lg text-[11px] transition-colors cursor-pointer"
           >
-            <span>Acompanhar estado do pedido</span>
-            <ExternalLink size={13} />
-          </a>
-        )}
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="text-xs text-stone-500 hover:text-stone-800 font-medium py-1.5 transition-colors cursor-pointer"
-        >
-          Voltar ao Cardápio
-        </button>
+            Concluir
+          </button>
+        </div>
       </div>
     </div>
   );
