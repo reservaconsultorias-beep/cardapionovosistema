@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Check, ExternalLink, ArrowRight, ShieldCheck, X, Smartphone } from 'lucide-react';
+import { Copy, Check, ExternalLink, ArrowRight, ShieldCheck, X, Smartphone, Send, Info } from 'lucide-react';
 import { MBWAY_CONFIG } from '../config/mbwayConfig';
 
 interface MbwayPaymentModalProps {
@@ -54,14 +54,10 @@ export default function MbwayPaymentModal({
     }
   };
 
-  // URL para geração dinâmica de QR Code visual preto oficial do 41 Menus
-  const qrPayload = `MBWAY:${MBWAY_CONFIG.telefoneRecebedor}|VALOR:${effectiveAmount.toFixed(2)}|REF:${paymentReference}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrPayload)}&color=000000&bgcolor=ffffff`;
-
   return (
     <div className="w-full flex flex-col items-center text-center font-sans select-none">
       {/* Top Header: Badge + Botão Fechar */}
-      <div className="w-full flex items-center justify-between pb-2 border-b border-stone-100">
+      <div className="w-full flex items-center justify-between pb-2.5 border-b border-stone-100">
         <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-50 text-red-700 border border-red-200 text-[11px] font-bold">
           <Smartphone size={12} className="text-red-600" />
           <span>Pedido {orderId ? `#${orderId}` : ''} Registado</span>
@@ -73,122 +69,123 @@ export default function MbwayPaymentModal({
           className="p-1 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
           title="Fechar"
         >
-          <X size={17} />
+          <X size={18} />
         </button>
       </div>
 
-      {/* Título e Valor a Transferir */}
-      <div className="w-full mt-2 flex items-center justify-between px-1">
-        <h2 className="text-base sm:text-lg font-black text-stone-900 tracking-tight flex items-center gap-1">
-          Pague com <span className="text-[#005CA9] font-black">MB</span><span className="text-[#E31B23] font-black">WAY</span>
-        </h2>
-        <div className="flex items-baseline gap-1">
-          <span className="text-[10px] text-stone-500 uppercase font-bold tracking-wider">Total:</span>
+      {/* Título e Valor em Destaque */}
+      <div className="w-full my-3 p-3 bg-stone-50 rounded-2xl border border-stone-200/80 flex items-center justify-between">
+        <div className="text-left">
+          <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+            Forma de Pagamento
+          </span>
+          <h2 className="text-base sm:text-lg font-black text-stone-900 tracking-tight flex items-center gap-1 mt-0.5">
+            Pague com <span className="text-[#005CA9] font-black">MB</span><span className="text-[#E31B23] font-black">WAY</span>
+          </h2>
+        </div>
+        <div className="text-right">
+          <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
+            Total a Transferir
+          </span>
           <span className="text-xl sm:text-2xl font-black font-mono text-stone-900 tracking-tight">
             {formattedAmount}
           </span>
         </div>
       </div>
 
-      {/* QR Code Compacto e Nítido */}
-      <div className="my-2.5 flex flex-col items-center">
-        <div className="p-2 bg-white rounded-xl border border-stone-200 shadow-xs flex items-center justify-center">
-          <img
-            src={qrCodeUrl}
-            alt="QR Code MB WAY do Pedido"
-            className="w-32 h-32 sm:w-36 sm:h-36 object-contain rounded"
-          />
-        </div>
-        <p className="text-[10.5px] text-stone-500 mt-1">
-          Aponte a câmara ou app MB WAY para pagar
+      {/* Instrução Clara de Enviar Dinheiro */}
+      <div className="w-full bg-blue-50/70 border border-blue-200/70 rounded-xl px-3 py-2 text-left flex items-start gap-2 mb-3">
+        <Send size={15} className="text-[#005CA9] shrink-0 mt-0.5" />
+        <p className="text-[11px] text-blue-950 leading-relaxed">
+          Abra o seu aplicativo <strong>MB WAY</strong>, selecione <strong>"Enviar Dinheiro"</strong> e transfira para os dados abaixo:
         </p>
       </div>
 
-      {/* Bloco Copiar Telemóvel e Referência em 2 Colunas (Sem rolagem) */}
-      <div className="w-full grid grid-cols-2 gap-2 text-left mb-2.5">
-        {/* Coluna 1: Telemóvel */}
-        <div className="bg-stone-50 border border-stone-200 rounded-xl p-2 flex flex-col justify-between">
+      {/* Cards de Cópia: Telemóvel e Referência */}
+      <div className="w-full grid grid-cols-2 gap-2 text-left mb-3">
+        {/* Telemóvel */}
+        <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 flex flex-col justify-between">
           <div>
             <span className="block text-[9.5px] font-bold text-stone-500 uppercase tracking-wider">
-              Telemóvel
+              Telemóvel MB WAY
             </span>
-            <span className="block text-xs font-mono font-bold text-stone-900 mt-0.5 truncate">
+            <span className="block text-xs sm:text-sm font-mono font-black text-stone-900 mt-0.5 truncate">
               {MBWAY_CONFIG.telefoneRecebedorFormatado}
             </span>
           </div>
           <button
             type="button"
             onClick={() => copyToClipboard(MBWAY_CONFIG.telefoneRecebedor, 'phone')}
-            className={`mt-1.5 w-full py-1 px-2 rounded-lg text-[10.5px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+            className={`mt-2 w-full py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs ${
               copiedPhone
                 ? 'bg-emerald-600 text-white'
                 : 'bg-stone-900 hover:bg-black text-white'
             }`}
           >
-            {copiedPhone ? <Check size={12} /> : <Copy size={12} />}
-            <span>{copiedPhone ? 'Copiado!' : 'Copiar'}</span>
+            {copiedPhone ? <Check size={13} /> : <Copy size={13} />}
+            <span>{copiedPhone ? 'Copiado!' : 'Copiar Telemóvel'}</span>
           </button>
         </div>
 
-        {/* Coluna 2: Referência */}
-        <div className="bg-stone-50 border border-stone-200 rounded-xl p-2 flex flex-col justify-between">
+        {/* Referência */}
+        <div className="bg-stone-50 border border-stone-200 rounded-xl p-2.5 flex flex-col justify-between">
           <div>
             <span className="block text-[9.5px] font-bold text-stone-500 uppercase tracking-wider">
-              Referência
+              Descrição / Ref
             </span>
-            <span className="block text-xs font-mono font-bold text-stone-900 mt-0.5 truncate">
+            <span className="block text-xs sm:text-sm font-mono font-black text-stone-900 mt-0.5 truncate">
               {paymentReference}
             </span>
           </div>
           <button
             type="button"
             onClick={() => copyToClipboard(paymentReference, 'ref')}
-            className={`mt-1.5 w-full py-1 px-2 rounded-lg text-[10.5px] font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+            className={`mt-2 w-full py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs ${
               copiedRef
                 ? 'bg-emerald-600 text-white'
                 : 'bg-stone-200 hover:bg-stone-300 text-stone-800'
             }`}
           >
-            {copiedRef ? <Check size={12} /> : <Copy size={12} />}
-            <span>{copiedRef ? 'Copiado!' : 'Copiar'}</span>
+            {copiedRef ? <Check size={13} /> : <Copy size={13} />}
+            <span>{copiedRef ? 'Copiado!' : 'Copiar Ref'}</span>
           </button>
         </div>
       </div>
 
-      {/* Nota Compacta de Preparo */}
-      <div className="w-full bg-stone-50 border border-stone-200 rounded-xl px-2.5 py-1.5 text-left flex items-center gap-2 mb-3">
-        <ShieldCheck size={15} className="text-stone-900 shrink-0" />
-        <p className="text-[10px] text-stone-600 leading-tight">
-          O pedido já está <strong>em preparo</strong>. Envie o valor e confirme via WhatsApp.
+      {/* Aviso de Preparo no Forno */}
+      <div className="w-full bg-emerald-50/80 border border-emerald-200 rounded-xl px-3 py-2 text-left flex items-center gap-2 mb-3.5">
+        <ShieldCheck size={16} className="text-emerald-700 shrink-0" />
+        <p className="text-[10.5px] text-emerald-950 leading-tight">
+          O seu pedido já está <strong>em preparo no forno</strong>! Após fazer a transferência, confirme pelo WhatsApp.
         </p>
       </div>
 
-      {/* Ações: WhatsApp Principal + Linha Secundária */}
-      <div className="w-full flex flex-col gap-1.5">
+      {/* Botões de Ação */}
+      <div className="w-full flex flex-col gap-2">
         <a
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="w-full bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-1.5 text-xs shadow-xs transition-all active:scale-[0.98]"
+          className="w-full bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm shadow-xs transition-all active:scale-[0.98]"
         >
-          <span>Enviar pedido e comprovativo via WhatsApp</span>
-          <ArrowRight size={14} />
+          <span>Enviar Comprovativo no WhatsApp</span>
+          <ArrowRight size={15} />
         </a>
 
         <div className="flex items-center gap-2 w-full mt-0.5">
           {trackingCode && (
             <a
               href={`/track/${trackingCode}`}
-              className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold py-1.5 px-2.5 rounded-lg flex items-center justify-center gap-1 text-[11px] transition-all"
+              className="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-800 font-bold py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 text-xs transition-all"
             >
-              <ExternalLink size={11} />
-              <span>Acompanhar</span>
+              <ExternalLink size={12} />
+              <span>Acompanhar Pedido</span>
             </a>
           )}
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 border border-stone-200 hover:bg-stone-50 text-stone-600 font-bold py-1.5 px-2.5 rounded-lg text-[11px] transition-colors cursor-pointer"
+            className="flex-1 border border-stone-200 hover:bg-stone-50 text-stone-600 font-bold py-2 px-3 rounded-xl text-xs transition-colors cursor-pointer"
           >
             Concluir
           </button>
