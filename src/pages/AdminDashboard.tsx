@@ -1574,7 +1574,7 @@ export default function AdminDashboard() {
                   value=""
                   icon={<CreditCard size={14} strokeWidth={1.5} className="text-amber-950" />}
                   onClick={() => setReportModal({isOpen: true, type: 'pagamentos', title: 'Formas de Pagamento'})}
-                  subtitle="PIX, Cartão e Dinheiro"
+                  subtitle="MB Way e Numerário"
                 />
                 <ReportCard
                   customDelay={0.30}
@@ -5569,7 +5569,6 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                   >
                     <option value="MB Way">MB Way</option>
                     <option value="Dinheiro">Dinheiro (Numerário)</option>
-                    <option value="Cartão">Cartão (Multibanco)</option>
                   </select>
                 </div>
               </div>

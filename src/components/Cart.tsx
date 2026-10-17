@@ -109,10 +109,11 @@ export default function Cart({
           setShowNifInput(true);
         }
         if (parsed.orderType) setOrderType(parsed.orderType);
-        if (parsed.pagamento && parsed.pagamento !== 'Cartão') {
+        if (parsed.pagamento === 'Numerário' || parsed.pagamento === 'MB Way') {
           setPagamento(parsed.pagamento);
         } else {
           setPagamento('MB Way');
+          saveCustomerData({ pagamento: 'MB Way' });
         }
       }
     } catch (e) {

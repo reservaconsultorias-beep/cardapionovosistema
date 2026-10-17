@@ -16,7 +16,7 @@ export default function CaixaManager({ refreshSignal }: CaixaManagerProps = {}) 
   const [isOpening, setIsOpening] = useState(false);
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [closingAmount, setClosingAmount] = useState('');
-  const [summary, setSummary] = useState({ numerario: 0, mbway: 0, cartao: 0, outros: 0, total: 0, count: 0 });
+  const [summary, setSummary] = useState({ numerario: 0, mbway: 0, outros: 0, total: 0, count: 0 });
   const [history, setHistory] = useState<any[]>([]);
   const [historyPeriod, setHistoryPeriod] = useState<PeriodFilterOption>('todos');
   const [historyStart, setHistoryStart] = useState('');
@@ -210,7 +210,6 @@ export default function CaixaManager({ refreshSignal }: CaixaManagerProps = {}) 
 
       let numerario = 0;
       let mbway = 0;
-      let cartao = 0;
       let outros = 0;
       let validCount = 0;
 
@@ -221,16 +220,14 @@ export default function CaixaManager({ refreshSignal }: CaixaManagerProps = {}) 
         const norm = normalizePaymentMethod(o.payment_method);
         if (norm === 'Numerário') numerario += amt;
         else if (norm === 'MB Way') mbway += amt;
-        else if (norm === 'Cartão') cartao += amt;
         else outros += amt;
       });
 
       setSummary({
         numerario,
         mbway,
-        cartao,
         outros,
-        total: numerario + mbway + cartao + outros,
+        total: numerario + mbway + outros,
         count: validCount
       });
     } catch (err) {
@@ -670,8 +667,8 @@ export default function CaixaManager({ refreshSignal }: CaixaManagerProps = {}) 
             </div>
           </div>
 
-          {/* 2. Indicadores Financeiros em Primeiro Plano (5 Cards) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
+          {/* 2. Indicadores Financeiros em Primeiro Plano (4 Cards) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
             <div className="bg-white border border-slate-200/60 p-3 rounded-lg flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] text-slate-400 font-mono font-medium uppercase tracking-wide">Pedidos</span>
@@ -702,17 +699,7 @@ export default function CaixaManager({ refreshSignal }: CaixaManagerProps = {}) 
               <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-slate-900 tracking-tight mt-0.5">€ {summary.mbway.toFixed(2)}</p>
             </div>
 
-            <div className="bg-white border border-slate-200/90 p-3 rounded-xl shadow-2xs flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] text-slate-500 font-mono font-bold uppercase tracking-wider">Cartão</span>
-                <div className="w-5 h-5 rounded-md bg-purple-50/50 text-purple-500 flex items-center justify-center shrink-0">
-                  <CreditCard size={11} strokeWidth={1.5} />
-                </div>
-              </div>
-              <p className="text-xl sm:text-2xl font-bold font-mono tabular-nums text-slate-900 tracking-tight mt-0.5">€ {summary.cartao.toFixed(2)}</p>
-            </div>
-
-            <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl shadow-2xs text-white flex flex-col justify-between col-span-2 sm:col-span-1">
+            <div className="bg-slate-950 border border-slate-800 p-3 rounded-xl shadow-2xs text-white flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-mono font-medium uppercase tracking-wide text-[#fdde58]/80">
                   Gaveta (Esperado)

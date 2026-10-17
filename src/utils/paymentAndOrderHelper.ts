@@ -3,12 +3,13 @@
  * tipos de pedidos e filtros financeiros em todo o sistema.
  */
 
-export type CanonicalPaymentMethod = 'Numerário' | 'MB Way' | 'Cartão' | 'Pix' | 'Outros';
+export type CanonicalPaymentMethod = 'Numerário' | 'MB Way' | 'Outros';
 export type CanonicalOrderType = 'entrega' | 'retirada' | 'mesa' | 'balcao';
 
 /**
  * Normaliza qualquer variação de forma de pagamento vinda do cardápio do cliente,
  * do PDV, da edição de pedido ou de integrações externas.
+ * A pizzaria aceita estritamente: MB Way e Numerário.
  */
 export function normalizePaymentMethod(method?: string | null): CanonicalPaymentMethod {
   if (!method) return 'Outros';
@@ -30,24 +31,6 @@ export function normalizePaymentMethod(method?: string | null): CanonicalPayment
     clean === 'mb_way'
   ) {
     return 'MB Way';
-  }
-
-  if (
-    clean === 'cartão' ||
-    clean === 'cartao' ||
-    clean === 'multibanco' ||
-    clean === 'tpa' ||
-    clean === 'card' ||
-    clean === 'débito' ||
-    clean === 'debito' ||
-    clean === 'crédito' ||
-    clean === 'credito'
-  ) {
-    return 'Cartão';
-  }
-
-  if (clean === 'pix') {
-    return 'Pix';
   }
 
   return 'Outros';
