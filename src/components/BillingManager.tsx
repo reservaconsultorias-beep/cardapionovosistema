@@ -90,7 +90,7 @@ export const BillingManager: React.FC = () => {
             )}
           </div>
           <p className="text-xs text-stone-400 mt-2">
-            Mês de Setembro/2026: <strong className="text-emerald-400 font-semibold">Pago ✓</strong> • Próximo vencimento: <strong className="text-stone-200">16 de Outubro de 2026</strong>.
+            Mês de Outubro/2026: <strong className="text-emerald-400 font-semibold">Pago em 15/10 ✓</strong> • Próximo vencimento: <strong className="text-stone-200">16 de Novembro de 2026</strong>.
           </p>
         </div>
 
@@ -243,17 +243,27 @@ export const BillingManager: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-stone-800/60 text-stone-300">
               <tr>
-                <td className="py-2.5 px-3 font-medium text-stone-200">Outubro / 2026</td>
+                <td className="py-2.5 px-3 font-medium text-stone-200">Novembro / 2026</td>
                 <td className="py-2.5 px-3 font-mono">R$ 490,00</td>
                 <td className="py-2.5 px-3 text-stone-400">PIX Direto</td>
                 <td className="py-2.5 px-3">
                   <span className="text-stone-300 font-medium bg-stone-800 px-2 py-0.5 rounded text-[11px]">
-                    A vencer (16/10)
+                    A vencer (16/11)
                   </span>
                 </td>
               </tr>
               <tr className="text-stone-300">
-                <td className="py-2.5 px-3 font-medium text-stone-200">Setembro / 2026</td>
+                <td className="py-2.5 px-3 font-medium text-stone-200">Outubro / 2026</td>
+                <td className="py-2.5 px-3 font-mono">R$ 490,00</td>
+                <td className="py-2.5 px-3 text-stone-400">PIX Direto</td>
+                <td className="py-2.5 px-3">
+                  <span className="text-emerald-400 font-medium flex items-center gap-1">
+                    <Check size={12} /> Pago (15/10)
+                  </span>
+                </td>
+              </tr>
+              <tr className="text-stone-400">
+                <td className="py-2.5 px-3">Setembro / 2026</td>
                 <td className="py-2.5 px-3 font-mono">R$ 490,00</td>
                 <td className="py-2.5 px-3 text-stone-400">PIX Direto</td>
                 <td className="py-2.5 px-3">
