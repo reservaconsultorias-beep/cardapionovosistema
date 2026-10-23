@@ -23,10 +23,12 @@ import {
   AlertCircle,
   Phone,
   User,
-  FileText
+  FileText,
+  Sparkles
 } from "lucide-react";
 import { useAnalytics } from '../hooks/useAnalytics';
 import MbwayPaymentModal from './MbwayPaymentModal';
+import { getCashbackConfig, getCustomerCashbackBalance, applyOrderCashback, DEFAULT_CASHBACK_PERCENT } from '../utils/cashback';
 
 interface CartProps {
   items: CartItem[];
@@ -93,6 +95,41 @@ export default function Cart({
   const [minDeliveryOrder, setMinDeliveryOrder] = useState(10);
   const [deliveryTimeEstimate, setDeliveryTimeEstimate] = useState('70 a 80 min');
   const [pickupTimeEstimate, setPickupTimeEstimate] = useState('35 a 40 min');
+
+  // Cashback States
+  const [cashbackConfig, setCashbackConfig] = useState<{ enabled: boolean; percent: number }>({
+    enabled: true,
+    percent: DEFAULT_CASHBACK_PERCENT
+  });
+  const [customerCashbackBalance, setCustomerCashbackBalance] = useState<number>(0);
+  const [useCashback, setUseCashback] = useState(false);
+  const [loadingCashback, setLoadingCashback] = useState(false);
+
+  useEffect(() => {
+    getCashbackConfig().then(cfg => setCashbackConfig(cfg));
+  }, []);
+
+  useEffect(() => {
+    const clean = (telefone || '').replace(/\D/g, '');
+    if (clean.length < 9) {
+      setCustomerCashbackBalance(0);
+      setUseCashback(false);
+      return;
+    }
+    let isCurrent = true;
+    setLoadingCashback(true);
+    const timer = setTimeout(async () => {
+      const bal = await getCustomerCashbackBalance(clean);
+      if (isCurrent) {
+        setCustomerCashbackBalance(bal);
+        setLoadingCashback(false);
+      }
+    }, 350);
+    return () => {
+      isCurrent = false;
+      clearTimeout(timer);
+    };
+  }, [telefone]);
 
   // Load saved customer checkout details from localStorage (Memory for fast re-orders)
   useEffect(() => {
@@ -225,7 +262,15 @@ export default function Cart({
     }
   }
 
-  const total = subtotal + deliveryFee;
+  const rawTotal = subtotal + deliveryFee;
+  const cashbackDiscount = (cashbackConfig.enabled && useCashback && customerCashbackBalance > 0)
+    ? Math.min(customerCashbackBalance, rawTotal)
+    : 0;
+  const total = Math.max(0, Number((rawTotal - cashbackDiscount).toFixed(2)));
+  const earnedCashback = cashbackConfig.enabled
+    ? Number((Math.max(0, subtotal - cashbackDiscount) * (cashbackConfig.percent / 100)).toFixed(2))
+    : 0;
+
   const businessStatus = useBusinessHours();
 
   const handleCheckout = async () => {
@@ -282,6 +327,7 @@ export default function Cart({
         delivery_zone: orderType === 'Delivery' ? zona : null,
         change_for: pagamento === 'Numerário' ? trocoPara : null,
         nif: nif.trim() ? nif : null,
+        notes: cashbackDiscount > 0 ? `[Desconto Cashback: € ${cashbackDiscount.toFixed(2)}]` : null,
         items: items.map(item => {
           let itemName = item.menuItem.name;
           if (item.isHalfAndHalf && item.halfAndHalfFlavor) {
@@ -348,6 +394,17 @@ export default function Cart({
                 total_spent: total,
                 last_order_at: new Date().toISOString(),
               }]);
+            }
+
+            // Atualiza saldo de fidelidade/cashback do cliente
+            if (earnedCashback > 0 || cashbackDiscount > 0) {
+              try {
+                await applyOrderCashback(telefone, earnedCashback, cashbackDiscount, newOrderId);
+                setCustomerCashbackBalance(prev => Math.max(0, Number((prev - cashbackDiscount + earnedCashback).toFixed(2))));
+                setUseCashback(false);
+              } catch (cbErr) {
+                console.warn('[Cart] Aviso ao processar cashback:', cbErr);
+              }
             }
           }
         } catch (custErr) {
@@ -445,6 +502,18 @@ export default function Cart({
       }
     }
     text += `*TOTAL: € ${total.toFixed(2)}*\n`;
+
+    if (cashbackConfig.enabled) {
+      text += `-----------------------------------\n`;
+      text += `🎁 FIDELIDADE & CASHBACK (${cashbackConfig.percent}%)\n`;
+      if (cashbackDiscount > 0) {
+        text += `Desconto Cashback Utilizado: -€ ${cashbackDiscount.toFixed(2)}\n`;
+      }
+      text += `Cashback Ganho Hoje: +€ ${earnedCashback.toFixed(2)}\n`;
+      const nextBal = Math.max(0, customerCashbackBalance - cashbackDiscount + earnedCashback);
+      text += `Saldo Disponível Próximo Pedido: € ${nextBal.toFixed(2)}\n`;
+    }
+
     text += `-----------------------------------\n`;
     text += `[PAGAMENTO]\n`;
     if (pagamento === "MB Way") {
@@ -1080,6 +1149,60 @@ export default function Cart({
                       </div>
                     )}
                   </div>
+
+                  {/* PROGRAMA DE CASHBACK / FIDELIDADE */}
+                  {cashbackConfig.enabled && (
+                    <div className="space-y-1.5 pt-1">
+                      {customerCashbackBalance > 0 && (
+                        <div className="bg-amber-50/90 border border-amber-300 rounded-xl p-2.5 transition-all shadow-2xs">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="w-6 h-6 rounded-full bg-amber-500 text-stone-950 flex items-center justify-center font-black text-xs shrink-0 shadow-2xs">
+                                €
+                              </div>
+                              <div className="min-w-0">
+                                <span className="text-[11px] font-extrabold text-stone-900 block truncate">
+                                  Cashback Disponível
+                                </span>
+                                <span className="text-[10px] text-amber-800 font-semibold block">
+                                  Saldo: <strong>€ {customerCashbackBalance.toFixed(2)}</strong>
+                                </span>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setUseCashback(!useCashback)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
+                                useCashback
+                                  ? 'bg-amber-500 text-stone-950 border-amber-600 shadow-2xs'
+                                  : 'bg-white text-stone-800 border-amber-300 hover:bg-amber-100/60'
+                              }`}
+                            >
+                              {useCashback ? '✓ Aplicado' : 'Abater Saldo'}
+                            </button>
+                          </div>
+
+                          {useCashback && (
+                            <div className="mt-1.5 pt-1.5 border-t border-amber-200/60 flex items-center justify-between text-[10px] text-emerald-800 font-bold">
+                              <span>Desconto no pedido:</span>
+                              <span>- € {cashbackDiscount.toFixed(2)}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {earnedCashback > 0 && (
+                        <div className="flex items-center justify-between px-2.5 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg text-[10px] text-amber-900">
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3 text-amber-600" />
+                            <span>Cashback ganho hoje ({cashbackConfig.percent}%):</span>
+                          </div>
+                          <span className="font-black text-amber-700">+ € {earnedCashback.toFixed(2)}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* STEP 2 FOOTER & FINAL CTA */}
@@ -1097,6 +1220,15 @@ export default function Cart({
                       <span className="font-black text-[#8b0000] text-base">€ {total.toFixed(2)}</span>
                     </div>
                   </div>
+
+                  {cashbackDiscount > 0 && (
+                    <div className="flex justify-between items-center text-xs text-amber-900 bg-amber-50/90 px-2.5 py-1 rounded-lg border border-amber-200">
+                      <span className="font-semibold flex items-center gap-1">
+                        <span>Desconto Cashback:</span>
+                      </span>
+                      <span className="font-extrabold text-emerald-700">- € {cashbackDiscount.toFixed(2)}</span>
+                    </div>
+                  )}
 
                   {formError && (
                     <div className="bg-red-50 border border-red-200 text-red-700 p-2 rounded-lg text-[11px] font-semibold whitespace-pre-line flex items-center gap-1.5">

@@ -258,6 +258,7 @@ export default function AdminDashboard() {
   const lastSeenOrderIdRef = useRef(lastSeenOrderId);
   const isInitialOrdersLoadDoneRef = useRef(false);
   const playedOrdersSetRef = useRef<Set<number>>(new Set());
+  const playedEditAlertsSetRef = useRef<Set<string>>(new Set());
   const lastPlayedOrderIdRef = useRef<number | null>(null);
   const lastSoundTimeRef = useRef<number>(0);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -850,6 +851,25 @@ export default function AdminDashboard() {
             }
           }
         }
+
+        // Alerta sonoro quando um pedido recebe solicitação de alteração/cancelamento via WhatsApp
+        if (isInitialOrdersLoadDoneRef.current) {
+          const pendingSolicitations = (allDbOrders || []).filter(o => 
+            o.editReason && 
+            o.editReason.includes('SOLICITAÇÃO') &&
+            o.status !== 'Cancelado' && o.status !== 'Finalizado'
+          );
+          const unplayedSolicitations = pendingSolicitations.filter(o => {
+            const key = `${o.id}-${o.editReason}`;
+            return !playedEditAlertsSetRef.current.has(key);
+          });
+          if (unplayedSolicitations.length > 0) {
+            unplayedSolicitations.forEach(o => playedEditAlertsSetRef.current.add(`${o.id}-${o.editReason}`));
+            if (soundEnabledRef.current) {
+              playNotificationSound();
+            }
+          }
+        }
       }
       
       const { data: dbPaused, error: pausedError } = await supabase.from('paused_items').select('id');
@@ -1283,7 +1303,20 @@ export default function AdminDashboard() {
       fetchDashboardData(true);
     } catch (err) {
       console.error("Failed to update status", err);
-      console.error("Failed to update status", err);
+    }
+  };
+
+  const handleAcknowledgeSolicitation = async (orderId: number, currentReason: string) => {
+    try {
+      const updatedReason = (currentReason || '').replace('⚠️ [SOLICITAÇÃO', '✅ [CIENTE PELA EQUIPE');
+      const { error } = await supabase.from('orders').update({
+        edit_reason: updatedReason,
+        updated_at: new Date().toISOString()
+      }).eq('id', orderId);
+      if (error) throw error;
+      fetchDashboardData(true);
+    } catch (err) {
+      console.error("Failed to acknowledge solicitation", err);
     }
   };
 
@@ -3122,12 +3155,32 @@ export default function AdminDashboard() {
                                     );
                                   })()}
 
-                                  {/* Badge Editado */}
-                                  {(order.isEdited || order.is_edited) && (
-                                    <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                                      EDITADO
-                                    </span>
-                                  )}
+                                  {/* Badge de Edição / Solicitação WhatsApp */}
+                                  {(() => {
+                                    const isEdit = order.isEdited || order.is_edited;
+                                    const reason = (order.editReason || order.edit_reason || '').trim();
+                                    if (!isEdit && !reason) return null;
+
+                                    if (reason.includes('SOLICITAÇÃO DE CANCELAMENTO')) {
+                                      return (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black px-2 py-0.5 rounded bg-rose-600 text-white animate-pulse shadow-xs">
+                                          <AlertCircle size={11} /> CANCELAMENTO
+                                        </span>
+                                      );
+                                    }
+                                    if (reason.includes('SOLICITAÇÃO DE ALTERAÇÃO')) {
+                                      return (
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-mono font-black px-2 py-0.5 rounded bg-amber-500 text-white animate-pulse shadow-xs">
+                                          <AlertCircle size={11} /> ALTERAÇÃO
+                                        </span>
+                                      );
+                                    }
+                                    return (
+                                      <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                                        ✏️ EDITADO
+                                      </span>
+                                    );
+                                  })()}
                                 </div>
 
                                 {/* Valor Total em Destaque */}
@@ -3306,6 +3359,54 @@ export default function AdminDashboard() {
                                   </span>
                                 </div>
                               )}
+
+                              {/* Alerta de Solicitação de Alteração ou Cancelamento via WhatsApp */}
+                              {order.editReason && order.editReason.includes('SOLICITAÇÃO') && (
+                                <div className="mt-2.5 bg-amber-50 border-2 border-amber-500 rounded-lg p-2.5 text-xs text-amber-950 shadow-sm space-y-2">
+                                  <div className="flex items-start gap-1.5 font-bold">
+                                    <AlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5 animate-bounce" />
+                                    <div className="leading-snug break-words">
+                                      {order.editReason}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 pt-1 border-t border-amber-200">
+                                    <button
+                                      type="button"
+                                      onClick={() => setEditingOrder(order)}
+                                      className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-mono font-bold text-[11px] rounded transition-colors cursor-pointer"
+                                    >
+                                      Abrir Edição
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAcknowledgeSolicitation(order.id, order.editReason)}
+                                      className="px-2.5 py-1 bg-stone-200 hover:bg-stone-300 text-stone-800 font-mono font-bold text-[11px] rounded transition-colors cursor-pointer"
+                                    >
+                                      Marcar Ciente
+                                    </button>
+                                    {order.editReason.includes('CANCELAMENTO') && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (window.confirm(`Confirmar cancelamento do Pedido #${order.id} conforme solicitado pelo cliente via WhatsApp?`)) {
+                                            updateOrderStatus(order.id, 'Cancelado');
+                                          }
+                                        }}
+                                        className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-mono font-bold text-[11px] rounded transition-colors cursor-pointer ml-auto"
+                                      >
+                                        Cancelar Pedido
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Nota de alteração já concluída / ciente */}
+                              {order.editReason && !order.editReason.includes('SOLICITAÇÃO') && (order.isEdited || order.is_edited) && (
+                                <div className="mt-2 text-[11px] font-mono text-stone-600 bg-stone-100 p-1.5 rounded border border-stone-200">
+                                  <span className="font-bold text-stone-800">Histórico de alteração:</span> {order.editReason}
+                                </div>
+                              )}
                             </div>
 
                             {/* Rodapé do Card: Ações Operacionais */}
@@ -3443,13 +3544,33 @@ export default function AdminDashboard() {
                             return (
                               <tr key={order.id} className="hover:bg-stone-50/80 transition-colors">
                                 <td className="py-3 px-4">
-                                  <div className="flex items-center gap-1.5">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
                                     <span className="font-black text-stone-900 tabular-nums">#{order.id}</span>
-                                    {(order.isEdited || order.is_edited) && (
-                                      <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
-                                        EDITADO
-                                      </span>
-                                    )}
+                                    {(() => {
+                                      const isEdit = order.isEdited || order.is_edited;
+                                      const reason = (order.editReason || order.edit_reason || '').trim();
+                                      if (!isEdit && !reason) return null;
+
+                                      if (reason.includes('SOLICITAÇÃO DE CANCELAMENTO')) {
+                                        return (
+                                          <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-rose-600 text-white animate-pulse">
+                                            CANCELAMENTO
+                                          </span>
+                                        );
+                                      }
+                                      if (reason.includes('SOLICITAÇÃO DE ALTERAÇÃO')) {
+                                        return (
+                                          <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-amber-500 text-white animate-pulse">
+                                            ALTERAÇÃO
+                                          </span>
+                                        );
+                                      }
+                                      return (
+                                        <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 border border-amber-300">
+                                          EDITADO
+                                        </span>
+                                      );
+                                    })()}
                                   </div>
                                   <div className="text-[11px] text-stone-500 mt-0.5 flex items-center gap-1">
                                     <span className="font-bold text-stone-700">
@@ -3461,10 +3582,10 @@ export default function AdminDashboard() {
                                   </div>
                                 </td>
 
-                                {/* Cliente & Contato: Limpo e objetivo, sem endereço poluindo */}
+                                {/* Cliente & Contato: Limpo e objetivo, com alerta de solicitação se houver */}
                                 <td className="py-3 px-4">
                                   <div className="font-black text-stone-900 text-xs sm:text-sm">{order.customerName}</div>
-                                  <div className="flex items-center gap-2 mt-0.5 text-[11px] text-stone-500">
+                                  <div className="flex items-center gap-2 mt-0.5 text-[11px] text-stone-500 flex-wrap">
                                     {order.customerPhone && (
                                       <a
                                         href={`tel:${order.customerPhone}`}
@@ -3479,6 +3600,45 @@ export default function AdminDashboard() {
                                       </span>
                                     )}
                                   </div>
+
+                                  {/* Alerta de solicitação de alteração/cancelamento em tabela */}
+                                  {order.editReason && order.editReason.includes('SOLICITAÇÃO') && (
+                                    <div className="mt-1.5 p-1.5 bg-amber-50 border border-amber-400 rounded text-[11px] font-sans font-bold text-amber-950 flex flex-col gap-1">
+                                      <div className="flex items-start gap-1">
+                                        <AlertCircle size={13} className="text-amber-600 shrink-0 mt-0.5" />
+                                        <span className="leading-tight">{order.editReason}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 pt-1 border-t border-amber-200">
+                                        <button
+                                          type="button"
+                                          onClick={() => setEditingOrder(order)}
+                                          className="px-2 py-0.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-[10px] font-mono font-bold cursor-pointer"
+                                        >
+                                          Editar
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleAcknowledgeSolicitation(order.id, order.editReason)}
+                                          className="px-2 py-0.5 bg-stone-200 hover:bg-stone-300 text-stone-800 rounded text-[10px] font-mono font-bold cursor-pointer"
+                                        >
+                                          Ciente
+                                        </button>
+                                        {order.editReason.includes('CANCELAMENTO') && (
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              if (window.confirm(`Cancelar Pedido #${order.id}?`)) {
+                                                updateOrderStatus(order.id, 'Cancelado');
+                                              }
+                                            }}
+                                            className="px-2 py-0.5 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-mono font-bold cursor-pointer ml-auto"
+                                          >
+                                            Cancelar
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
                                 </td>
 
                                 <td className="py-3 px-4">
@@ -4838,6 +4998,9 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     }, 0);
   }, []);
 
+  const [freeDeliveryThreshold, setFreeDeliveryThreshold] = useState<number>(35);
+  const [isManualFee, setIsManualFee] = useState<boolean>(false);
+
   const [deliveryFee, setDeliveryFee] = useState<number>(() => {
     const raw = (order.orderType || order.order_type || '').toString().toLowerCase().trim();
     const isDel = raw === 'entrega' || raw === 'delivery';
@@ -4850,9 +5013,27 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
   });
 
   useEffect(() => {
-    const loadDeliveryZones = async () => {
+    const loadDeliveryZonesAndSettings = async () => {
       try {
         setLoadingZones(true);
+
+        // 1. Carrega free_delivery_threshold do banco
+        let threshold = 35;
+        try {
+          const { data: stData } = await supabase
+            .from('settings')
+            .select('key, value')
+            .eq('key', 'free_delivery_threshold')
+            .maybeSingle();
+          if (stData && stData.value !== undefined) {
+            threshold = Number(stData.value) || 0;
+            setFreeDeliveryThreshold(threshold);
+          }
+        } catch (stErr) {
+          console.warn('[EditOrderModal] Erro ao carregar free_delivery_threshold:', stErr);
+        }
+
+        // 2. Carrega zonas ativas
         const { data, error } = await supabase
           .from('delivery_zones')
           .select('id, name, fee')
@@ -4866,14 +5047,21 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
           }));
           setZones(mapped);
 
-          // Se for entrega e tiver zona salva, mas deliveryFee for 0, sincroniza com o valor da zona
+          // Se for entrega e tiver zona salva:
+          // Se o subtotal atingir o limite de entrega grátis (ex: >= 35 €), a taxa DEVE ser 0!
+          // Só sincroniza taxa da zona se subtotal < threshold E deliveryFee for 0 por falta de dado
           const rawType = (order.orderType || order.order_type || '').toString().toLowerCase().trim();
           const isDel = rawType === 'entrega' || rawType === 'delivery';
           const currentZone = (order.deliveryZone || order.delivery_zone || '').toString().trim();
           if (isDel && currentZone) {
             const matched = mapped.find(z => z.name.toLowerCase() === currentZone.toLowerCase());
-            if (matched && deliveryFee === 0) {
-              setDeliveryFee(matched.fee);
+            if (matched) {
+              if (threshold > 0 && initialItemsSubtotal >= threshold) {
+                // Entrega Grátis qualificada: mantém taxa zero
+                setDeliveryFee(0);
+              } else if (deliveryFee === 0 && (Number(order.totalAmount || order.total_amount) || 0) === 0) {
+                setDeliveryFee(matched.fee);
+              }
             }
           }
         }
@@ -4883,7 +5071,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
         setLoadingZones(false);
       }
     };
-    loadDeliveryZones();
+    loadDeliveryZonesAndSettings();
   }, []);
 
   const [items, setItems] = useState<any[]>(() => {
@@ -4921,6 +5109,17 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     return Math.max(0, tot);
   }, [subtotal, activeDeliveryFee, additionalAmount, discountAmount]);
 
+  // Sincroniza entrega grátis automaticamente se o subtotal qualificar e não for taxa manual
+  useEffect(() => {
+    if (isManualFee || orderType !== 'entrega') return;
+    if (freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold) {
+      if (deliveryFee !== 0) setDeliveryFee(0);
+    } else if (freeDeliveryThreshold > 0 && subtotal < freeDeliveryThreshold && deliveryFee === 0 && deliveryZone) {
+      const matched = zones.find(z => z.name.toLowerCase() === deliveryZone.toLowerCase());
+      if (matched) setDeliveryFee(matched.fee);
+    }
+  }, [subtotal, freeDeliveryThreshold, isManualFee, orderType, deliveryZone, zones, deliveryFee]);
+
   const handleSelectOrderType = (newType: string) => {
     setOrderType(newType);
     if (newType !== 'entrega') {
@@ -4931,7 +5130,11 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
       if (deliveryZone) {
         const matched = zones.find(z => z.name.toLowerCase() === deliveryZone.toLowerCase());
         if (matched) {
-          setDeliveryFee(matched.fee);
+          if (!isManualFee && freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold) {
+            setDeliveryFee(0);
+          } else {
+            setDeliveryFee(matched.fee);
+          }
         }
       }
     }
@@ -4941,7 +5144,11 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     setDeliveryZone(selectedName);
     const matched = zones.find(z => z.name.toLowerCase() === selectedName.toLowerCase());
     if (matched) {
-      setDeliveryFee(matched.fee);
+      if (!isManualFee && freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold) {
+        setDeliveryFee(0);
+      } else {
+        setDeliveryFee(matched.fee);
+      }
     }
   };
 
@@ -5657,18 +5864,26 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
                         step="0.50"
                         min="0"
                         value={deliveryFee}
-                        onChange={(e) => setDeliveryFee(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          setIsManualFee(true);
+                          setDeliveryFee(parseFloat(e.target.value) || 0);
+                        }}
                         className="w-full px-2 py-1.5 bg-white rounded border border-sky-200 text-xs font-black text-sky-800 outline-none focus:border-sky-600 transition-colors font-mono text-center shadow-2xs"
                       />
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between text-[10px] text-sky-900 font-medium px-1">
-                    <span>
+                    <span className="flex items-center gap-1.5">
                       {deliveryZone ? (
                         <>Zona: <strong>{deliveryZone}</strong></>
                       ) : (
                         <span className="text-amber-800 font-semibold">⚠️ Selecione uma zona para somar a taxa</span>
+                      )}
+                      {freeDeliveryThreshold > 0 && subtotal >= freeDeliveryThreshold && !isManualFee && (
+                        <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded border border-emerald-300">
+                          🛵 Entrega Grátis (≥ €{freeDeliveryThreshold.toFixed(2)})
+                        </span>
                       )}
                     </span>
                     <span className="font-mono font-bold text-sky-800">

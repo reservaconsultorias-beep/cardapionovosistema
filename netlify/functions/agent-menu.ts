@@ -33,23 +33,23 @@ export const handler: Handler = async (event, context) => {
       
       // Categorias podem definir se é P/M/G ou único
       const cat = item.category || 'outro';
-      const disponivel = item.is_bestseller === false ? 'Não' : 'Sim'; // Usando is_bestseller como disponível temporário ou ignora
+      const disponivel = item.is_active === false ? 'Não' : 'Sim';
 
       if (item.price_single) {
         const preco = `€${item.price_single.toFixed(2).replace('.', ',')}`;
-        csv += `"${cat}","${nomeFormatado}","-","${preco}","${ingredientesFormatados}","Sim"\n`;
+        csv += `"${cat}","${nomeFormatado}","-","${preco}","${ingredientesFormatados}","${disponivel}"\n`;
       } else {
         if (item.price_p) {
           const preco = `€${item.price_p.toFixed(2).replace('.', ',')}`;
-          csv += `"${cat}","${nomeFormatado}","P","${preco}","${ingredientesFormatados}","Sim"\n`;
+          csv += `"${cat}","${nomeFormatado}","P","${preco}","${ingredientesFormatados}","${disponivel}"\n`;
         }
         if (item.price_m) {
           const preco = `€${item.price_m.toFixed(2).replace('.', ',')}`;
-          csv += `"${cat}","${nomeFormatado}","M","${preco}","${ingredientesFormatados}","Sim"\n`;
+          csv += `"${cat}","${nomeFormatado}","M","${preco}","${ingredientesFormatados}","${disponivel}"\n`;
         }
         if (item.price_g) {
           const preco = `€${item.price_g.toFixed(2).replace('.', ',')}`;
-          csv += `"${cat}","${nomeFormatado}","G","${preco}","${ingredientesFormatados}","Sim"\n`;
+          csv += `"${cat}","${nomeFormatado}","G","${preco}","${ingredientesFormatados}","${disponivel}"\n`;
         }
       }
     }
