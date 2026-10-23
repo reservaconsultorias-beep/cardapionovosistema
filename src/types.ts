@@ -23,7 +23,7 @@ export interface OrderDetails {
   method: DeliveryMethod;
   neighborhood: string; // For delivery fee calculation
   address: string;
-  paymentMethod: 'dinheiro' | 'multibanco' | 'mbway';
+  paymentMethod: 'dinheiro' | 'mbway';
   changeFor?: string; // If cash (money)
   notes?: string;
 }

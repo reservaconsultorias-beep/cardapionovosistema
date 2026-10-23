@@ -9,6 +9,7 @@ import {
   ArrowUpRight, Star, AlertCircle, Pizza, Bike, Store, CreditCard
 } from 'lucide-react';
 import PeriodFilterCompact, { PeriodFilterOption } from './PeriodFilterCompact';
+import { getCustomerCashbackBalance } from '../utils/cashback';
 
 export type CustomerSegment = 'todos' | 'vip' | 'recorrente' | 'novo' | 'em_risco' | 'inativo';
 
@@ -1177,6 +1178,12 @@ const CustomerDetailModal = React.memo(function CustomerDetailModal({ customer, 
     notes: customer.notes || ''
   });
 
+  const [cashbackBal, setCashbackBal] = useState<number>(0);
+
+  useEffect(() => {
+    getCustomerCashbackBalance(customer.phone).then(setCashbackBal);
+  }, [customer.phone]);
+
   const copyTemplateText = (text: string, idx: number) => {
     navigator.clipboard.writeText(text);
     setCopiedTemplateIdx(idx);
@@ -1255,6 +1262,12 @@ const CustomerDetailModal = React.memo(function CustomerDetailModal({ customer, 
                   {customer.name || 'Cliente'}
                 </h3>
                 {getSegmentBadge(customer.segment)}
+                {cashbackBal > 0 && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-sans font-bold px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-900 border border-amber-500/30">
+                    <Sparkles size={11} className="text-amber-600" />
+                    <span>Cashback: € {cashbackBal.toFixed(2)}</span>
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-2 text-xs font-sans text-stone-600 mt-0.5">
                 <span className="font-mono font-medium">{customer.formattedPhone}</span>

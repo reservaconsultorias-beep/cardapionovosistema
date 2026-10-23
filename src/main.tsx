@@ -1,4 +1,4 @@
-import React, { StrictMode, ReactNode, ErrorInfo } from 'react';
+import React, { StrictMode, ReactNode, ErrorInfo, Suspense, lazy } from 'react';
 import { createRoot } from 'react-dom/client';
 
 // Apenas registra erros globais (ex.: extensões como MetaMask) sem derrubar a página
@@ -8,12 +8,32 @@ window.addEventListener('error', (e) => {
 window.addEventListener('unhandledrejection', (e) => {
   console.error('Unhandled Rejection:', e.reason);
 });
+
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import App from './App.tsx';
-import AdminDashboard from './pages/AdminDashboard.tsx';
-import OrderTracking from './pages/OrderTracking.tsx';
-import InteractiveReport from './pages/InteractiveReport.tsx';
 import './index.css';
+
+// 🚀 CODE SPLITTING & LAZY LOADING:
+// O cardápio dos clientes (/) não carrega os módulos pesados do painel administrativo.
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard.tsx'));
+const OrderTracking = lazy(() => import('./pages/OrderTracking.tsx'));
+const InteractiveReport = lazy(() => import('./pages/InteractiveReport.tsx'));
+
+const AdminLoadingFallback = () => (
+  <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#0c0a09', color: '#ffffff', fontFamily: 'sans-serif' }}>
+    <div style={{ width: '44px', height: '44px', border: '3px solid rgba(253, 222, 88, 0.2)', borderTopColor: '#fdde58', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <p style={{ marginTop: '16px', fontSize: '13px', fontWeight: 'bold', color: '#e7e5e4', letterSpacing: '0.04em' }}>Carregando Painel Administrativo...</p>
+  </div>
+);
+
+const GeneralLoadingFallback = () => (
+  <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc', color: '#0f172a', fontFamily: 'sans-serif' }}>
+    <div style={{ width: '38px', height: '38px', border: '3px solid #e2e8f0', borderTopColor: '#8b0000', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <p style={{ marginTop: '12px', fontSize: '13px', fontWeight: '600', color: '#64748b' }}>Carregando...</p>
+  </div>
+);
 
 interface Props {
   children?: ReactNode;
@@ -74,14 +94,14 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<App />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/admin/:tab" element={<AdminDashboard />} />
-          <Route path="/ADMIN" element={<AdminDashboard />} />
-          <Route path="/ADMIN/:tab" element={<AdminDashboard />} />
-          <Route path="/Admin" element={<AdminDashboard />} />
-          <Route path="/Admin/:tab" element={<AdminDashboard />} />
-          <Route path="/track/:code" element={<OrderTracking />} />
-          <Route path="/report-2026" element={<InteractiveReport />} />
+          <Route path="/admin" element={<Suspense fallback={<AdminLoadingFallback />}><AdminDashboard /></Suspense>} />
+          <Route path="/admin/:tab" element={<Suspense fallback={<AdminLoadingFallback />}><AdminDashboard /></Suspense>} />
+          <Route path="/ADMIN" element={<Suspense fallback={<AdminLoadingFallback />}><AdminDashboard /></Suspense>} />
+          <Route path="/ADMIN/:tab" element={<Suspense fallback={<AdminLoadingFallback />}><AdminDashboard /></Suspense>} />
+          <Route path="/Admin" element={<Suspense fallback={<AdminLoadingFallback />}><AdminDashboard /></Suspense>} />
+          <Route path="/Admin/:tab" element={<Suspense fallback={<AdminLoadingFallback />}><AdminDashboard /></Suspense>} />
+          <Route path="/track/:code" element={<Suspense fallback={<GeneralLoadingFallback />}><OrderTracking /></Suspense>} />
+          <Route path="/report-2026" element={<Suspense fallback={<GeneralLoadingFallback />}><InteractiveReport /></Suspense>} />
         </Routes>
       </BrowserRouter>
     </ErrorBoundary>

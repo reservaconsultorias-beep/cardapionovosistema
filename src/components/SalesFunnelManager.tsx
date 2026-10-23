@@ -267,7 +267,7 @@ export const SalesFunnelManager: React.FC<SalesFunnelManagerProps> = ({ onNaviga
       lucideIcon: CreditCard,
       conversionFromPrev: data.addedToCart > 0 ? Math.round((data.initiatedCheckout / data.addedToCart) * 100) : 0,
       dropoff: data.addedToCart > 0 ? Math.max(0, 100 - Math.round((data.initiatedCheckout / data.addedToCart) * 100)) : 0,
-      description: 'Etapa decisiva: clientes revisando valores, frete e escolhendo MBWay, Numerário ou Cartão.',
+      description: 'Etapa decisiva: clientes revisando valores, frete e escolhendo MB Way ou Numerário.',
       actionNote: 'Mantenha taxas de entrega claras e troco facilitado para eliminar desistências no último passo.'
     },
     {

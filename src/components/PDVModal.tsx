@@ -10,8 +10,17 @@ import {
   DollarSign, CreditCard, Smartphone, Check, 
   Percent, ArrowRight, User, Phone, MapPin, 
   Tag, Utensils, Bike, Store, AlertCircle, 
-  RotateCcw, Sparkles, ChevronRight, Hash, Edit2, ChevronDown, FileText
+  RotateCcw, Sparkles, ChevronRight, Hash, Edit2, ChevronDown, FileText,
+  Wifi, WifiOff
 } from 'lucide-react';
+import { 
+  savePdvDraft, 
+  getPdvDraft, 
+  clearPdvDraft, 
+  enqueueOfflineOrder, 
+  syncOfflineOrders, 
+  getOfflineOrders 
+} from '../utils/offlineSync';
 
 interface PDVModalProps {
   isOpen: boolean;
@@ -191,6 +200,11 @@ export default function PDVModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // Offline Resilience & Draft States
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [pendingOfflineCount, setPendingOfflineCount] = useState<number>(() => getOfflineOrders().length);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+
   // Customizer / Size Modal State
   const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
   const [customSize, setCustomSize] = useState<'P' | 'M' | 'G' | 'Big' | 'Super Big'>('G');
@@ -209,6 +223,89 @@ export default function PDVModal({
 
   // Editing existing item in cart
   const [editingCartIndex, setEditingCartIndex] = useState<number | null>(null);
+
+  // Monitora conectividade online/offline e sincroniza fila automaticamente ao voltar
+  useEffect(() => {
+    const handleOnline = async () => {
+      setIsOnline(true);
+      try {
+        const { syncedCount } = await syncOfflineOrders((tempId, order) => {
+          if (onOrderCreated) onOrderCreated(order);
+        });
+        setPendingOfflineCount(getOfflineOrders().length);
+      } catch (e) {
+        console.warn('[PDV] Erro no sync ao reconectar:', e);
+      }
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [onOrderCreated]);
+
+  // Restaura rascunho salvo ao abrir o PDV
+  useEffect(() => {
+    if (isOpen && !draftLoaded) {
+      try {
+        const draft = getPdvDraft();
+        if (draft && draft.cart && draft.cart.length > 0) {
+          setCart(draft.cart);
+          if (draft.orderType) setOrderType(draft.orderType);
+          if (draft.customerName) setCustomerName(draft.customerName);
+          if (draft.customerNif) setCustomerNif(draft.customerNif);
+          if (draft.customerPhone) setCustomerPhone(draft.customerPhone);
+          if (draft.tableNumber) setTableNumber(draft.tableNumber);
+          if (draft.deliveryAddress) setDeliveryAddress(draft.deliveryAddress);
+          if (draft.deliveryReference) setDeliveryReference(draft.deliveryReference);
+          if (draft.deliveryZone) setDeliveryZone(draft.deliveryZone);
+          if (draft.paymentMethod) setPaymentMethod(draft.paymentMethod);
+          if (draft.cashAmountGiven) setCashAmountGiven(draft.cashAmountGiven);
+          if (draft.orderNotes) setOrderNotes(draft.orderNotes);
+          if (draft.adjustmentType) setAdjustmentType(draft.adjustmentType);
+          if (draft.adjustmentMode) setAdjustmentMode(draft.adjustmentMode);
+          if (draft.adjustmentValue) setAdjustmentValue(draft.adjustmentValue);
+        }
+      } catch (e) {
+        console.warn('[PDV] Erro ao restaurar rascunho:', e);
+      }
+      setDraftLoaded(true);
+    }
+  }, [isOpen, draftLoaded]);
+
+  // Salva rascunho automaticamente a cada alteração com debounce
+  useEffect(() => {
+    if (!isOpen) return;
+    const timer = setTimeout(() => {
+      savePdvDraft({
+        cart,
+        orderType,
+        customerName,
+        customerNif,
+        customerPhone,
+        tableNumber,
+        deliveryAddress,
+        deliveryReference,
+        deliveryZone,
+        paymentMethod,
+        cashAmountGiven,
+        orderNotes,
+        adjustmentType,
+        adjustmentMode,
+        adjustmentValue
+      });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [
+    isOpen, cart, orderType, customerName, customerNif, customerPhone, tableNumber,
+    deliveryAddress, deliveryReference, deliveryZone, paymentMethod, cashAmountGiven,
+    orderNotes, adjustmentType, adjustmentMode, adjustmentValue
+  ]);
 
   // Slot-based interactive flavor search (like modern CRM combobox)
   const [searchingFlavorSlot, setSearchingFlavorSlot] = useState<number | null>(null);
@@ -845,6 +942,17 @@ export default function PDVModal({
         change_for: paymentMethod === 'Numerário' && !isNaN(changeForNum) && changeForNum > totalAmount ? changeForNum : null
       };
 
+      // Se estiver sem conexão no momento de finalizar, enfileira com segurança
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineOrder(payload);
+        clearPdvDraft();
+        setCart([]);
+        setPendingOfflineCount(getOfflineOrders().length);
+        alert("⚠️ Sem conexão com a internet. O pedido foi registrado e armazenado com segurança neste dispositivo! Assim que a conexão retornar, ele será sincronizado automaticamente no sistema.");
+        onClose();
+        return;
+      }
+
       const { data, error } = await supabase
         .from('orders')
         .insert([payload])
@@ -852,6 +960,9 @@ export default function PDVModal({
         .single();
 
       if (error) throw error;
+
+      // Limpa rascunho salvo do pedido após sucesso
+      clearPdvDraft();
 
       // Sincronização automática com tabela de Clientes (CRM)
       if (customerPhone.trim()) {
@@ -893,6 +1004,21 @@ export default function PDVModal({
       onClose();
     } catch (err: any) {
       console.error('Erro ao finalizar pedido no PDV:', err);
+      
+      // Contingência offline: Se for falha de rede/fetch, enfileira localmente
+      const errMsg = String(err?.message || '');
+      const isNetworkFail = !navigator.onLine || errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('Failed to fetch');
+      
+      if (isNetworkFail) {
+        enqueueOfflineOrder(payload);
+        clearPdvDraft();
+        setCart([]);
+        setPendingOfflineCount(getOfflineOrders().length);
+        alert("⚠️ Conexão oscilando: O pedido foi guardado localmente com segurança e será sincronizado assim que a internet estabilizar.");
+        onClose();
+        return;
+      }
+
       setErrorMessage(err.message || 'Erro ao registrar o pedido no banco de dados.');
     } finally {
       setIsSubmitting(false);
@@ -988,8 +1114,28 @@ export default function PDVModal({
           )}
         </div>
 
-        {/* Right: Cash Session badge & Close */}
-        <div className="flex items-center gap-3">
+        {/* Right: Cash Session badge, Offline status & Close */}
+        <div className="flex items-center gap-2.5">
+          {!isOnline ? (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/15 border border-amber-500/30 rounded-full text-amber-900 text-[10px] font-extrabold uppercase tracking-wide animate-pulse">
+              <WifiOff size={12} className="text-amber-700" />
+              <span>Offline (Rascunho Protegido)</span>
+            </div>
+          ) : pendingOfflineCount > 0 ? (
+            <button
+              type="button"
+              onClick={async () => {
+                const { syncedCount } = await syncOfflineOrders((id, ord) => onOrderCreated(ord));
+                setPendingOfflineCount(getOfflineOrders().length);
+                if (syncedCount > 0) alert(`${syncedCount} pedido(s) sincronizado(s) com sucesso!`);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-300 rounded-full text-emerald-800 text-[10px] font-extrabold hover:bg-emerald-100 cursor-pointer shadow-2xs"
+            >
+              <RotateCcw size={11} className="animate-spin text-emerald-600" />
+              <span>{pendingOfflineCount} offline (Sincronizar)</span>
+            </button>
+          ) : null}
+
           {activeSessionId ? (
             <span className="text-[10px] font-bold text-green-700 bg-green-100 px-2.5 py-1 rounded-full uppercase tracking-wider">
               Caixa Aberto

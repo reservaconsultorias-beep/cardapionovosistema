@@ -23,9 +23,9 @@ export default async (req: Request) => {
 
   // Token de autenticação opcional / de segurança
   const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
-  const SECRET_TOKEN = process.env.WHATSAPP_API_TOKEN || 'SenhaSuperSecreta41Menus2026';
+  const SECRET_TOKEN = process.env.WHATSAPP_API_TOKEN;
 
-  if (!authHeader || authHeader !== `Bearer ${SECRET_TOKEN}`) {
+  if (!SECRET_TOKEN || !authHeader || authHeader !== `Bearer ${SECRET_TOKEN}`) {
     return new Response(JSON.stringify({ success: false, message: 'Unauthorized. Invalid Token.' }), { status: 401, headers });
   }
 
