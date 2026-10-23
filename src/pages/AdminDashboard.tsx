@@ -81,6 +81,7 @@ import AgentManager from '../components/AgentManager';
 import { BillingManager } from '../components/BillingManager';
 import { SubscriptionLockoutOverlay } from '../components/SubscriptionLockoutOverlay';
 import { useSubscription } from '../hooks/useSubscription';
+import RecipeManager from '../components/RecipeManager';
 import { startOfDay, endOfDay } from 'date-fns';
 
 
@@ -210,6 +211,7 @@ export default function AdminDashboard() {
     'cardapio-digital': { title: 'Cardápio Digital', subtitle: 'Espelho do que os clientes veem na loja.' },
     'gestao-cardapio': { title: 'Produtos', subtitle: 'Gerencie o cardápio, preços e fotos.' },
     'categorias': { title: 'Categorias', subtitle: 'Organize as categorias do cardápio.' },
+    'fichas-tecnicas': { title: 'Ficha Técnica & CMV', subtitle: 'Gestão de insumos, custo de produção e margem real por produto.' },
     'relatorios': { title: 'Relatórios', subtitle: 'Vendas, ticket médio e produtos mais vendidos.' },
     'clientes': { title: 'Clientes', subtitle: 'Histórico e cadastro de clientes.' },
     'cobranca': { title: 'Cobrança', subtitle: '' },
@@ -1045,6 +1047,7 @@ export default function AdminDashboard() {
       'caixa': 'gerenciar_caixa',
       'gestao-cardapio': 'gerenciar_produtos',
       'categorias': 'gerenciar_categorias',
+      'fichas-tecnicas': 'gerenciar_produtos',
       'relatorios': 'ver_relatorios',
       'clientes': 'ver_clientes',
       'configuracoes': 'gerenciar_configuracoes',
@@ -1625,6 +1628,7 @@ export default function AdminDashboard() {
         {activeTab === 'cardapio-digital' && 'Cardápio Digital'}
               {activeTab === 'gestao-cardapio' && 'Produtos'}
               {activeTab === 'categorias' && 'Categorias'}
+              {activeTab === 'fichas-tecnicas' && 'Ficha Técnica & CMV'}
               {activeTab === 'configuracoes' && 'Configurações'}
             </span>
           </div>
@@ -1742,6 +1746,14 @@ export default function AdminDashboard() {
                     >
                       Categorias
                     </button>
+                    {hasPermission('gerenciar_produtos') && (
+                      <button 
+                        onClick={() => { setActiveTab("fichas-tecnicas"); setIsMobileMenuOpen(false); }} 
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-semibold transition-colors ${activeTab === 'fichas-tecnicas' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs' : 'text-stone-300 hover:text-white hover:bg-stone-900'}`}
+                      >
+                        Ficha Técnica & CMV
+                      </button>
+                    )}
                     <button 
                       onClick={() => { setActiveTab("banner-promocional"); setIsMobileMenuOpen(false); }} 
                       className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg font-semibold transition-colors ${activeTab === 'banner-promocional' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs' : 'text-stone-300 hover:text-white hover:bg-stone-900'}`}
@@ -1958,6 +1970,15 @@ export default function AdminDashboard() {
                   Categorias
                 </button>
               )}
+              {hasPermission('gerenciar_produtos') && (
+                <button 
+                  onClick={() => setActiveTab("fichas-tecnicas")} 
+                  className={`w-full flex items-center gap-1.5 px-2 py-[3.5px] rounded font-medium transition-colors cursor-pointer ${activeTab === 'fichas-tecnicas' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}
+                >
+                  <Layers size={12} className={activeTab === 'fichas-tecnicas' ? 'text-stone-950' : 'text-stone-400'} />
+                  Ficha Técnica & CMV
+                </button>
+              )}
               <button 
                 onClick={() => setActiveTab("banner-promocional")} 
                 className={`w-full flex items-center gap-1.5 px-2 py-[3.5px] rounded font-medium transition-colors cursor-pointer ${activeTab === 'banner-promocional' ? 'bg-[#fdde58] text-stone-950 font-bold shadow-xs border border-[#d8ba39]' : 'text-stone-300 hover:text-white hover:bg-stone-900/60'}`}
@@ -2092,6 +2113,12 @@ export default function AdminDashboard() {
         {activeTab === "categorias" && hasPermission('gerenciar_categorias') && (
           <div className="mt-1">
             <CategoryManager />
+          </div>
+        )}
+
+        {activeTab === "fichas-tecnicas" && (
+          <div className="mt-1">
+            <RecipeManager menuItems={menuItems} />
           </div>
         )}
 
