@@ -97,6 +97,8 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
             <img
               src={currentSrc}
               alt={item.name}
+              loading="lazy"
+              decoding="async"
               onLoad={() => setImgLoaded(true)}
               className={`w-full h-full object-contain object-center transition-all duration-300 ${imgLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} group-hover:scale-105`}
               onError={() => {
@@ -178,6 +180,8 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({
           <img
             src={currentSrc}
             alt={item.name}
+            loading="lazy"
+            decoding="async"
             onLoad={() => setImgLoaded(true)}
             className={`w-full h-full object-cover transition-all duration-300 ${imgLoaded ? 'opacity-100 scale-100' : 'opacity-0 scale-95'} group-hover:scale-105`}
             onError={() => {
