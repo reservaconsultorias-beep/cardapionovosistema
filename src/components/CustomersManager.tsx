@@ -1180,8 +1180,15 @@ const CustomerDetailModal = React.memo(function CustomerDetailModal({ customer, 
 
   const [cashbackBal, setCashbackBal] = useState<number>(0);
 
+  // Mensagem de cashback: nome e valor editáveis antes de enviar
+  const [cbNome, setCbNome] = useState(customer.name.split(' ')[0] || 'Cliente');
+  const [cbValor, setCbValor] = useState('0,00');
+
   useEffect(() => {
-    getCustomerCashbackBalance(customer.phone).then(setCashbackBal);
+    getCustomerCashbackBalance(customer.phone).then((bal) => {
+      setCashbackBal(bal);
+      setCbValor(bal.toFixed(2).replace('.', ','));
+    });
   }, [customer.phone]);
 
   const copyTemplateText = (text: string, idx: number) => {
@@ -1228,6 +1235,9 @@ const CustomerDetailModal = React.memo(function CustomerDetailModal({ customer, 
       text: `Olá ${firstName}! Hoje o forno da 41 Menu's já está a todo vapor e lembrei de você! Que tal pedir aquela ${favoritePizza} quentinha hoje para o jantar? 🍕`
     }
   ];
+
+  const cashbackText = `Olá ${cbNome.trim() || 'Cliente'}! Tudo bem? 🍕\nPassando para avisar que você tem *€ ${cbValor.trim() || '0,00'} de cashback* disponível aqui na 41 Menu's!\nPara usar, é só fazer o pedido pelo nosso cardápio digital, informar este número no carrinho e clicar em "Abater Saldo". O desconto entra na hora. Vamos pedir hoje?`;
+  const CASHBACK_IDX = -1;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1498,6 +1508,63 @@ const CustomerDetailModal = React.memo(function CustomerDetailModal({ customer, 
             <div className="space-y-3 font-sans">
               <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl text-xs text-stone-700 leading-relaxed">
                 <span className="font-bold text-stone-900">Modelos Rápidos para WhatsApp:</span> Mensagens pré-configuradas e personalizadas com o primeiro nome e preferências do cliente. Envie diretamente pelo WhatsApp ou copie o texto para personalizar.
+              </div>
+
+              {/* Modelo de cashback: nome e valor editáveis */}
+              <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="font-bold text-xs text-stone-900 flex items-center gap-1">
+                      <Sparkles size={12} className="text-amber-600" /> Aviso de Saldo de Cashback
+                    </span>
+                    <span className="text-[10px] text-stone-500 block">
+                      {cashbackBal > 0 ? `Saldo atual no sistema: € ${cashbackBal.toFixed(2)}` : 'Este cliente ainda não tem saldo no sistema.'} Edite nome e valor se precisar.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => copyTemplateText(cashbackText, CASHBACK_IDX)}
+                      className="min-h-[36px] px-2.5 bg-white hover:bg-stone-100 border border-stone-200 text-stone-700 font-semibold text-xs rounded-lg flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                      title="Copiar texto da mensagem"
+                    >
+                      {copiedTemplateIdx === CASHBACK_IDX ? <Check size={12} className="text-emerald-600 font-bold" /> : <Copy size={12} />}
+                      <span>{copiedTemplateIdx === CASHBACK_IDX ? 'Copiado!' : 'Copiar'}</span>
+                    </button>
+                    <a
+                      href={`https://wa.me/${internationalPhone}?text=${encodeURIComponent(cashbackText)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="min-h-[36px] px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                    >
+                      <Send size={11} />
+                      <span>Enviar WhatsApp</span>
+                    </a>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="block text-[10px] font-bold text-stone-700 uppercase mb-1">Nome</span>
+                    <input
+                      type="text"
+                      value={cbNome}
+                      onChange={(e) => setCbNome(e.target.value)}
+                      className="w-full h-9 px-2.5 bg-white border border-stone-200 rounded-lg text-base sm:text-xs text-stone-900 focus:border-stone-900 focus:outline-none"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="block text-[10px] font-bold text-stone-700 uppercase mb-1">Valor (€)</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={cbValor}
+                      onChange={(e) => setCbValor(e.target.value)}
+                      className="w-full h-9 px-2.5 bg-white border border-stone-200 rounded-lg text-base sm:text-xs font-mono text-stone-900 focus:border-stone-900 focus:outline-none"
+                    />
+                  </label>
+                </div>
+                <div className="p-3 bg-white border border-stone-200 rounded-lg text-xs text-stone-800 whitespace-pre-wrap font-sans leading-relaxed">
+                  {cashbackText}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 gap-3">

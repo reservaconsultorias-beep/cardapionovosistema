@@ -3,7 +3,7 @@
 // Commit trigger - updated
 import { supabase } from "./lib/supabase";
 import React, { useState, useEffect, useMemo } from "react";
-import { useMenu } from "./hooks/useMenu";
+import { useMenu, compareMenuItemsAlphabetically } from "./hooks/useMenu";
 import { useBusinessHours } from "./hooks/useBusinessHours";
 import {
   MenuItem,
@@ -405,6 +405,9 @@ function App() {
             item.name.toLowerCase().includes(term) ||
             (item.ingredients && item.ingredients.toLowerCase().includes(term)),
         );
+      }
+      if (cat.id !== 'mais-pedidos') {
+        matchingItems.sort(compareMenuItemsAlphabetically);
       }
       map[cat.id] = matchingItems;
     });

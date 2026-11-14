@@ -2,6 +2,18 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { ALL_MENU_ITEMS, MenuItem } from '../data/menu';
 
+export const cleanItemNameForSorting = (name: string): string => {
+  return name.replace(/^\d+\s*[-–—]\s*/, '').trim();
+};
+
+export const compareMenuItemsAlphabetically = (a: { name: string }, b: { name: string }): number => {
+  const cleanA = cleanItemNameForSorting(a.name);
+  const cleanB = cleanItemNameForSorting(b.name);
+  const diff = cleanA.localeCompare(cleanB, 'pt', { numeric: true, sensitivity: 'base' });
+  if (diff !== 0) return diff;
+  return a.name.localeCompare(b.name, 'pt', { numeric: true, sensitivity: 'base' });
+};
+
 export interface Category {
   id: string;
   name: string;
@@ -75,6 +87,21 @@ export function useMenu() {
 
       const normalizedItems: MenuItem[] = items.map(normalizeItem);
 
+      // Garante que dentro de cada categoria os itens fiquem estritamente em ordem alfabética
+      const catOrderMap = new Map<string, number>();
+      cats?.forEach((c, idx) => {
+        catOrderMap.set(c.id, c.order_index ?? idx);
+      });
+
+      normalizedItems.sort((a, b) => {
+        const catAOrder = catOrderMap.get(a.category) ?? 999;
+        const catBOrder = catOrderMap.get(b.category) ?? 999;
+        if (catAOrder !== catBOrder) {
+          return catAOrder - catBOrder;
+        }
+        return compareMenuItemsAlphabetically(a, b);
+      });
+
       setMenuItems(normalizedItems);
       setCategories(cats as Category[]);
       setUsingFallback(false);
@@ -105,7 +132,15 @@ export function useMenu() {
         };
       };
 
-      setMenuItems(ALL_MENU_ITEMS.map(normalizeStaticItem));
+      const staticItems = ALL_MENU_ITEMS.map(normalizeStaticItem);
+      staticItems.sort((a, b) => {
+        if (a.category !== b.category) {
+          return a.category.localeCompare(b.category);
+        }
+        return compareMenuItemsAlphabetically(a, b);
+      });
+
+      setMenuItems(staticItems);
       setCategories([]);
       setUsingFallback(true);
     } finally {
