@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Copy, Check, ExternalLink, ArrowRight, ShieldCheck, X, Smartphone, Send, Info } from 'lucide-react';
 import { MBWAY_CONFIG } from '../config/mbwayConfig';
+import { supabase } from '../lib/supabase';
 
 interface MbwayPaymentModalProps {
   orderId: number | null;
@@ -19,6 +20,25 @@ export default function MbwayPaymentModal({
 }: MbwayPaymentModalProps) {
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
+  const [activeKey, setActiveKey] = useState<string>(MBWAY_CONFIG.telefoneRecebedor);
+
+  useEffect(() => {
+    supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'active_mbway_key')
+      .single()
+      .then(({ data }) => {
+        if (data?.value) {
+          setActiveKey(String(data.value).replace(/\D/g, ''));
+        }
+      })
+      .catch((err) => console.warn('Erro ao carregar chave MB WAY ativa:', err));
+  }, []);
+
+  const isKey1 = activeKey.endsWith('912092269');
+  const telefoneRecebedor = isKey1 ? '912092269' : '914044317';
+  const telefoneRecebedorFormatado = isKey1 ? '+351 912 092 269' : '+351 914 044 317';
 
   const effectiveAmount = Number(total || 0);
   const formattedAmount = effectiveAmount.toLocaleString('pt-PT', {
@@ -110,12 +130,12 @@ export default function MbwayPaymentModal({
               Telemóvel MB WAY
             </span>
             <span className="block text-xs sm:text-sm font-mono font-black text-stone-900 mt-0.5 truncate">
-              {MBWAY_CONFIG.telefoneRecebedorFormatado}
+              {telefoneRecebedorFormatado}
             </span>
           </div>
           <button
             type="button"
-            onClick={() => copyToClipboard(MBWAY_CONFIG.telefoneRecebedor, 'phone')}
+            onClick={() => copyToClipboard(telefoneRecebedor, 'phone')}
             className={`mt-2 w-full py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-2xs ${
               copiedPhone
                 ? 'bg-emerald-600 text-white'
