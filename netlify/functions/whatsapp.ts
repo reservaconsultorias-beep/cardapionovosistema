@@ -40,7 +40,7 @@ export default async (req, context) => {
     // Normaliza items
     let rawItems = payload.items;
     if (typeof rawItems === 'string') {
-      try { rawItems = JSON.parse(rawItems); } catch(e) { rawItems = []; }
+      try { rawItems = JSON.parse(rawItems); } catch (e) { rawItems = []; }
     }
     if (!Array.isArray(rawItems) || rawItems.length === 0) {
       return new Response(JSON.stringify({ success: false, message: 'Nenhum item informado' }), { status: 400, headers });
@@ -64,7 +64,7 @@ export default async (req, context) => {
         const samePhone = oDigits.endsWith(lastDigits) || oDigits.includes(lastDigits);
         const st = String(o.status || '').toLowerCase().trim();
         const isActiveOrder = ['pendente', 'preparando', 'em preparo', 'recebido', 'pronto', 'entrega', 'saiu para entrega'].includes(st);
-        
+
         // Compara se tem o mesmo número de itens ou valor similar
         const sameAmount = Math.abs((Number(o.total_amount) || 0) - (Number(payload.total_amount) || 0)) < 0.05;
         return samePhone && (isActiveOrder || sameAmount);
@@ -88,7 +88,7 @@ export default async (req, context) => {
     const { data: dbMenuItems } = await supabase
       .from('menu_items')
       .select('id, name, category, price_single, price_p, price_m, price_g, is_active');
-    
+
     const { data: dbZones } = await supabase
       .from('delivery_zones')
       .select('name, fee')
@@ -104,38 +104,95 @@ export default async (req, context) => {
       if (thresholdSetting && thresholdSetting.value !== undefined) {
         freeDeliveryThreshold = Number(thresholdSetting.value) || 0;
       }
-    } catch (_) {}
+    } catch (_) { }
 
     let recalculatedSubtotal = 0;
+    // Detecção inteligente caso o chamador (IA) tenha enviado a soma da linha em vez do unitário
+    const rawSumPriceCalculated = rawItems.reduce((acc: number, it: any) => acc + (Number(it.priceCalculated || it.basePrice || 0)), 0);
+    const sentTotal = Number(payload.total_amount) || 0;
+    const aiSentLineTotalInsteadOfUnit = sentTotal > 0 && Math.abs(rawSumPriceCalculated - sentTotal) <= 4.00;
+
+    const normalizeItem = (s: string) => String(s || '').toLowerCase()
+      .replace(/^\d+\s*-\s*/, '')
+      .replace(/^(esfiha|esfirra|pizza|calzone)\s*(de\s*)?/i, '')
+      .trim();
+
     const recalculatedItems = rawItems.map((item: any) => {
       let unitPrice = Number(item.priceCalculated || item.price || item.basePrice || 0);
       const qty = Math.max(1, Number(item.quantity || 1));
-      
+
+      // Se a IA enviou a linha já multiplicada por engano (ex: 4 esfihas de 1.99 enviou 7.96), desfazemos a multiplicação
+      if (aiSentLineTotalInsteadOfUnit && qty > 1 && unitPrice > 0) {
+        unitPrice = Number((unitPrice / qty).toFixed(2));
+      }
+
       if (dbMenuItems && dbMenuItems.length > 0) {
         const itemName = String(item.name || '').toLowerCase().trim();
+        const normItem = normalizeItem(itemName);
         const matched = dbMenuItems.find(m => {
           const mName = String(m.name || '').toLowerCase().trim();
-          return m.id === item.id || itemName === mName || (mName.length > 4 && itemName.includes(mName));
+          const normM = normalizeItem(mName);
+          return m.id === item.id ||
+            itemName === mName ||
+            (normItem.length >= 3 && (normItem === normM || normItem.includes(normM) || normM.includes(normItem)));
         });
-        
+
         if (matched) {
-          const size = String(item.size || '').toUpperCase().trim();
+          let size = String(item.size || '').toUpperCase().trim();
+          if (!size) {
+            const rawName = String(item.name || '').toLowerCase();
+            if (rawName.includes('(g)') || rawName.includes('(gr)') || rawName.includes('grande')) size = 'G';
+            else if (rawName.includes('(m)') || rawName.includes('(md)') || rawName.includes('média') || rawName.includes('media')) size = 'M';
+            else if (rawName.includes('(p)') || rawName.includes('(pq)') || rawName.includes('pequena')) size = 'P';
+          }
           if (size === 'P' && matched.price_p) unitPrice = Number(matched.price_p);
           else if (size === 'M' && matched.price_m) unitPrice = Number(matched.price_m);
           else if (size === 'G' && matched.price_g) unitPrice = Number(matched.price_g);
           else if (matched.price_single) unitPrice = Number(matched.price_single);
+          else if (matched.price_m) unitPrice = Number(matched.price_m);
         }
       }
 
-      let extrasCost = 0;
-      if (Array.isArray(item.extras)) {
-        extrasCost = item.extras.reduce((acc: number, ex: any) => acc + (Number(ex.price) || 0), 0);
+      let extrasList = Array.isArray(item.extras) ? [...item.extras] : [];
+      const alreadyHasBordaInExtras = extrasList.some((ex: any) => String(ex.name || '').toLowerCase().includes('borda'));
+      const hasSeparateBordaItem = rawItems.some(it => String(it.name || '').toLowerCase().includes('borda'));
+      const notesLower = String(item.notes || '').toLowerCase();
+      const nameLower = String(item.name || '').toLowerCase();
+      const combinedText = `${notesLower} ${nameLower}`;
+
+      // Detecção inteligente de borda recheada em observações (quando a IA não envia nos extras nem em item separado)
+      if (!alreadyHasBordaInExtras && !hasSeparateBordaItem && combinedText.includes('borda')) {
+        let bordaName = '';
+        let bordaPrice = 5.00;
+        if (combinedText.includes('catupiry')) {
+          bordaName = 'Borda de Catupiry';
+          bordaPrice = 5.00;
+        } else if (combinedText.includes('nutella')) {
+          bordaName = 'Borda de Nutella';
+          bordaPrice = 5.00;
+        } else if (combinedText.includes('chocolate branco')) {
+          bordaName = 'Borda de Chocolate Branco';
+          bordaPrice = 5.00;
+        } else if (combinedText.includes('chocolate')) {
+          bordaName = 'Borda de Chocolate';
+          bordaPrice = 5.00;
+        } else {
+          bordaName = 'Borda Recheada';
+          bordaPrice = 5.00;
+        }
+
+        if (bordaName) {
+          extrasList.push({ name: bordaName, price: bordaPrice });
+        }
       }
+
+      const extrasCost = extrasList.reduce((acc: number, ex: any) => acc + (Number(ex.price) || 0), 0);
       const finalItemUnitPrice = Number((unitPrice + extrasCost).toFixed(2));
       recalculatedSubtotal += finalItemUnitPrice * qty;
 
       return {
         ...item,
+        extras: extrasList,
         quantity: qty,
         priceCalculated: finalItemUnitPrice,
         basePrice: unitPrice

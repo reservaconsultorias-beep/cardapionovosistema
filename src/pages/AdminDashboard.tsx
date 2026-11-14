@@ -304,6 +304,7 @@ export default function AdminDashboard() {
       deliveryZone: updatedOrder.delivery_zone || updatedOrder.deliveryZone || '',
       delivery_zone: updatedOrder.delivery_zone || updatedOrder.deliveryZone || '',
       items: updatedOrder.items,
+      notes: updatedOrder.notes !== undefined ? updatedOrder.notes : (updatedOrder.order_notes || ''),
       discountAmount: Number(updatedOrder.discount_amount ?? updatedOrder.discountAmount ?? 0),
       discount_amount: Number(updatedOrder.discount_amount ?? updatedOrder.discountAmount ?? 0),
       additionalAmount: Number(updatedOrder.additional_amount ?? updatedOrder.additionalAmount ?? 0),
@@ -380,6 +381,7 @@ export default function AdminDashboard() {
         delivery_address: formattedUpdatedOrder.deliveryAddress,
         delivery_zone: formattedUpdatedOrder.deliveryZone,
         items: formattedUpdatedOrder.items,
+        notes: formattedUpdatedOrder.notes,
         discount_amount: formattedUpdatedOrder.discountAmount,
         additional_amount: formattedUpdatedOrder.additionalAmount,
         total_amount: formattedUpdatedOrder.totalAmount,
@@ -3215,6 +3217,20 @@ export default function AdminDashboard() {
                                   <span className="font-mono font-black text-lg text-stone-900 tabular-nums">
                                     €{Number(order.totalAmount || 0).toFixed(2)}
                                   </span>
+                                  {(() => {
+                                    const disc = Number(order.discountAmount || order.discount_amount || 0);
+                                    const notesText = `${order.notes || ''} ${order.editReason || ''}`;
+                                    const cbMatch = notesText.match(/desconto\s+cashback\s*:\s*€?\s*([0-9]+(?:[.,][0-9]{1,2})?)/i);
+                                    const cbVal = disc > 0 ? disc : (cbMatch ? parseFloat(cbMatch[1].replace(',', '.')) : 0);
+                                    if (cbVal > 0) {
+                                      return (
+                                        <span className="block text-[10px] font-mono font-black text-emerald-800 bg-emerald-100/90 px-1.5 py-0.5 rounded border border-emerald-300 mt-0.5">
+                                          🎁 Cashback: -€{cbVal.toFixed(2)}
+                                        </span>
+                                      );
+                                    }
+                                    return null;
+                                  })()}
                                 </div>
                               </div>
 
@@ -4716,6 +4732,15 @@ export default function AdminDashboard() {
                       {printOrder.deliveryZone && <p style={{ margin: '0', fontSize: '11px', fontWeight: 'normal' }}>Zona: {printOrder.deliveryZone}</p>}
                     </>
                   )}
+                  {(() => {
+                    const cleanNotes = (printOrder.notes || '').replace(/\[?Desconto Cashback:[^\]]*\]?/gi, '').trim();
+                    if (!cleanNotes) return null;
+                    return (
+                      <p style={{ margin: '3px 0 1px 0', fontSize: '11px', fontWeight: 'bold', fontStyle: 'italic' }}>
+                        Obs Pedido: {cleanNotes}
+                      </p>
+                    );
+                  })()}
                 </div>
 
                 <div style={{ borderBottom: '1px solid #000', marginBottom: '6px' }}></div>
@@ -4756,10 +4781,24 @@ export default function AdminDashboard() {
                     return sum + (price * qty);
                   }, 0);
                   const addAmount = Number(printOrder.additionalAmount || printOrder.additional_amount || 0);
-                  const discAmount = Number(printOrder.discountAmount || printOrder.discount_amount || 0);
+                  let discAmount = Number(printOrder.discountAmount || printOrder.discount_amount || 0);
+
+                  // Detecta cashback via notes ou discountAmount
+                  let cashbackDiscount = 0;
+                  const notesText = `${printOrder.notes || ''} ${printOrder.editReason || ''}`;
+                  const cbMatch = notesText.match(/desconto\s+cashback\s*:\s*€?\s*([0-9]+(?:[.,][0-9]{1,2})?)/i);
+                  if (cbMatch) {
+                    cashbackDiscount = parseFloat(cbMatch[1].replace(',', '.'));
+                  }
+                  if (discAmount <= 0 && cashbackDiscount > 0) {
+                    discAmount = cashbackDiscount;
+                  }
+
                   const isDelivery = printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega';
                   const deliveryFee = isDelivery ? Math.max(0, (printOrder.totalAmount || 0) - itemsSubtotal - addAmount + discAmount) : 0;
                   const reasonNote = printOrder.editReason || printOrder.edit_reason || '';
+                  const isCashback = cashbackDiscount > 0 || notesText.toLowerCase().includes('cashback');
+                  const discountLabel = isCashback ? '- Desconto Cashback' : '- Desconto';
 
                   return (
                     <div style={{ marginBottom: '6px' }}>
@@ -4786,9 +4825,14 @@ export default function AdminDashboard() {
                           )}
                         </div>
                       )}
+                      {addAmount <= 0 && reasonNote && reasonNote.toLowerCase() !== cleanNotes.toLowerCase() && (
+                        <div style={{ fontSize: '10px', fontStyle: 'italic', fontWeight: 'bold', margin: '2px 0', color: '#000' }}>
+                          Obs: {reasonNote}
+                        </div>
+                      )}
                       {discAmount > 0 && (
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px' }}>
-                          <span>- Desconto</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 'bold', marginBottom: '2px', color: '#000' }}>
+                          <span>{discountLabel}</span>
                           <span>- {discAmount.toFixed(2)} €</span>
                         </div>
                       )}
@@ -4865,6 +4909,15 @@ export default function AdminDashboard() {
                   {printOrder.deliveryZone && <p style={{ margin: '0', fontSize: '10pt', fontWeight: 'normal' }}>Zona: {printOrder.deliveryZone}</p>}
                 </>
               )}
+              {(() => {
+                const cleanNotes = (printOrder.notes || '').replace(/\[?Desconto Cashback:[^\]]*\]?/gi, '').trim();
+                if (!cleanNotes) return null;
+                return (
+                  <p style={{ margin: '4px 0 2px 0', fontSize: '10pt', fontWeight: 'bold', fontStyle: 'italic' }}>
+                    Obs Pedido: {cleanNotes}
+                  </p>
+                );
+              })()}
             </div>
 
             <div style={{ borderBottom: '1px solid #000', marginBottom: '8px' }}></div>
@@ -4905,10 +4958,24 @@ export default function AdminDashboard() {
                 return sum + (price * qty);
               }, 0);
               const addAmount = Number(printOrder.additionalAmount || printOrder.additional_amount || 0);
-              const discAmount = Number(printOrder.discountAmount || printOrder.discount_amount || 0);
+              let discAmount = Number(printOrder.discountAmount || printOrder.discount_amount || 0);
+
+              // Detecta cashback via notes ou discountAmount
+              let cashbackDiscount = 0;
+              const notesText = `${printOrder.notes || ''} ${printOrder.editReason || ''}`;
+              const cbMatch = notesText.match(/desconto\s+cashback\s*:\s*€?\s*([0-9]+(?:[.,][0-9]{1,2})?)/i);
+              if (cbMatch) {
+                cashbackDiscount = parseFloat(cbMatch[1].replace(',', '.'));
+              }
+              if (discAmount <= 0 && cashbackDiscount > 0) {
+                discAmount = cashbackDiscount;
+              }
+
               const isDelivery = printOrder.orderType === 'Delivery' || printOrder.orderType === 'entrega';
               const deliveryFee = isDelivery ? Math.max(0, (printOrder.totalAmount || 0) - itemsSubtotal - addAmount + discAmount) : 0;
               const reasonNote = printOrder.editReason || printOrder.edit_reason || '';
+              const isCashback = cashbackDiscount > 0 || notesText.toLowerCase().includes('cashback');
+              const discountLabel = isCashback ? '- Desconto Cashback' : '- Desconto';
 
               return (
                 <div style={{ marginBottom: '8px' }}>
@@ -4935,9 +5002,14 @@ export default function AdminDashboard() {
                       )}
                     </div>
                   )}
+                  {addAmount <= 0 && reasonNote && reasonNote.toLowerCase() !== cleanNotes.toLowerCase() && (
+                    <div style={{ fontSize: '10pt', fontStyle: 'italic', fontWeight: 'bold', margin: '3px 0', color: '#000' }}>
+                      Obs: {reasonNote}
+                    </div>
+                  )}
                   {discAmount > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', fontWeight: 'bold', marginBottom: '3px' }}>
-                      <span>- Desconto</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11pt', fontWeight: '900', marginBottom: '3px', color: '#000' }}>
+                      <span>{discountLabel}</span>
                       <span>- {discAmount.toFixed(2)} €</span>
                     </div>
                   )}
@@ -5008,6 +5080,9 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     if (raw === 'entrega' || raw === 'delivery') return 'entrega';
     return normalizeOrderType(order.orderType || order.order_type);
   });
+  const [orderNotes, setOrderNotes] = useState<string>(() => {
+    return (order.notes || order.order_notes || '').toString();
+  });
 
   const [zones, setZones] = useState<{ id: string; name: string; fee: number }[]>([]);
   const [loadingZones, setLoadingZones] = useState(false);
@@ -5033,7 +5108,12 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     const isDel = raw === 'entrega' || raw === 'delivery';
     if (!isDel) return 0;
     const add = Number(order.additionalAmount || order.additional_amount || 0);
-    const disc = Number(order.discountAmount || order.discount_amount || 0);
+    let disc = Number(order.discountAmount || order.discount_amount || 0);
+    const notesText = `${order.notes || ''} ${order.editReason || ''}`;
+    const cbMatch = notesText.match(/desconto\s+cashback\s*:\s*€?\s*([0-9]+(?:[.,][0-9]{1,2})?)/i);
+    if (cbMatch && disc <= 0) {
+      disc = parseFloat(cbMatch[1].replace(',', '.'));
+    }
     const tot = Number(order.totalAmount || order.total_amount || 0);
     const feeDiff = Math.max(0, tot - initialItemsSubtotal - add + disc);
     return Number(feeDiff.toFixed(2));
@@ -5110,7 +5190,13 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
     return [];
   });
 
-  const [discountAmount, setDiscountAmount] = useState<number>(order.discountAmount || order.discount_amount || 0);
+  const [discountAmount, setDiscountAmount] = useState<number>(() => {
+    const rawDisc = Number(order.discountAmount || order.discount_amount || 0);
+    if (rawDisc > 0) return rawDisc;
+    const notesText = `${order.notes || ''} ${order.editReason || ''}`;
+    const cbMatch = notesText.match(/desconto\s+cashback\s*:\s*€?\s*([0-9]+(?:[.,][0-9]{1,2})?)/i);
+    return cbMatch ? parseFloat(cbMatch[1].replace(',', '.')) : 0;
+  });
   const [additionalAmount, setAdditionalAmount] = useState<number>(order.additionalAmount || order.additional_amount || 0);
   const [cashProvided, setCashProvided] = useState<number>(order.cashProvided || order.cash_provided || 0);
   const [editReason, setEditReason] = useState(order.editReason || order.edit_reason || '');
@@ -5627,6 +5713,7 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
       delivery_zone: orderType === 'entrega' ? deliveryZone : '',
       deliveryZone: orderType === 'entrega' ? deliveryZone : '',
       items: items,
+      notes: orderNotes.trim() ? orderNotes.trim() : (editReason.trim() && Number(additionalAmount) <= 0 ? editReason.trim() : orderNotes),
       discount_amount: Number(discountAmount) || 0,
       additional_amount: Number(additionalAmount) || 0,
       discountAmount: Number(discountAmount) || 0,
@@ -6540,7 +6627,20 @@ function EditOrderModal({ order, menuItems, onClose, onSave }: { order: any, men
 
               <div className="space-y-0.5">
                 <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">
-                  Obs. Taxa Adicional (Sai no Talão)
+                  Observações do Pedido (Sai na Comanda)
+                </label>
+                <textarea
+                  rows={2}
+                  value={orderNotes}
+                  onChange={(e) => setOrderNotes(e.target.value)}
+                  placeholder="Ex: Para 20:40, sem cebola, campainha..."
+                  className="w-full px-2 py-1 bg-white rounded border border-stone-300 text-[11px] font-medium text-stone-900 outline-none focus:border-stone-900 transition-colors"
+                />
+              </div>
+
+              <div className="space-y-0.5">
+                <label className="block text-[8px] font-mono font-bold text-stone-500 uppercase tracking-wider">
+                  Obs. Taxa Adicional / Motivo de Edição (Sai no Talão)
                 </label>
                 <input
                   type="text"

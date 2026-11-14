@@ -327,6 +327,7 @@ export default function Cart({
         delivery_zone: orderType === 'Delivery' ? zona : null,
         change_for: pagamento === 'Numerário' ? trocoPara : null,
         nif: nif.trim() ? nif : null,
+        discount_amount: cashbackDiscount > 0 ? Number(cashbackDiscount.toFixed(2)) : 0,
         notes: cashbackDiscount > 0 ? `[Desconto Cashback: € ${cashbackDiscount.toFixed(2)}]` : null,
         items: items.map(item => {
           let itemName = item.menuItem.name;

@@ -939,6 +939,8 @@ export default function PDVModal({
         notes: orderNotes.trim() || null,
         delivery_address: fullDeliveryAddress,
         delivery_zone: orderType === 'entrega' ? deliveryZone : null,
+        discount_amount: adjustmentType === 'discount' && adjustmentAmount < 0 ? Number(Math.abs(adjustmentAmount).toFixed(2)) : 0,
+        additional_amount: adjustmentType === 'surcharge' && adjustmentAmount > 0 ? Number(adjustmentAmount.toFixed(2)) : 0,
         change_for: paymentMethod === 'Numerário' && !isNaN(changeForNum) && changeForNum > totalAmount ? changeForNum : null
       };
 
