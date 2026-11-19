@@ -4786,6 +4786,7 @@ export default function AdminDashboard() {
                   // Detecta cashback via notes ou discountAmount
                   let cashbackDiscount = 0;
                   const notesText = `${printOrder.notes || ''} ${printOrder.editReason || ''}`;
+                  const cleanNotes = (printOrder.notes || '').replace(/\[?Desconto Cashback:[^\]]*\]?/gi, '').trim();
                   const cbMatch = notesText.match(/desconto\s+cashback\s*:\s*€?\s*([0-9]+(?:[.,][0-9]{1,2})?)/i);
                   if (cbMatch) {
                     cashbackDiscount = parseFloat(cbMatch[1].replace(',', '.'));
@@ -4963,6 +4964,7 @@ export default function AdminDashboard() {
               // Detecta cashback via notes ou discountAmount
               let cashbackDiscount = 0;
               const notesText = `${printOrder.notes || ''} ${printOrder.editReason || ''}`;
+              const cleanNotes = (printOrder.notes || '').replace(/\[?Desconto Cashback:[^\]]*\]?/gi, '').trim();
               const cbMatch = notesText.match(/desconto\s+cashback\s*:\s*€?\s*([0-9]+(?:[.,][0-9]{1,2})?)/i);
               if (cbMatch) {
                 cashbackDiscount = parseFloat(cbMatch[1].replace(',', '.'));
