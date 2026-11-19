@@ -118,7 +118,16 @@ export default async (req, context) => {
       .trim();
 
     const recalculatedItems = rawItems.map((item: any) => {
-      let unitPrice = Number(item.priceCalculated || item.price || item.basePrice || 0);
+      // REGRA: base = preço da pizza/produto SOZINHO; borda/extras são SEMPRE somados à parte depois.
+      // priceCalculated já pode incluir borda/extras, então descontamos os extras enviados para não somar duas vezes.
+      const sentExtrasCost = Array.isArray(item.extras)
+        ? item.extras.reduce((acc: number, ex: any) => acc + (Number(ex.price) || 0), 0)
+        : 0;
+      let unitPrice = Number(item.basePrice) > 0
+        ? Number(item.basePrice)
+        : Number(item.priceCalculated) > 0
+          ? Math.max(0, Number(item.priceCalculated) - sentExtrasCost)
+          : Number(item.price || 0);
       const qty = Math.max(1, Number(item.quantity || 1));
 
       // Se a IA enviou a linha já multiplicada por engano (ex: 4 esfihas de 1.99 enviou 7.96), desfazemos a multiplicação
