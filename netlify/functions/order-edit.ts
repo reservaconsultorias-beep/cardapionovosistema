@@ -235,27 +235,44 @@ export default async (req: Request) => {
 
       let recalculatedSubtotal = 0;
       const verifiedItems = newItems.map((item: any) => {
-        let unitPrice = Number(item.priceCalculated || item.price || item.basePrice || 0);
         const qty = Math.max(1, Number(item.quantity || 1));
 
+        // REGRA: preço do item = preço da pizza/produto SOZINHO + borda/extras SEMPRE somados à parte.
+        // Nunca usar priceCalculated como base, porque ele já inclui borda/extras (somaria duas vezes).
+        let extrasCost = 0;
+        if (Array.isArray(item.extras)) {
+          extrasCost = item.extras.reduce((acc: number, ex: any) => acc + (Number(ex.price) || 0), 0);
+        }
+
+        // Base de reserva: basePrice (sem extras) ou priceCalculated menos os extras
+        let unitPrice = 0;
+        if (Number(item.basePrice) > 0) {
+          unitPrice = Number(item.basePrice);
+        } else if (Number(item.priceCalculated) > 0) {
+          unitPrice = Math.max(0, Number(item.priceCalculated) - extrasCost);
+        } else {
+          unitPrice = Number(item.price || 0);
+        }
+
+        // Preço oficial do cardápio só quando o item bate exatamente (id ou nome igual),
+        // para não confundir meio a meio ou esfiha "9 - Frango com Catupiry" com pizza "19 - ...".
         if (dbMenuItems && dbMenuItems.length > 0) {
-          const itemName = String(item.name || '').toLowerCase().trim();
+          const itemName = String(item.name || item.menuItem?.name || '').toLowerCase().trim();
+          const itemId = item.id || item.menuItem?.id;
           const matched = dbMenuItems.find(m => {
             const mName = String(m.name || '').toLowerCase().trim();
-            return m.id === item.id || itemName === mName || (mName.length > 4 && itemName.includes(mName));
+            return (itemId && m.id === itemId) || itemName === mName;
           });
           if (matched) {
-            const size = String(item.size || '').toUpperCase().trim();
+            let size = String(item.size || '').toUpperCase().trim();
+            if (size === 'GR' || size === 'GRANDE') size = 'G';
+            else if (size === 'MD' || size === 'MÉDIA' || size === 'MEDIA') size = 'M';
+            else if (size === 'PQ' || size === 'PEQUENA') size = 'P';
             if (size === 'P' && matched.price_p) unitPrice = Number(matched.price_p);
             else if (size === 'M' && matched.price_m) unitPrice = Number(matched.price_m);
             else if (size === 'G' && matched.price_g) unitPrice = Number(matched.price_g);
             else if (matched.price_single) unitPrice = Number(matched.price_single);
           }
-        }
-
-        let extrasCost = 0;
-        if (Array.isArray(item.extras)) {
-          extrasCost = item.extras.reduce((acc: number, ex: any) => acc + (Number(ex.price) || 0), 0);
         }
 
         const finalItemPrice = Number((unitPrice + extrasCost).toFixed(2));
