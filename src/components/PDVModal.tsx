@@ -883,6 +883,7 @@ export default function PDVModal({
     setIsSubmitting(true);
     setErrorMessage(null);
 
+    let payload: any = null;
     try {
       const formattedItems = cart.map(item => {
         let name = item.menuItem.name;
@@ -927,7 +928,7 @@ export default function PDVModal({
         ? `${deliveryAddress.trim()}${deliveryReference.trim() ? ` (Ref: ${deliveryReference.trim()})` : ''}`
         : (orderType === 'mesa' && tableNumber ? `Mesa ${tableNumber}` : null);
 
-      const payload: any = {
+      payload = {
         cash_session_id: activeSessionId || null,
         customer_name: customerNif.trim() ? `${customerName.trim()} (NIF: ${customerNif.trim()})` : customerName.trim(),
         customer_phone: customerPhone.trim() || null,
@@ -1011,7 +1012,7 @@ export default function PDVModal({
       const errMsg = String(err?.message || '');
       const isNetworkFail = !navigator.onLine || errMsg.includes('fetch') || errMsg.includes('network') || errMsg.includes('Failed to fetch');
       
-      if (isNetworkFail) {
+      if (isNetworkFail && payload) {
         enqueueOfflineOrder(payload);
         clearPdvDraft();
         setCart([]);

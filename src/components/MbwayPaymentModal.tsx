@@ -32,8 +32,7 @@ export default function MbwayPaymentModal({
         if (data?.value) {
           setActiveKey(String(data.value).replace(/\D/g, ''));
         }
-      })
-      .catch((err) => console.warn('Erro ao carregar chave MB WAY ativa:', err));
+      }, (err: any) => console.warn('Erro ao carregar chave MB WAY ativa:', err));
   }, []);
 
   const isKey1 = activeKey.endsWith('912092269');
