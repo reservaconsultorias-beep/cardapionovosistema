@@ -37,14 +37,14 @@ export interface InvoiceHistory {
   status: 'pago' | 'pendente' | 'cancelado';
 }
 
-const STORAGE_KEY = 'admin_system_subscription_state_v4';
+const STORAGE_KEY = 'admin_system_subscription_state_v5';
 
 export function useSubscription() {
   const [loading, setLoading] = useState(true);
 
-  // Considera Outubro pago (15/10) e define próximo vencimento para 16 de Novembro de 2026
+  // Novembro pago (17/11) — próximo vencimento: 16 de Dezembro de 2026
   const calculateCurrentDueDate = (): string => {
-    return '2026-11-16';
+    return '2026-12-16';
   };
 
   const defaultSubscription: SubscriptionData = {
@@ -54,13 +54,13 @@ export function useSubscription() {
     dueDay: 16,
     gracePeriodDays: 5,
     status: 'active',
-    currentPeriodDue: '2026-11-16',
-    lastPaymentDate: '2026-10-15T12:00:00.000Z',
+    currentPeriodDue: '2026-12-16',
+    lastPaymentDate: '2026-11-17T12:00:00.000Z',
     pixCode: '00020126360014BR.GOV.BCB.PIX0114+55419965600805204000053039865406490.005802BR5914SISTEMA GESTOR6008CURITIBA62150511MENSALIDADE6304F9A7',
     pixQrUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=00020126360014BR.GOV.BCB.PIX0114%2B55419965600805204000053039865406490.005802BR5914SISTEMA%20GESTOR6008CURITIBA62150511MENSALIDADE6304F9A7',
     stripePaymentLink: 'https://buy.stripe.com/test_gestor_delivery_490',
     isManuallyOverridden: false,
-    notes: 'Mês de Outubro/2026 pago em 15/10/2026. Próximo vencimento: 16 de Novembro de 2026.'
+    notes: 'Mês de Novembro/2026 pago em 17/11/2026. Próximo vencimento: 16 de Dezembro de 2026.'
   };
 
   const [subscription, setSubscription] = useState<SubscriptionData>(() => {
@@ -76,6 +76,15 @@ export function useSubscription() {
   });
 
   const [invoices, setInvoices] = useState<InvoiceHistory[]>([
+    {
+      id: 'INV-2026-11',
+      month: 'Novembro / 2026',
+      dueDate: '16/11/2026',
+      paidDate: '17/11/2026',
+      amount: 490.00,
+      method: 'PIX Direto',
+      status: 'pago'
+    },
     {
       id: 'INV-2026-10',
       month: 'Outubro / 2026',
